@@ -1,0 +1,72 @@
+"use client";
+
+import { useState, type FormEvent } from "react";
+import { MicIcon, SendIcon } from "./Icons";
+
+export function ChatDock({
+  onSend,
+  disabled,
+  isListening,
+  micSupported,
+  interimTranscript,
+  onToggleMic,
+}: {
+  onSend: (text: string) => void;
+  disabled: boolean;
+  isListening: boolean;
+  micSupported: boolean;
+  interimTranscript: string;
+  onToggleMic: () => void;
+}) {
+  const [value, setValue] = useState("");
+
+  function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    const text = value.trim();
+    if (!text || disabled) return;
+    onSend(text);
+    setValue("");
+  }
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      className="glass-strong mx-auto flex w-full max-w-2xl items-center gap-2 rounded-full px-3 py-2 sm:px-4"
+    >
+      <button
+        type="button"
+        onClick={onToggleMic}
+        disabled={!micSupported}
+        className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors disabled:opacity-30 ${
+          isListening
+            ? "bg-sky-500 text-white"
+            : "bg-sky-500/10 text-sky-600 hover:bg-sky-500/20"
+        }`}
+        aria-label={isListening ? "Stop listening" : "Start listening"}
+        title={micSupported ? "Talk to JARVIS" : "Voice input not supported in this browser"}
+      >
+        {isListening && (
+          <span className="absolute inset-0 rounded-full border-2 border-sky-400 animate-pulse-ring" />
+        )}
+        <MicIcon className="relative h-[18px] w-[18px]" />
+      </button>
+
+      <input
+        value={isListening ? interimTranscript || "Listening…" : value}
+        onChange={(e) => setValue(e.target.value)}
+        disabled={isListening}
+        placeholder="Ask JARVIS anything…"
+        className="min-w-0 flex-1 bg-transparent text-sm text-ink-900 placeholder:text-ink-700/40 focus:outline-none disabled:italic"
+      />
+
+      <button
+        type="submit"
+        disabled={disabled || !value.trim()}
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-sky-500 text-white transition hover:bg-sky-600 disabled:opacity-30"
+        aria-label="Send"
+      >
+        <SendIcon className="h-4 w-4" />
+      </button>
+    </form>
+  );
+}
