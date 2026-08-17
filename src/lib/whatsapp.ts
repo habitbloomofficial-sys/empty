@@ -1,10 +1,11 @@
 import twilio from "twilio";
+import { getSetting } from "./settings";
 
 export function isWhatsAppConfigured(): boolean {
   return Boolean(
-    process.env.TWILIO_ACCOUNT_SID &&
-      process.env.TWILIO_AUTH_TOKEN &&
-      process.env.TWILIO_WHATSAPP_FROM
+    getSetting("TWILIO_ACCOUNT_SID") &&
+      getSetting("TWILIO_AUTH_TOKEN") &&
+      getSetting("TWILIO_WHATSAPP_FROM")
   );
 }
 
@@ -17,17 +18,17 @@ export async function sendWhatsAppMessage(params: {
   to: string;
   message: string;
 }): Promise<{ sid: string }> {
-  const sid = process.env.TWILIO_ACCOUNT_SID;
-  const token = process.env.TWILIO_AUTH_TOKEN;
-  const from = process.env.TWILIO_WHATSAPP_FROM;
+  const sid = getSetting("TWILIO_ACCOUNT_SID");
+  const token = getSetting("TWILIO_AUTH_TOKEN");
+  const from = getSetting("TWILIO_WHATSAPP_FROM");
 
   if (!sid || !token || !from) {
     throw new Error(
-      "WhatsApp isn't configured yet, sir — add your Twilio credentials to .env.local (see README)."
+      "WhatsApp isn't configured yet, sir — add your Twilio credentials in Settings."
     );
   }
 
-  const to = params.to.trim() || process.env.TWILIO_WHATSAPP_TO_DEFAULT;
+  const to = params.to.trim() || getSetting("TWILIO_WHATSAPP_TO_DEFAULT");
   if (!to) {
     throw new Error(
       "No recipient number given, and no default WhatsApp recipient is configured."

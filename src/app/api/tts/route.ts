@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { textToSpeech, DEFAULT_VOICE_ID } from "@/lib/elevenlabs";
+import { textToSpeech } from "@/lib/elevenlabs";
 
 export const runtime = "nodejs";
 
@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const audio = await textToSpeech(text, body.voiceId || DEFAULT_VOICE_ID);
+    const audio = await textToSpeech(text, body.voiceId);
     return new NextResponse(audio, {
       headers: {
         "Content-Type": "audio/mpeg",

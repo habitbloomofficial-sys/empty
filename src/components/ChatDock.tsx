@@ -7,14 +7,18 @@ export function ChatDock({
   onSend,
   disabled,
   isListening,
+  isTranscribing,
   micSupported,
+  micLevel,
   interimTranscript,
   onToggleMic,
 }: {
   onSend: (text: string) => void;
   disabled: boolean;
   isListening: boolean;
+  isTranscribing: boolean;
   micSupported: boolean;
+  micLevel: number;
   interimTranscript: string;
   onToggleMic: () => void;
 }) {
@@ -28,6 +32,12 @@ export function ChatDock({
     setValue("");
   }
 
+  const inputValue = isListening
+    ? interimTranscript || "Listening… I'll send when you pause."
+    : isTranscribing
+      ? "Transcribing…"
+      : value;
+
   return (
     <form
       onSubmit={handleSubmit}
@@ -36,25 +46,38 @@ export function ChatDock({
       <button
         type="button"
         onClick={onToggleMic}
-        disabled={!micSupported}
+        disabled={!micSupported || isTranscribing}
         className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors disabled:opacity-30 ${
           isListening
             ? "bg-sky-500 text-white"
             : "bg-sky-500/10 text-sky-600 hover:bg-sky-500/20"
         }`}
         aria-label={isListening ? "Stop listening" : "Start listening"}
-        title={micSupported ? "Talk to JARVIS" : "Voice input not supported in this browser"}
+        title={
+          micSupported
+            ? isListening
+              ? "Tap to send now"
+              : "Talk to JARVIS"
+            : "Voice input not supported in this browser"
+        }
       >
         {isListening && (
-          <span className="absolute inset-0 rounded-full border-2 border-sky-400 animate-pulse-ring" />
+          <>
+            <span className="absolute inset-0 rounded-full border-2 border-sky-400 animate-pulse-ring" />
+            {/* Scales with your actual voice, so a dead mic is obvious at a glance. */}
+            <span
+              className="pointer-events-none absolute inset-0 rounded-full bg-sky-300/50 transition-transform duration-75"
+              style={{ transform: `scale(${1 + Math.min(micLevel, 1) * 0.6})` }}
+            />
+          </>
         )}
         <MicIcon className="relative h-[18px] w-[18px]" />
       </button>
 
       <input
-        value={isListening ? interimTranscript || "Listening…" : value}
+        value={inputValue}
         onChange={(e) => setValue(e.target.value)}
-        disabled={isListening}
+        disabled={isListening || isTranscribing}
         placeholder="Ask JARVIS anything…"
         className="min-w-0 flex-1 bg-transparent text-sm text-ink-900 placeholder:text-ink-700/40 focus:outline-none disabled:italic"
       />

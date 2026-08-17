@@ -2,6 +2,7 @@ import { google } from "googleapis";
 import type { OAuth2Client, Credentials } from "google-auth-library";
 import fs from "node:fs";
 import path from "node:path";
+import { getSetting } from "./settings";
 
 const TOKEN_PATH = path.join(process.cwd(), "data", "gmail-token.json");
 
@@ -11,30 +12,27 @@ const SCOPES = [
   "https://www.googleapis.com/auth/gmail.compose",
 ];
 
-function credentialsConfigured(): boolean {
-  return Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
+export function areGmailCredentialsConfigured(): boolean {
+  return Boolean(getSetting("GOOGLE_CLIENT_ID") && getSetting("GOOGLE_CLIENT_SECRET"));
 }
 
 export function isGmailConfigured(): boolean {
-  return credentialsConfigured() && fs.existsSync(TOKEN_PATH);
+  return areGmailCredentialsConfigured() && fs.existsSync(TOKEN_PATH);
 }
 
 function redirectUri(): string {
-  return (
-    process.env.GOOGLE_REDIRECT_URI ||
-    "http://localhost:3000/api/gmail/callback"
-  );
+  return getSetting("GOOGLE_REDIRECT_URI") || "http://localhost:3000/api/gmail/callback";
 }
 
 function newOAuthClient(): OAuth2Client {
-  if (!credentialsConfigured()) {
+  if (!areGmailCredentialsConfigured()) {
     throw new Error(
-      "Gmail isn't configured yet. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in .env.local (see README)."
+      "Gmail isn't configured yet, sir — add your Google client ID and secret in Settings."
     );
   }
   return new google.auth.OAuth2(
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
+    getSetting("GOOGLE_CLIENT_ID"),
+    getSetting("GOOGLE_CLIENT_SECRET"),
     redirectUri()
   );
 }

@@ -8,7 +8,7 @@ import { ChatDock } from "./ChatDock";
 import { TranscriptPanel } from "./TranscriptPanel";
 import { SettingsModal } from "./SettingsModal";
 import { ChatIcon, CloseIcon } from "./Icons";
-import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
+import { useVoiceInput } from "@/hooks/useVoiceInput";
 import { useVoicePlayer } from "@/hooks/useVoicePlayer";
 import type { ChatMessage, IntegrationStatus, OrbState } from "@/lib/types";
 
@@ -16,7 +16,7 @@ const Orb = dynamic(() => import("./Orb"), { ssr: false });
 
 const ORB_LABEL: Record<OrbState, string> = {
   idle: "At your service, sir.",
-  listening: "Listening…",
+  listening: "Listening… I'll send when you pause.",
   thinking: "One moment, sir…",
   speaking: "Speaking…",
 };
@@ -74,15 +74,19 @@ export default function JarvisApp() {
     }
   }
 
-  const speech = useSpeechRecognition(handleSend);
+  const speech = useVoiceInput(handleSend, Boolean(status?.transcription));
 
   const orbState: OrbState = voicePlayer.isSpeaking
     ? "speaking"
-    : isThinking
+    : isThinking || speech.isTranscribing
       ? "thinking"
       : speech.isListening
         ? "listening"
         : "idle";
+
+  // While listening, the orb pulses with your voice — immediate proof that the
+  // microphone is being picked up.
+  const orbLevel = speech.isListening ? speech.micLevel : voicePlayer.audioLevel;
 
   const refreshStatus = useMemo(
     () => async () => {
@@ -124,10 +128,12 @@ export default function JarvisApp() {
 
       <main className="relative flex flex-1 flex-col items-center justify-center px-4">
         <div className="animate-float relative h-[min(60vw,340px)] w-[min(60vw,340px)] sm:h-[380px] sm:w-[380px]">
-          <Orb state={orbState} audioLevel={voicePlayer.audioLevel} />
+          <Orb state={orbState} audioLevel={orbLevel} />
         </div>
 
-        <p className="mt-2 text-sm font-medium text-ink-700/70">{ORB_LABEL[orbState]}</p>
+        <p className="mt-2 text-sm font-medium text-ink-700/70">
+          {speech.isTranscribing ? "Transcribing…" : ORB_LABEL[orbState]}
+        </p>
 
         {(speech.error || error) && (
           <div className="glass mt-3 max-w-md rounded-xl px-4 py-2 text-center text-xs text-rose-600">
@@ -135,10 +141,14 @@ export default function JarvisApp() {
           </div>
         )}
 
-        {!status?.brain && (
-          <div className="glass mt-3 max-w-md rounded-xl px-4 py-2 text-center text-xs text-ink-700/70">
-            Add an OpenAI or Gemini API key to .env.local to give JARVIS a brain — see Settings.
-          </div>
+        {status && !status.brain && (
+          <button
+            onClick={() => setSettingsOpen(true)}
+            className="glass mt-3 max-w-md rounded-xl px-4 py-2 text-center text-xs text-ink-700/70 transition hover:text-sky-700"
+          >
+            No brain connected yet, sir — open <span className="font-semibold">Settings</span> and
+            paste a Gemini or OpenAI API key.
+          </button>
         )}
       </main>
 
@@ -147,7 +157,9 @@ export default function JarvisApp() {
           onSend={handleSend}
           disabled={isThinking}
           isListening={speech.isListening}
+          isTranscribing={speech.isTranscribing}
           micSupported={speech.supported}
+          micLevel={speech.micLevel}
           interimTranscript={speech.interimTranscript}
           onToggleMic={() => (speech.isListening ? speech.stop() : speech.start())}
         />
@@ -190,7 +202,13 @@ export default function JarvisApp() {
       </AnimatePresence>
 
       <AnimatePresence>
-        {settingsOpen && <SettingsModal status={status} onClose={() => setSettingsOpen(false)} />}
+        {settingsOpen && (
+          <SettingsModal
+            status={status}
+            onClose={() => setSettingsOpen(false)}
+            onSaved={refreshStatus}
+          />
+        )}
       </AnimatePresence>
     </div>
   );

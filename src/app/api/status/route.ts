@@ -3,6 +3,7 @@ import { isAIConfigured, getAIProvider } from "@/lib/ai";
 import { isElevenLabsConfigured } from "@/lib/elevenlabs";
 import { isGmailConfigured } from "@/lib/gmail";
 import { isWhatsAppConfigured } from "@/lib/whatsapp";
+import { isTranscriptionConfigured } from "@/lib/transcription";
 import type { IntegrationStatus } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -12,6 +13,7 @@ export async function GET() {
     brain: isAIConfigured(),
     brainProvider: getAIProvider(),
     elevenlabs: isElevenLabsConfigured(),
+    transcription: isTranscriptionConfigured(),
     gmail: isGmailConfigured(),
     whatsapp: isWhatsAppConfigured(),
   };
