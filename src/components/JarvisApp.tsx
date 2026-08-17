@@ -129,9 +129,9 @@ export default function JarvisApp() {
 
         <p className="mt-2 text-sm font-medium text-ink-700/70">{ORB_LABEL[orbState]}</p>
 
-        {error && (
+        {(speech.error || error) && (
           <div className="glass mt-3 max-w-md rounded-xl px-4 py-2 text-center text-xs text-rose-600">
-            {error}
+            {speech.error || error}
           </div>
         )}
 
