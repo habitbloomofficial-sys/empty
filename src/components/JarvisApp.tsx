@@ -28,11 +28,13 @@ export default function JarvisApp() {
   const [transcriptOpen, setTranscriptOpen] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
 
   const voicePlayer = useVoicePlayer();
 
   async function handleSend(text: string) {
     setError(null);
+    setVoiceError(null);
     const userMsg: ChatMessage = {
       id: crypto.randomUUID(),
       role: "user",
@@ -64,8 +66,14 @@ export default function JarvisApp() {
       setIsThinking(false);
 
       if (status?.elevenlabs && data.reply) {
-        voicePlayer.speak(data.reply).catch(() => {
-          /* voice is a nice-to-have; failure shouldn't block the chat */
+        // Voice is a nice-to-have, so a failure never blocks the chat — but it
+        // shouldn't fail silently either, or a bad key looks like a mute bug.
+        voicePlayer.speak(data.reply).catch((err: unknown) => {
+          setVoiceError(
+            `I can't speak aloud right now: ${
+              err instanceof Error ? err.message : String(err)
+            }`
+          );
         });
       }
     } catch (err) {
@@ -135,9 +143,9 @@ export default function JarvisApp() {
           {speech.isTranscribing ? "Transcribing…" : ORB_LABEL[orbState]}
         </p>
 
-        {(speech.error || error) && (
+        {(speech.error || error || voiceError) && (
           <div className="glass mt-3 max-w-md rounded-xl px-4 py-2 text-center text-xs text-rose-600">
-            {speech.error || error}
+            {speech.error || error || voiceError}
           </div>
         )}
 

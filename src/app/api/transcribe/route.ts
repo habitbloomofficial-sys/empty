@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       {
         error:
-          "No transcription service configured, sir — add an ElevenLabs or OpenAI API key in Settings.",
+          "No transcription service configured, sir — add a Gemini, ElevenLabs, or OpenAI API key in Settings.",
       },
       { status: 503 }
     );
@@ -36,11 +36,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "That recording is too long." }, { status: 413 });
   }
 
-  const filename =
-    audio instanceof File && audio.name ? audio.name : "speech.webm";
+  const filename = audio instanceof File && audio.name ? audio.name : "speech.wav";
+  const mimeType = audio.type || (filename.endsWith(".wav") ? "audio/wav" : "audio/webm");
 
   try {
-    const text = await transcribeAudio(audio, filename);
+    const text = await transcribeAudio(audio, filename, mimeType);
     return NextResponse.json({ text });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

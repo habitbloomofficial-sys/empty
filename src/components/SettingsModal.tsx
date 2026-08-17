@@ -12,6 +12,12 @@ interface SettingView {
   source: "saved" | "env" | "unset";
 }
 
+interface KeyCheck {
+  key: string;
+  ok: boolean;
+  message: string;
+}
+
 type Views = Record<string, SettingView>;
 
 function Section({
@@ -101,23 +107,38 @@ function SaveButton({
   busy,
   saved,
   disabled,
+  checks,
 }: {
   onClick: () => void;
   busy: boolean;
   saved: boolean;
   disabled?: boolean;
+  checks?: KeyCheck[];
 }) {
   return (
-    <div className="flex items-center gap-2 pt-0.5">
-      <button
-        type="button"
-        onClick={onClick}
-        disabled={busy || disabled}
-        className="rounded-full bg-sky-500 px-3.5 py-1.5 text-xs font-semibold text-white transition hover:bg-sky-600 disabled:opacity-40"
-      >
-        {busy ? "Saving…" : "Save"}
-      </button>
-      {saved && <span className="text-[11px] font-medium text-sky-700">Saved ✓</span>}
+    <div className="space-y-1.5 pt-0.5">
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={onClick}
+          disabled={busy || disabled}
+          className="rounded-full bg-sky-500 px-3.5 py-1.5 text-xs font-semibold text-white transition hover:bg-sky-600 disabled:opacity-40"
+        >
+          {busy ? "Checking…" : "Save"}
+        </button>
+        {saved && <span className="text-[11px] font-medium text-sky-700">Saved ✓</span>}
+      </div>
+      {checks?.map((check) => (
+        <p
+          key={check.key}
+          className={`rounded-lg px-2.5 py-1.5 text-[11px] ${
+            check.ok ? "bg-sky-500/10 text-sky-800" : "bg-rose-500/10 text-rose-700"
+          }`}
+        >
+          {check.ok ? "✓ " : "⚠ "}
+          {check.message}
+        </p>
+      ))}
     </div>
   );
 }
@@ -136,6 +157,7 @@ export function SettingsModal({
   const [provider, setProvider] = useState<"gemini" | "openai">("gemini");
   const [busySection, setBusySection] = useState<string | null>(null);
   const [savedSection, setSavedSection] = useState<string | null>(null);
+  const [checks, setChecks] = useState<Record<string, KeyCheck[]>>({});
   const [error, setError] = useState<string | null>(null);
 
   const applySettings = useCallback((list: SettingView[]) => {
@@ -184,6 +206,7 @@ export function SettingsModal({
     setBusySection(section);
     setError(null);
     setSavedSection(null);
+    setChecks((prev) => ({ ...prev, [section]: [] }));
     try {
       const res = await fetch("/api/settings", {
         method: "POST",
@@ -193,6 +216,9 @@ export function SettingsModal({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Couldn't save those settings.");
       if (Array.isArray(data.settings)) applySettings(data.settings);
+      if (Array.isArray(data.checks)) {
+        setChecks((prev) => ({ ...prev, [section]: data.checks }));
+      }
       // Clear the secret inputs — they're saved now, and the masked hint
       // underneath is the confirmation that they landed.
       setDrafts((prev) => {
@@ -297,6 +323,7 @@ export function SettingsModal({
               }
               busy={busySection === "brain"}
               saved={savedSection === "brain"}
+              checks={checks.brain}
               disabled={!draft(brainKey).trim() && !brainKeySet}
             />
           </Section>
@@ -332,6 +359,7 @@ export function SettingsModal({
               }
               busy={busySection === "voice"}
               saved={savedSection === "voice"}
+              checks={checks.voice}
             />
           </Section>
 
@@ -370,6 +398,7 @@ export function SettingsModal({
                 }
                 busy={busySection === "gmail"}
                 saved={savedSection === "gmail"}
+                checks={checks.gmail}
               />
               <a
                 href="/api/gmail/auth"
@@ -428,6 +457,7 @@ export function SettingsModal({
               }
               busy={busySection === "whatsapp"}
               saved={savedSection === "whatsapp"}
+              checks={checks.whatsapp}
             />
           </Section>
         </div>

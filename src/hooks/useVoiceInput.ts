@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { toMonoWav } from "@/lib/audio";
 
 // Two ways to hear you, in order of preference:
 //
@@ -91,12 +92,12 @@ const SPEECH_API_ERRORS: Record<string, string> = {
   "not-allowed":
     "Microphone access is blocked, sir. Click the padlock icon in the address bar, set Microphone to Allow, then reload.",
   "service-not-allowed":
-    "This browser's speech service refused the request, sir — add an ElevenLabs API key in Settings and I'll transcribe it myself instead.",
+    "This browser's speech service refused the request, sir — add a Gemini or ElevenLabs API key in Settings and I'll transcribe it myself instead.",
   "no-speech": "I didn't catch anything, sir — try again a little closer to the mic.",
   "audio-capture":
     "I can't find a working microphone, sir — check it's plugged in and not in use by another app.",
   network:
-    "The browser's speech service is unreachable, sir — add an ElevenLabs API key in Settings and I'll transcribe it myself instead.",
+    "The browser's speech service is unreachable, sir — add a Gemini or ElevenLabs API key in Settings and I'll transcribe it myself instead.",
   aborted: "",
 };
 
@@ -189,8 +190,14 @@ export function useVoiceInput(
 
         setIsTranscribing(true);
         try {
+          // WAV is the one format every transcription service accepts; fall
+          // back to the raw recording if this browser can't decode its own.
+          const wav = await toMonoWav(blob);
+          const upload = wav ?? blob;
+          const filename = wav ? "speech.wav" : `speech.${extensionFor(mimeType)}`;
+
           const form = new FormData();
-          form.append("audio", blob, `speech.${extensionFor(mimeType)}`);
+          form.append("audio", upload, filename);
           const res = await fetch("/api/transcribe", { method: "POST", body: form });
           const data = await res.json();
           if (!res.ok) throw new Error(data.error || "Transcription failed.");
@@ -267,7 +274,7 @@ export function useVoiceInput(
     const Ctor = getSpeechRecognitionCtor();
     if (!Ctor) {
       setError(
-        "Voice input isn't supported in this browser, sir — add an ElevenLabs API key in Settings, or use Chrome."
+        "Voice input isn't supported in this browser, sir — add a Gemini or ElevenLabs API key in Settings, or use Chrome."
       );
       return;
     }

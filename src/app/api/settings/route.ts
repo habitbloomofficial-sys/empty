@@ -9,6 +9,7 @@ import {
   settingSource,
   type SettingKey,
 } from "@/lib/settings";
+import { isVerifiableKey, verifyKey, type KeyCheck } from "@/lib/verify";
 
 export const runtime = "nodejs";
 
@@ -88,5 +89,15 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  return NextResponse.json({ ok: true, settings: SETTING_KEYS.map(view) });
+  // The value is saved either way — verification is advice, not a gate, so a
+  // provider outage never blocks you from storing a key you know is right.
+  const checks = (
+    await Promise.all(
+      Object.entries(updates)
+        .filter(([key, value]) => isSettingKey(key) && isVerifiableKey(key) && value.trim())
+        .map(([key, value]) => verifyKey(key as SettingKey, value))
+    )
+  ).filter((check): check is KeyCheck => check !== null);
+
+  return NextResponse.json({ ok: true, settings: SETTING_KEYS.map(view), checks });
 }
