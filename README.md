@@ -3,7 +3,7 @@
 A personal AI assistant: a floating 3D orb, a voice, and a brain that can read
 your email and send WhatsApp messages for you.
 
-- **Brain** — OpenAI (chat + tool calling)
+- **Brain** — OpenAI or Gemini (chat + tool calling — pick either)
 - **Voice** — ElevenLabs text-to-speech, played back with a live waveform driving the orb
 - **Ears** — your browser's built-in speech recognition (Chrome/Edge)
 - **Email** — Gmail, via your own Google OAuth app
@@ -28,9 +28,19 @@ All secrets live in `.env.local` (never committed — see `.gitignore`). Copy
 cp .env.example .env.local
 ```
 
-### OpenAI (required — this is JARVIS's brain)
+### AI brain (required — pick OpenAI or Gemini, you only need one)
 
-Set `OPENAI_API_KEY`. Optionally set `OPENAI_MODEL` (defaults to `gpt-4o`).
+**OpenAI:** set `OPENAI_API_KEY`. Optionally set `OPENAI_MODEL` (defaults to
+`gpt-4o`).
+
+**Gemini:** set `GEMINI_API_KEY` instead — get a free key at
+[Google AI Studio](https://aistudio.google.com/apikey). Optionally set
+`GEMINI_MODEL` (defaults to `gemini-2.5-flash`). JARVIS talks to Gemini
+through Google's OpenAI-compatible endpoint, so the same chat and
+tool-calling code (email, WhatsApp) works unchanged on either provider.
+
+If you set both keys, OpenAI is used by default — force one explicitly with
+`AI_PROVIDER=openai` or `AI_PROVIDER=gemini`.
 
 ### ElevenLabs (required for spoken replies)
 
@@ -86,7 +96,7 @@ or Meta directly.
 src/
   app/
     api/
-      chat/          OpenAI chat + tool-calling loop
+      chat/          AI chat + tool-calling loop (OpenAI or Gemini)
       tts/            ElevenLabs text-to-speech
       voices/         list available ElevenLabs voices
       status/          which integrations are configured
@@ -96,7 +106,7 @@ src/
     page.tsx, layout.tsx, globals.css
   components/         Orb (3D), chat UI, settings, top bar
   hooks/               speech recognition, TTS playback + amplitude analysis
-  lib/                 OpenAI/ElevenLabs/Gmail/WhatsApp clients, tool definitions, system prompt
+  lib/                 AI/ElevenLabs/Gmail/WhatsApp clients, tool definitions, system prompt
 ```
 
 Security notes:

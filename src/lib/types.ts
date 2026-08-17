@@ -15,7 +15,8 @@ export interface ActionLogEntry {
 }
 
 export interface IntegrationStatus {
-  openai: boolean;
+  brain: boolean;
+  brainProvider: "openai" | "gemini" | null;
   elevenlabs: boolean;
   gmail: boolean;
   whatsapp: boolean;

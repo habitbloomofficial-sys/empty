@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import type OpenAI from "openai";
-import { getOpenAI, OPENAI_MODEL } from "@/lib/openai";
+import { getAI, getAIModel } from "@/lib/ai";
 import { buildSystemPrompt } from "@/lib/systemPrompt";
 import { toolDefinitions, executeTool } from "@/lib/tools";
 import type { ActionLogEntry } from "@/lib/types";
@@ -27,9 +27,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "messages is required" }, { status: 400 });
   }
 
-  let openai;
+  let ai;
   try {
-    openai = getOpenAI();
+    ai = getAI();
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ error: message }, { status: 503 });
@@ -44,8 +44,8 @@ export async function POST(req: NextRequest) {
 
   try {
     for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
-      const completion = await openai.chat.completions.create({
-        model: OPENAI_MODEL,
+      const completion = await ai.chat.completions.create({
+        model: getAIModel(),
         messages,
         tools: toolDefinitions,
       });

@@ -54,10 +54,22 @@ export function SettingsModal({
         </div>
 
         <div className="space-y-3">
-          <Row icon={<BrainIcon className="h-4 w-4" />} title="OpenAI brain" ok={Boolean(status?.openai)}>
-            {status?.openai
-              ? "JARVIS is thinking with your OpenAI API key."
-              : "Add OPENAI_API_KEY to .env.local and restart the server."}
+          <Row icon={<BrainIcon className="h-4 w-4" />} title="AI brain" ok={Boolean(status?.brain)}>
+            {status?.brain ? (
+              `JARVIS is thinking with ${status.brainProvider === "gemini" ? "Gemini" : "OpenAI"}.`
+            ) : (
+              <div className="space-y-1">
+                <p>Add ONE of these to .env.local and restart the server:</p>
+                <p>
+                  <code className="rounded bg-sky-500/10 px-1 py-0.5">OPENAI_API_KEY</code> — an
+                  OpenAI key, or
+                </p>
+                <p>
+                  <code className="rounded bg-sky-500/10 px-1 py-0.5">GEMINI_API_KEY</code> — a
+                  free Google AI Studio key.
+                </p>
+              </div>
+            )}
           </Row>
 
           <Row icon={<ChatIcon className="h-4 w-4" />} title="ElevenLabs voice" ok={Boolean(status?.elevenlabs)}>

@@ -16,7 +16,7 @@ export function TopBar({
       <div className="flex items-center gap-2.5">
         <span
           className={`h-2 w-2 rounded-full ${
-            status?.openai
+            status?.brain
               ? "bg-sky-500 shadow-[0_0_8px_3px_rgba(14,165,233,0.55)]"
               : "bg-slate-300"
           }`}
@@ -27,7 +27,11 @@ export function TopBar({
       </div>
 
       <div className="flex items-center gap-2">
-        <StatusChip ok={Boolean(status?.openai)} icon={<BrainIcon className="h-4 w-4" />} label="Brain" />
+        <StatusChip
+          ok={Boolean(status?.brain)}
+          icon={<BrainIcon className="h-4 w-4" />}
+          label={status?.brainProvider === "gemini" ? "Gemini" : status?.brainProvider === "openai" ? "OpenAI" : "Brain"}
+        />
         <StatusChip ok={Boolean(status?.gmail)} icon={<MailIcon className="h-4 w-4" />} label="Email" />
         <StatusChip ok={Boolean(status?.whatsapp)} icon={<WhatsAppIcon className="h-4 w-4" />} label="WhatsApp" />
         <button

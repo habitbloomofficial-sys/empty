@@ -135,9 +135,9 @@ export default function JarvisApp() {
           </div>
         )}
 
-        {!status?.openai && (
+        {!status?.brain && (
           <div className="glass mt-3 max-w-md rounded-xl px-4 py-2 text-center text-xs text-ink-700/70">
-            Add your OpenAI API key to .env.local to give JARVIS a brain — see Settings.
+            Add an OpenAI or Gemini API key to .env.local to give JARVIS a brain — see Settings.
           </div>
         )}
       </main>
