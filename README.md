@@ -50,13 +50,23 @@ Paste your key in **Settings → ElevenLabs voice**. JARVIS defaults to the
 "Adam" premade voice; set a different voice ID there (or call
 `GET /api/voices`) to see what's on your account.
 
-The same key also powers **speech-to-text**, which is how the microphone works
-in browsers without the Web Speech API — and it auto-detects the language you
-speak, so you don't have to match your browser's locale. An OpenAI key works
-for this too (Whisper). Without either, JARVIS falls back to Chrome/Edge's
-built-in recognition.
+The same key also powers **speech-to-text**. So does a Gemini or OpenAI key —
+transcription tries each configured provider in turn, so any one working key
+is enough to make the microphone work.
+
+If ElevenLabs is unavailable, JARVIS speaks with the voice built into your
+operating system instead. Less characterful, but never mute.
 
 Env equivalents: `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_ID`.
+
+**If ElevenLabs rejects a key you know is correct:** it's almost never the key
+itself. ElevenLabs answers several different problems with the same 401, and
+the usual culprit is a **restricted** key — one created with a hand-picked set
+of permissions. Edit the key in ElevenLabs (profile → API Keys) and enable
+Text to Speech, Speech to Text, and Voices, or give it access to all
+endpoints. The other common causes are an account flagged for "unusual
+activity" (free tier behind a VPN) and an exhausted monthly quota. JARVIS
+names whichever one it is rather than blaming the key.
 
 ### Gmail (optional — lets JARVIS read/search/send email)
 

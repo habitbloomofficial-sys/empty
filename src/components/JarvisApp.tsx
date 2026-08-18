@@ -65,8 +65,9 @@ export default function JarvisApp() {
       setMessages((prev) => [...prev, assistantMsg]);
       setIsThinking(false);
 
-      if (status?.elevenlabs && data.reply) {
-        // Voice is a nice-to-have, so a failure never blocks the chat — but it
+      if (data.reply) {
+        // Always worth attempting: without an ElevenLabs key this falls back
+        // to the browser's own voice. A failure never blocks the chat, but it
         // shouldn't fail silently either, or a bad key looks like a mute bug.
         voicePlayer.speak(data.reply).catch((err: unknown) => {
           setVoiceError(
@@ -146,6 +147,12 @@ export default function JarvisApp() {
         {(speech.error || error || voiceError) && (
           <div className="glass mt-3 max-w-md rounded-xl px-4 py-2 text-center text-xs text-rose-600">
             {speech.error || error || voiceError}
+          </div>
+        )}
+
+        {!voiceError && voicePlayer.fallbackNotice && (
+          <div className="glass mt-3 max-w-md rounded-xl px-4 py-2 text-center text-xs text-amber-700">
+            {voicePlayer.fallbackNotice}
           </div>
         )}
 

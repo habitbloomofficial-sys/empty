@@ -1,3 +1,4 @@
+import { interpretElevenLabsError } from "./elevenlabsErrors";
 import { getSetting } from "./settings";
 
 const ELEVENLABS_API_BASE = "https://api.elevenlabs.io/v1";
@@ -30,6 +31,11 @@ function apiKey(): string {
   return key;
 }
 
+async function elevenLabsError(res: Response, what: string): Promise<Error> {
+  const { message } = interpretElevenLabsError(res.status, await res.text());
+  return new Error(`${what}: ${message}`);
+}
+
 export interface ElevenLabsVoice {
   voice_id: string;
   name: string;
@@ -43,7 +49,7 @@ export async function listVoices(): Promise<ElevenLabsVoice[]> {
     cache: "no-store",
   });
   if (!res.ok) {
-    throw new Error(`ElevenLabs voice list failed: ${res.status} ${await res.text()}`);
+    throw await elevenLabsError(res, "Couldn't list ElevenLabs voices");
   }
   const data = (await res.json()) as { voices: ElevenLabsVoice[] };
   return data.voices;
@@ -66,7 +72,7 @@ export async function speechToText(audio: Blob, filename = "speech.webm"): Promi
   });
 
   if (!res.ok) {
-    throw new Error(`ElevenLabs transcription failed: ${res.status} ${await res.text()}`);
+    throw await elevenLabsError(res, "ElevenLabs transcription failed");
   }
 
   const data = (await res.json()) as { text?: string };
@@ -100,7 +106,7 @@ export async function textToSpeech(
   );
 
   if (!res.ok) {
-    throw new Error(`ElevenLabs TTS failed: ${res.status} ${await res.text()}`);
+    throw await elevenLabsError(res, "ElevenLabs couldn't speak that");
   }
 
   return res.arrayBuffer();

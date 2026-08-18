@@ -116,21 +116,26 @@ async function transcribeWithGemini(
 const AUTH_FAILURE_TTL_MS = 10 * 60 * 1000;
 const recentAuthFailures = new Map<string, number>();
 
-function looksLikeAuthFailure(message: string): boolean {
-  return /\b(401|403)\b|invalid[_ ]api[_ ]key|authentication_error|unauthorized|api[_ ]key[_ ]not[_ ]valid|api_key_id_used_as_api_key|permission_denied/i.test(
+// Whether a failure will keep happening until someone changes a setting — a
+// rejected key, a missing scope, a spent quota. Those are worth remembering;
+// a one-off network blip is not.
+function isPersistentCredentialFailure(message: string): boolean {
+  return /\b(401|403)\b|invalid[_ ]api[_ ]key|authentication_error|unauthorized|api[_ ]key[_ ]not[_ ]valid|api_key_id_used_as_api_key|permission_denied|missing[_ ]permissions?|missing a permission|restricted|unusual activity|quota|out of credits|insufficient/i.test(
     message
   );
 }
 
 function friendlyError(provider: string, message: string): string {
-  if (/api_key_id_used_as_api_key/i.test(message)) {
-    return `${provider}: you've pasted the key's ID rather than the key itself. In ElevenLabs open your profile → API Keys, create a new key, and copy the value it shows you once at creation.`;
+  // The ElevenLabs client already translates its own failures, and Gemini's
+  // key errors are self-explanatory — don't re-wrap a message that already
+  // names its provider and says what to do.
+  if (message.includes(provider)) return message.slice(0, 300);
+
+  if (/api[_ ]key[_ ]not[_ ]valid|API_KEY_INVALID/i.test(message)) {
+    return `${provider}: that API key was rejected — check it in Settings.`;
   }
-  if (looksLikeAuthFailure(message)) {
-    return `${provider}: the API key was rejected — check it in Settings.`;
-  }
-  if (/quota|rate[_ ]limit|429|insufficient/i.test(message)) {
-    return `${provider}: out of quota or rate limited.`;
+  if (isPersistentCredentialFailure(message)) {
+    return `${provider}: the API key was refused — check it in Settings.`;
   }
   return `${provider}: ${message.slice(0, 200)}`;
 }
@@ -167,7 +172,7 @@ export async function transcribeAudio(
       return "";
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      if (looksLikeAuthFailure(message)) {
+      if (isPersistentCredentialFailure(message)) {
         recentAuthFailures.set(`${provider.name}:${provider.credential}`, Date.now());
       }
       failures.push(friendlyError(provider.name, message));
