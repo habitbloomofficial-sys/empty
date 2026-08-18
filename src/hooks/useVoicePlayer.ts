@@ -43,6 +43,9 @@ export function useVoicePlayer() {
   const [audioLevel, setAudioLevel] = useState(0);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [fallbackNotice, setFallbackNotice] = useState<string | null>(null);
+  // Set when the user interrupts, so queued chunks stop rather than play on.
+  const cancelledRef = useRef(false);
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const ensureContext = useCallback((): AudioContext => {
     if (!audioCtxRef.current) {
@@ -61,6 +64,7 @@ export function useVoicePlayer() {
       if (onFirstAudio) {
         audio.addEventListener("playing", onFirstAudio, { once: true });
       }
+      currentAudioRef.current = audio;
       const ctx = ensureContext();
       if (ctx.state === "suspended") await ctx.resume();
 
@@ -97,6 +101,7 @@ export function useVoicePlayer() {
         source.disconnect();
         analyser.disconnect();
         analyserRef.current = null;
+        currentAudioRef.current = null;
         setIsSpeaking(false);
         setAudioLevel(0);
       }
@@ -225,6 +230,7 @@ export function useVoicePlayer() {
 
   const speak = useCallback(
     async (text: string, voiceId?: string, onFirstAudio?: () => void) => {
+      if (cancelledRef.current) return;
       try {
         await speakWithElevenLabs(text, voiceId, onFirstAudio);
         setFallbackNotice(null);
@@ -244,5 +250,52 @@ export function useVoicePlayer() {
     [speakWithElevenLabs, speakWithBrowser]
   );
 
-  return { speak, isSpeaking, audioLevel, fallbackNotice };
+  // Replies arrive a sentence at a time, so speech is a queue rather than a
+  // single call: each chunk is spoken as it lands, in order, while the model
+  // is still writing the rest.
+  const queueRef = useRef<Promise<void>>(Promise.resolve());
+
+  const speakQueued = useCallback(
+    (text: string, onFirstAudio?: () => void) => {
+      queueRef.current = queueRef.current
+        .then(() => (cancelledRef.current ? undefined : speak(text, undefined, onFirstAudio)))
+        .catch(() => undefined);
+      return queueRef.current;
+    },
+    [speak]
+  );
+
+  /** Cut speech off — a new question shouldn't wait behind the last answer. */
+  const stopSpeaking = useCallback(() => {
+    cancelledRef.current = true;
+    const audio = currentAudioRef.current;
+    if (audio) {
+      audio.pause();
+      audio.currentTime = 0;
+    }
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+    }
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    setIsSpeaking(false);
+    setAudioLevel(0);
+  }, []);
+
+  /** Open a fresh turn: drop anything queued and allow speech again. */
+  const beginTurn = useCallback(() => {
+    stopSpeaking();
+    queueRef.current = Promise.resolve();
+    cancelledRef.current = false;
+    setFallbackNotice(null);
+  }, [stopSpeaking]);
+
+  return {
+    speak,
+    speakQueued,
+    stopSpeaking,
+    beginTurn,
+    isSpeaking,
+    audioLevel,
+    fallbackNotice,
+  };
 }

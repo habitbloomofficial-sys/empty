@@ -192,6 +192,11 @@ turns "it feels slow" into a stage you can point at.
 
 What each stage responds to:
 
+Replies stream, so text appears as it's written and JARVIS starts speaking on
+the first finished sentence rather than after the last one. When he runs an
+action, it shows in the transcript the moment it happens — the wait you see
+after that is only the closing sentence being written.
+
 - **thought** — Gemini reasons before answering, which is wasted effort on
   conversational replies. JARVIS asks for low effort by default; set
   `GEMINI_REASONING_EFFORT` to `none` to remove it entirely, or `medium` /

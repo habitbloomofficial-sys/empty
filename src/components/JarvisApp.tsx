@@ -10,6 +10,7 @@ import { SettingsModal } from "./SettingsModal";
 import { ChatIcon, CloseIcon } from "./Icons";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
 import { useVoicePlayer } from "@/hooks/useVoicePlayer";
+import { SpeechChunker } from "@/lib/speechChunks";
 import type { ChatMessage, IntegrationStatus, OrbState } from "@/lib/types";
 
 const Orb = dynamic(() => import("./Orb"), { ssr: false });
@@ -35,6 +36,10 @@ export default function JarvisApp() {
   async function handleSend(text: string, transcribeMs?: number) {
     setError(null);
     setVoiceError(null);
+    // A new question cuts off the previous answer mid-sentence rather than
+    // queueing behind it.
+    voicePlayer.beginTurn();
+
     const sentAt = Date.now();
     const userMsg: ChatMessage = {
       id: crypto.randomUUID(),
@@ -42,9 +47,51 @@ export default function JarvisApp() {
       content: text,
       createdAt: Date.now(),
     };
+    const assistantId = crypto.randomUUID();
+
     setMessages((prev) => [...prev, userMsg]);
     setTranscriptOpen(true);
     setIsThinking(true);
+
+    const chunker = new SpeechChunker();
+    let spokenYet = false;
+    let assistantStarted = false;
+
+    /** Speak a finished sentence, and record when the first sound arrived. */
+    const speakChunk = (chunk: string) => {
+      const first = !spokenYet;
+      spokenYet = true;
+      voicePlayer
+        .speakQueued(chunk, first ? () => recordSpeakTiming(assistantId, sentAt) : undefined)
+        .catch((err: unknown) => {
+          setVoiceError(
+            `I can't speak aloud right now: ${err instanceof Error ? err.message : String(err)}`
+          );
+        });
+    };
+
+    /** Create the assistant bubble on first output, then keep appending. */
+    const appendText = (delta: string) => {
+      setIsThinking(false);
+      setMessages((prev) => {
+        if (!assistantStarted) {
+          assistantStarted = true;
+          return [
+            ...prev,
+            {
+              id: assistantId,
+              role: "assistant" as const,
+              content: delta,
+              createdAt: Date.now(),
+              timings: { transcribe: transcribeMs },
+            },
+          ];
+        }
+        return prev.map((m) =>
+          m.id === assistantId ? { ...m, content: m.content + delta } : m
+        );
+      });
+    };
 
     try {
       const history = [...messages, userMsg].map((m) => ({ role: m.role, content: m.content }));
@@ -53,53 +100,97 @@ export default function JarvisApp() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: history }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Something went wrong, sir.");
 
-      const assistantId = crypto.randomUUID();
-      const assistantMsg: ChatMessage = {
-        id: assistantId,
-        role: "assistant",
-        content: data.reply || "…",
-        createdAt: Date.now(),
-        actions: data.actions,
-        timings: {
-          ...data.timings,
-          transcribe: transcribeMs,
-          total: Date.now() - sentAt,
-        },
-      };
-      setMessages((prev) => [...prev, assistantMsg]);
-      setIsThinking(false);
+      if (!res.ok || !res.body) {
+        const failure = await res.json().catch(() => ({}));
+        throw new Error(failure.error || "Something went wrong, sir.");
+      }
 
-      if (data.reply) {
-        // Always worth attempting: without an ElevenLabs key this falls back
-        // to the browser's own voice. A failure never blocks the chat, but it
-        // shouldn't fail silently either, or a bad key looks like a mute bug.
-        const speakStart = Date.now();
-        voicePlayer
-          .speak(data.reply, undefined, () => {
-            const speakMs = Date.now() - speakStart;
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      // Newline-delimited JSON, one event per line.
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          const event = JSON.parse(line);
+
+          if (event.type === "text") {
+            appendText(event.delta);
+            for (const chunk of chunker.push(event.delta)) speakChunk(chunk);
+          } else if (event.type === "action") {
+            // Shown the moment it happens — the action is already done.
             setMessages((prev) =>
               prev.map((m) =>
                 m.id === assistantId
-                  ? { ...m, timings: { ...m.timings, speak: speakMs } }
+                  ? { ...m, actions: [...(m.actions ?? []), event.log] }
                   : m
               )
             );
-          })
-          .catch((err: unknown) => {
-            setVoiceError(
-              `I can't speak aloud right now: ${
-                err instanceof Error ? err.message : String(err)
-              }`
-            );
-          });
+          } else if (event.type === "done") {
+            const tail = chunker.flush();
+            if (tail) speakChunk(tail);
+            setIsThinking(false);
+            setMessages((prev) => {
+              const finished = prev.map((m) =>
+                m.id === assistantId
+                  ? {
+                      ...m,
+                      content: event.reply || m.content,
+                      actions: m.actions ?? event.actions,
+                      timings: {
+                        ...m.timings,
+                        ...event.timings,
+                        transcribe: transcribeMs,
+                        total: Date.now() - sentAt,
+                      },
+                    }
+                  : m
+              );
+              // A reply with no text at all still deserves a bubble.
+              return assistantStarted
+                ? finished
+                : [
+                    ...finished,
+                    {
+                      id: assistantId,
+                      role: "assistant" as const,
+                      content: event.reply || "…",
+                      createdAt: Date.now(),
+                      actions: event.actions,
+                      timings: {
+                        ...event.timings,
+                        transcribe: transcribeMs,
+                        total: Date.now() - sentAt,
+                      },
+                    },
+                  ];
+            });
+            if (!assistantStarted && event.reply) speakChunk(event.reply);
+          } else if (event.type === "error") {
+            throw new Error(event.error);
+          }
+        }
       }
     } catch (err) {
       setIsThinking(false);
       setError(err instanceof Error ? err.message : String(err));
     }
+  }
+
+  function recordSpeakTiming(assistantId: string, sentAt: number) {
+    const speakMs = Date.now() - sentAt;
+    setMessages((prev) =>
+      prev.map((m) => (m.id === assistantId ? { ...m, timings: { ...m.timings, speak: speakMs } } : m))
+    );
   }
 
   const speech = useVoiceInput(handleSend, Boolean(status?.transcription));
