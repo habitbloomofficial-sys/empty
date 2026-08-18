@@ -13,8 +13,11 @@ export function defaultVoiceId(): string {
   return getSetting("ELEVENLABS_VOICE_ID") || FALLBACK_VOICE_ID;
 }
 
+// Flash is ElevenLabs' lowest-latency model — the difference is very audible
+// as time-to-first-word in conversation. Override with ELEVENLABS_MODEL_ID
+// (eleven_turbo_v2_5 or eleven_multilingual_v2) to trade speed for polish.
 function modelId(): string {
-  return process.env.ELEVENLABS_MODEL_ID?.trim() || "eleven_turbo_v2_5";
+  return process.env.ELEVENLABS_MODEL_ID?.trim() || "eleven_flash_v2_5";
 }
 
 export function isElevenLabsConfigured(): boolean {
@@ -79,12 +82,17 @@ export async function speechToText(audio: Blob, filename = "speech.webm"): Promi
   return (data.text ?? "").trim();
 }
 
-export async function textToSpeech(
+/**
+ * Speech as a stream. Waiting for the whole file before playing anything meant
+ * silence for as long as the entire utterance took to generate; streaming lets
+ * playback start on the first chunk.
+ */
+export async function textToSpeechStream(
   text: string,
   voiceId?: string
-): Promise<ArrayBuffer> {
+): Promise<ReadableStream<Uint8Array>> {
   const res = await fetch(
-    `${ELEVENLABS_API_BASE}/text-to-speech/${voiceId || defaultVoiceId()}`,
+    `${ELEVENLABS_API_BASE}/text-to-speech/${voiceId || defaultVoiceId()}/stream?output_format=mp3_44100_128`,
     {
       method: "POST",
       headers: {
@@ -108,6 +116,9 @@ export async function textToSpeech(
   if (!res.ok) {
     throw await elevenLabsError(res, "ElevenLabs couldn't speak that");
   }
+  if (!res.body) {
+    throw new Error("ElevenLabs returned no audio, sir.");
+  }
 
-  return res.arrayBuffer();
+  return res.body;
 }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { textToSpeech } from "@/lib/elevenlabs";
+import { textToSpeechStream } from "@/lib/elevenlabs";
 
 export const runtime = "nodejs";
 
@@ -17,11 +17,15 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const audio = await textToSpeech(text, body.voiceId);
-    return new NextResponse(audio, {
+    // Piped straight through rather than buffered here — the browser can start
+    // playing while ElevenLabs is still generating the rest.
+    const stream = await textToSpeechStream(text, body.voiceId);
+    return new NextResponse(stream, {
       headers: {
         "Content-Type": "audio/mpeg",
         "Cache-Control": "no-store",
+        // Nothing between here and the browser should sit on the chunks.
+        "X-Accel-Buffering": "no",
       },
     });
   } catch (err) {

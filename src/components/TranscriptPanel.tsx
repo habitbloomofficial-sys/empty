@@ -1,7 +1,29 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import type { ChatMessage } from "@/lib/types";
+import type { ChatMessage, ReplyTimings } from "@/lib/types";
+
+const seconds = (ms: number) => `${(ms / 1000).toFixed(1)}s`;
+
+/**
+ * Where the wait actually went. Cheap to show, and it turns "JARVIS feels
+ * slow" into a specific stage worth looking at.
+ */
+function Timings({ timings }: { timings: ReplyTimings }) {
+  const parts: string[] = [];
+  if (timings.transcribe) parts.push(`heard ${seconds(timings.transcribe)}`);
+  if (timings.model) parts.push(`thought ${seconds(timings.model)}`);
+  if (timings.tools) parts.push(`tools ${seconds(timings.tools)}`);
+  if (timings.speak) parts.push(`spoke ${seconds(timings.speak)}`);
+  if (parts.length === 0) return null;
+
+  return (
+    <p className="mt-1.5 text-[10px] text-ink-700/40">
+      {parts.join(" · ")}
+      {timings.total ? ` · ${seconds(timings.total)} total` : ""}
+    </p>
+  );
+}
 
 export function TranscriptPanel({ messages }: { messages: ChatMessage[] }) {
   const endRef = useRef<HTMLDivElement>(null);
@@ -35,6 +57,7 @@ export function TranscriptPanel({ messages }: { messages: ChatMessage[] }) {
               </div>
             )}
             <p className="whitespace-pre-wrap">{m.content}</p>
+            {m.timings && <Timings timings={m.timings} />}
             {m.actions && m.actions.length > 0 && (
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {m.actions.map((a, i) => (

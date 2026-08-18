@@ -1,7 +1,21 @@
 import type OpenAI from "openai";
-import { searchEmails, readEmail, sendEmail, createDraft, type ComposeParams } from "./gmail";
-import { sendWhatsAppMessage } from "./whatsapp";
+import {
+  searchEmails,
+  readEmail,
+  sendEmail,
+  createDraft,
+  isGmailConfigured,
+  type ComposeParams,
+} from "./gmail";
+import { sendWhatsAppMessage, isWhatsAppConfigured } from "./whatsapp";
 import type { ActionLogEntry } from "./types";
+
+const GMAIL_TOOLS = new Set([
+  "search_emails",
+  "read_email",
+  "send_email",
+  "create_email_draft",
+]);
 
 export const toolDefinitions: OpenAI.Chat.Completions.ChatCompletionTool[] = [
   {
@@ -111,6 +125,24 @@ export const toolDefinitions: OpenAI.Chat.Completions.ChatCompletionTool[] = [
     },
   },
 ];
+
+/**
+ * Only the tools that can actually do something. Offering Gmail tools with no
+ * Gmail connected doesn't just waste prompt tokens — the model tries one, it
+ * fails, and answering costs two more round trips before the user hears
+ * anything.
+ */
+export function availableTools(): OpenAI.Chat.Completions.ChatCompletionTool[] {
+  const gmail = isGmailConfigured();
+  const whatsapp = isWhatsAppConfigured();
+
+  return toolDefinitions.filter((tool) => {
+    const name = tool.type === "function" ? tool.function.name : "";
+    if (GMAIL_TOOLS.has(name)) return gmail;
+    if (name === "send_whatsapp_message") return whatsapp;
+    return true;
+  });
+}
 
 // Tool arguments are snake_case for the model's benefit; the Gmail client
 // takes camelCase.

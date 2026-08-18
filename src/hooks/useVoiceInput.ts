@@ -102,7 +102,7 @@ const SPEECH_API_ERRORS: Record<string, string> = {
 };
 
 export function useVoiceInput(
-  onFinalTranscript: (text: string) => void,
+  onFinalTranscript: (text: string, transcribeMs?: number) => void,
   canTranscribeOnServer: boolean
 ) {
   const [speechApiAvailable, setSpeechApiAvailable] = useState(false);
@@ -189,6 +189,7 @@ export function useVoiceInput(
         }
 
         setIsTranscribing(true);
+        const transcribeStart = performance.now();
         try {
           // WAV is the one format every transcription service accepts; fall
           // back to the raw recording if this browser can't decode its own.
@@ -206,7 +207,7 @@ export function useVoiceInput(
             setError("I didn't catch anything, sir — try again a little closer to the mic.");
             return;
           }
-          onFinalRef.current(text);
+          onFinalRef.current(text, Math.round(performance.now() - transcribeStart));
         } catch (err) {
           setError(err instanceof Error ? err.message : String(err));
         } finally {

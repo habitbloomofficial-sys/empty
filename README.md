@@ -15,10 +15,15 @@ your email and send WhatsApp messages for you.
 
 ```bash
 npm install
-npm run dev
+npm run fast
 ```
 
 Open http://localhost:3000.
+
+`npm run fast` builds once and then serves — use it for everyday use. `npm run
+dev` exists for editing code: it recompiles each page and route the first time
+you hit it, which on Windows can add tens of seconds to your first request and
+makes JARVIS feel far slower than he is.
 
 ## 2. Configuration
 
@@ -138,6 +143,25 @@ or Meta directly.
   anything, unless you've already dictated the exact wording.
 - The Settings panel (gear icon, top right) shows what's connected and what
   still needs configuring.
+
+### If a reply feels slow
+
+Each assistant message in the transcript carries a small breakdown — how long
+he spent hearing you, thinking, running tools, and starting to speak. That
+turns "it feels slow" into a stage you can point at.
+
+What each stage responds to:
+
+- **thought** — Gemini reasons before answering, which is wasted effort on
+  conversational replies. JARVIS asks for low effort by default; set
+  `GEMINI_REASONING_EFFORT` to `none` to remove it entirely, or `medium` /
+  `high` if you'd rather have the deliberation.
+- **spoke** — time until the first audio. ElevenLabs audio is streamed and
+  played as it arrives rather than downloaded whole, and the default voice
+  model is `eleven_flash_v2_5`. Set `ELEVENLABS_MODEL_ID=eleven_turbo_v2_5`
+  for a richer voice at the cost of some latency.
+- **anything, on the very first message** — you're probably on `npm run dev`.
+  Use `npm run fast`.
 
 ## Architecture
 

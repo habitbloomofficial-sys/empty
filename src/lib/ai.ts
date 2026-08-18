@@ -71,6 +71,31 @@ export function getAI(): OpenAI {
   return cachedClient;
 }
 
+/**
+ * Gemini 2.5+ "thinks" before answering by default, which can add many seconds
+ * to a reply as trivial as "hello". JARVIS is a conversational assistant, not a
+ * reasoning benchmark, so we ask for the lowest effort that still leaves it
+ * able to decide whether to reach for a tool.
+ */
+export function getReasoningEffort(): string | null {
+  if (detectProvider() !== "gemini") return null;
+  const configured = getSetting("GEMINI_REASONING_EFFORT")?.toLowerCase();
+  const allowed = ["none", "minimal", "low", "medium", "high"];
+  if (configured && allowed.includes(configured)) return configured;
+  return "low";
+}
+
+/** True when an error looks like the endpoint rejecting reasoning_effort. */
+export function isUnsupportedParameter(error: unknown, parameter: string): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return (
+    message.includes(parameter) &&
+    /\b400\b|unknown name|invalid[_ ]argument|unsupported|unrecognized|not supported/i.test(
+      message
+    )
+  );
+}
+
 export function getAIModel(): string {
   const provider = detectProvider();
   if (provider === "gemini") return geminiModel();

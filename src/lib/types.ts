@@ -6,12 +6,23 @@ export interface ChatMessage {
   content: string;
   createdAt: number;
   actions?: ActionLogEntry[];
+  timings?: ReplyTimings;
 }
 
 export interface ActionLogEntry {
   tool: string;
   summary: string;
   ok: boolean;
+}
+
+/** Per-stage latency in milliseconds, so slowness can be located, not guessed. */
+export interface ReplyTimings {
+  transcribe?: number;
+  model?: number;
+  tools?: number;
+  /** Time from sending the reply to TTS until the first audio plays. */
+  speak?: number;
+  total?: number;
 }
 
 export interface IntegrationStatus {

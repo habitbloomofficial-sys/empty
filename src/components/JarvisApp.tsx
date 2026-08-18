@@ -32,9 +32,10 @@ export default function JarvisApp() {
 
   const voicePlayer = useVoicePlayer();
 
-  async function handleSend(text: string) {
+  async function handleSend(text: string, transcribeMs?: number) {
     setError(null);
     setVoiceError(null);
+    const sentAt = Date.now();
     const userMsg: ChatMessage = {
       id: crypto.randomUUID(),
       role: "user",
@@ -55,12 +56,18 @@ export default function JarvisApp() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Something went wrong, sir.");
 
+      const assistantId = crypto.randomUUID();
       const assistantMsg: ChatMessage = {
-        id: crypto.randomUUID(),
+        id: assistantId,
         role: "assistant",
         content: data.reply || "…",
         createdAt: Date.now(),
         actions: data.actions,
+        timings: {
+          ...data.timings,
+          transcribe: transcribeMs,
+          total: Date.now() - sentAt,
+        },
       };
       setMessages((prev) => [...prev, assistantMsg]);
       setIsThinking(false);
@@ -69,13 +76,25 @@ export default function JarvisApp() {
         // Always worth attempting: without an ElevenLabs key this falls back
         // to the browser's own voice. A failure never blocks the chat, but it
         // shouldn't fail silently either, or a bad key looks like a mute bug.
-        voicePlayer.speak(data.reply).catch((err: unknown) => {
-          setVoiceError(
-            `I can't speak aloud right now: ${
-              err instanceof Error ? err.message : String(err)
-            }`
-          );
-        });
+        const speakStart = Date.now();
+        voicePlayer
+          .speak(data.reply, undefined, () => {
+            const speakMs = Date.now() - speakStart;
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === assistantId
+                  ? { ...m, timings: { ...m.timings, speak: speakMs } }
+                  : m
+              )
+            );
+          })
+          .catch((err: unknown) => {
+            setVoiceError(
+              `I can't speak aloud right now: ${
+                err instanceof Error ? err.message : String(err)
+              }`
+            );
+          });
       }
     } catch (err) {
       setIsThinking(false);

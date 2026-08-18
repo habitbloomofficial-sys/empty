@@ -6,6 +6,8 @@ import { useCallback, useRef, useState } from "react";
 // into the operating system when it can't. A refused ElevenLabs key shouldn't
 // leave him mute — a slightly less characterful voice beats silence.
 
+const AUDIO_MIME = "audio/mpeg";
+
 function pickBrowserVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | undefined {
   // Aim for a British male voice for the butler register, then settle.
   return (
@@ -53,24 +55,15 @@ export function useVoicePlayer() {
     return audioCtxRef.current;
   }, []);
 
-  const speakWithElevenLabs = useCallback(
-    async (text: string, voiceId?: string) => {
-      const res = await fetch("/api/tts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, voiceId }),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({ error: "TTS failed" }));
-        throw new Error(body.error || "TTS failed");
+  /** Wire an element into the analyser, play it, and wait for it to finish. */
+  const playElement = useCallback(
+    async (audio: HTMLAudioElement, onFirstAudio?: () => void) => {
+      if (onFirstAudio) {
+        audio.addEventListener("playing", onFirstAudio, { once: true });
       }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-
       const ctx = ensureContext();
       if (ctx.state === "suspended") await ctx.resume();
 
-      const audio = new Audio(url);
       const source = ctx.createMediaElementSource(audio);
       const analyser = ctx.createAnalyser();
       analyser.fftSize = 256;
@@ -93,24 +86,109 @@ export function useVoicePlayer() {
       }
       rafRef.current = requestAnimationFrame(tick);
 
-      await new Promise<void>((resolve) => {
-        audio.onended = () => resolve();
-        audio.onerror = () => resolve();
-        audio.play().catch(() => resolve());
-      });
-
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      source.disconnect();
-      analyser.disconnect();
-      analyserRef.current = null;
-      setIsSpeaking(false);
-      setAudioLevel(0);
-      URL.revokeObjectURL(url);
+      try {
+        await new Promise<void>((resolve) => {
+          audio.onended = () => resolve();
+          audio.onerror = () => resolve();
+          audio.play().catch(() => resolve());
+        });
+      } finally {
+        if (rafRef.current) cancelAnimationFrame(rafRef.current);
+        source.disconnect();
+        analyser.disconnect();
+        analyserRef.current = null;
+        setIsSpeaking(false);
+        setAudioLevel(0);
+      }
     },
     [ensureContext]
   );
 
-  const speakWithBrowser = useCallback(async (text: string): Promise<boolean> => {
+  const speakWithElevenLabs = useCallback(
+    async (text: string, voiceId?: string, onFirstAudio?: () => void) => {
+      const res = await fetch("/api/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, voiceId }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({ error: "TTS failed" }));
+        throw new Error(body.error || "TTS failed");
+      }
+
+      // Feed the response into a MediaSource so playback starts on the first
+      // chunk instead of after the whole utterance has been generated.
+      const canStream =
+        typeof MediaSource !== "undefined" &&
+        MediaSource.isTypeSupported(AUDIO_MIME) &&
+        res.body !== null;
+
+      if (!canStream) {
+        const url = URL.createObjectURL(await res.blob());
+        try {
+          await playElement(new Audio(url), onFirstAudio);
+        } finally {
+          URL.revokeObjectURL(url);
+        }
+        return;
+      }
+
+      const mediaSource = new MediaSource();
+      const url = URL.createObjectURL(mediaSource);
+      const audio = new Audio(url);
+
+      await new Promise<void>((resolve) =>
+        mediaSource.addEventListener("sourceopen", () => resolve(), { once: true })
+      );
+
+      const buffer = mediaSource.addSourceBuffer(AUDIO_MIME);
+      const pending: ArrayBuffer[] = [];
+      let finished = false;
+
+      const drain = () => {
+        if (buffer.updating) return;
+        if (pending.length > 0) {
+          buffer.appendBuffer(pending.shift()!);
+        } else if (finished && mediaSource.readyState === "open") {
+          mediaSource.endOfStream();
+        }
+      };
+      buffer.addEventListener("updateend", drain);
+
+      const pumping = (async () => {
+        const reader = res.body!.getReader();
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          if (value) {
+            // Copied into its own ArrayBuffer: appendBuffer needs a plain
+            // buffer, and the reader is free to reuse the view it handed us.
+            pending.push(
+              value.buffer.slice(
+                value.byteOffset,
+                value.byteOffset + value.byteLength
+              ) as ArrayBuffer
+            );
+            drain();
+          }
+        }
+        finished = true;
+        drain();
+      })();
+
+      try {
+        await playElement(audio, onFirstAudio);
+      } finally {
+        // Let the reader finish so it never outlives the element it feeds.
+        await pumping.catch(() => undefined);
+        URL.revokeObjectURL(url);
+      }
+    },
+    [playElement]
+  );
+
+  const speakWithBrowser = useCallback(
+    async (text: string, onFirstAudio?: () => void): Promise<boolean> => {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) return false;
 
     const voices = await loadVoices();
@@ -132,6 +210,7 @@ export function useVoicePlayer() {
     rafRef.current = requestAnimationFrame(pulse);
 
     const spoke = await new Promise<boolean>((resolve) => {
+      utterance.onstart = () => onFirstAudio?.();
       utterance.onend = () => resolve(true);
       utterance.onerror = () => resolve(false);
       window.speechSynthesis.cancel();
@@ -145,9 +224,9 @@ export function useVoicePlayer() {
   }, []);
 
   const speak = useCallback(
-    async (text: string, voiceId?: string) => {
+    async (text: string, voiceId?: string, onFirstAudio?: () => void) => {
       try {
-        await speakWithElevenLabs(text, voiceId);
+        await speakWithElevenLabs(text, voiceId, onFirstAudio);
         setFallbackNotice(null);
       } catch (err) {
         // Clean up anything the failed attempt left running before falling back.
@@ -157,7 +236,7 @@ export function useVoicePlayer() {
         setAudioLevel(0);
 
         const reason = err instanceof Error ? err.message : String(err);
-        const spoke = await speakWithBrowser(text);
+        const spoke = await speakWithBrowser(text, onFirstAudio);
         if (!spoke) throw err;
         setFallbackNotice(`Speaking with the browser's built-in voice — ${reason}`);
       }

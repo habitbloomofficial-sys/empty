@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
-import { getAI, getAIModel } from "@/lib/ai";
+import { getAI, getAIModel, getReasoningEffort, isUnsupportedParameter } from "@/lib/ai";
 import { adoptGeminiReplacement, isModelNotFound } from "@/lib/geminiModel";
 import { buildSystemPrompt } from "@/lib/systemPrompt";
-import { toolDefinitions, executeTool } from "@/lib/tools";
+import { availableTools, executeTool } from "@/lib/tools";
 import type { ActionLogEntry } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -43,28 +43,55 @@ export async function POST(req: NextRequest) {
 
   const actions: ActionLogEntry[] = [];
 
-  // Google retires Gemini models and answers 404 with the name of the
-  // replacement. Adopt it and retry once rather than failing the whole turn.
+  // Whether the endpoint accepted reasoning_effort. Remembered for the life of
+  // the process so an endpoint that rejects it is only probed once.
+  let sendReasoningEffort = true;
+
+  const tools = availableTools();
+
+  function request(): OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming {
+    const effort = sendReasoningEffort ? getReasoningEffort() : null;
+    return {
+      model: getAIModel(),
+      messages,
+      // Omitted entirely when nothing is connected — an empty array is not
+      // the same thing to every endpoint.
+      ...(tools.length > 0 ? { tools } : {}),
+      ...(effort
+        ? // Not in the SDK's union for every provider, but Gemini's
+          // OpenAI-compatible endpoint reads it.
+          ({ reasoning_effort: effort } as Record<string, unknown>)
+        : {}),
+    };
+  }
+
+  // Two things can go wrong on the first call and be worth one retry: Google
+  // retired the model (the 404 names its replacement), or this endpoint
+  // doesn't understand reasoning_effort.
   async function complete() {
     try {
-      return await ai.chat.completions.create({
-        model: getAIModel(),
-        messages,
-        tools: toolDefinitions,
-      });
+      return await ai.chat.completions.create(request());
     } catch (err) {
-      if (!isModelNotFound(err) || !adoptGeminiReplacement(err)) throw err;
-      return ai.chat.completions.create({
-        model: getAIModel(),
-        messages,
-        tools: toolDefinitions,
-      });
+      if (isUnsupportedParameter(err, "reasoning_effort")) {
+        sendReasoningEffort = false;
+        return ai.chat.completions.create(request());
+      }
+      if (isModelNotFound(err) && adoptGeminiReplacement(err)) {
+        return ai.chat.completions.create(request());
+      }
+      throw err;
     }
   }
 
+  const startedAt = Date.now();
+  let modelMs = 0;
+  let toolMs = 0;
+
   try {
     for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
+      const modelStart = Date.now();
       const completion = await complete();
+      modelMs += Date.now() - modelStart;
 
       const choice = completion.choices[0];
       const message = choice.message;
@@ -73,26 +100,35 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({
           reply: message.content ?? "",
           actions,
+          timings: { model: modelMs, tools: toolMs, total: Date.now() - startedAt },
         });
       }
 
       messages.push(message);
 
-      for (const call of message.tool_calls) {
-        if (call.type !== "function") continue;
-        const { result, log } = await executeTool(call.function.name, call.function.arguments);
-        actions.push(log);
+      // Tool calls in one round are independent of each other, so run them
+      // together rather than waiting for each in turn.
+      const toolStart = Date.now();
+      const calls = message.tool_calls.filter((call) => call.type === "function");
+      const outcomes = await Promise.all(
+        calls.map((call) => executeTool(call.function.name, call.function.arguments))
+      );
+      toolMs += Date.now() - toolStart;
+
+      calls.forEach((call, i) => {
+        actions.push(outcomes[i].log);
         messages.push({
           role: "tool",
           tool_call_id: call.id,
-          content: JSON.stringify(result),
+          content: JSON.stringify(outcomes[i].result),
         });
-      }
+      });
     }
 
     return NextResponse.json({
       reply: "I've taken several steps but need a moment more, sir — could you ask me to continue?",
       actions,
+      timings: { model: modelMs, tools: toolMs, total: Date.now() - startedAt },
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
