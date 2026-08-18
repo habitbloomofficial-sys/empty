@@ -117,3 +117,18 @@ export function BrainIcon({ className }: IconProps) {
     </svg>
   );
 }
+
+export function HologramIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className}>
+      <ellipse cx="12" cy="19" rx="7" ry="2.2" stroke="currentColor" strokeWidth="1.5" />
+      <path
+        d="M12 4.5 18 15H6l6-10.5Z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+      <path d="M9 10.5h6" stroke="currentColor" strokeWidth="1.2" opacity="0.6" />
+    </svg>
+  );
+}

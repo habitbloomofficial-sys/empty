@@ -1,15 +1,17 @@
 "use client";
 
-import { BrainIcon, MailIcon, SettingsIcon, WhatsAppIcon } from "./Icons";
+import { BrainIcon, HologramIcon, MailIcon, SettingsIcon, WhatsAppIcon } from "./Icons";
 import { StatusChip } from "./StatusChip";
 import type { IntegrationStatus } from "@/lib/types";
 
 export function TopBar({
   status,
   onOpenSettings,
+  onOpenHologram,
 }: {
   status: IntegrationStatus | null;
   onOpenSettings: () => void;
+  onOpenHologram: () => void;
 }) {
   return (
     <header className="glass sticky top-0 z-20 flex items-center justify-between rounded-b-2xl px-5 py-3 sm:px-8">
@@ -34,6 +36,14 @@ export function TopBar({
         />
         <StatusChip ok={Boolean(status?.gmail)} icon={<MailIcon className="h-4 w-4" />} label="Email" />
         <StatusChip ok={Boolean(status?.whatsapp)} icon={<WhatsAppIcon className="h-4 w-4" />} label="WhatsApp" />
+        <button
+          onClick={onOpenHologram}
+          className="flex h-8 w-8 items-center justify-center rounded-full text-sky-700 transition hover:bg-sky-500/10"
+          aria-label="Open Hologram v3"
+          title="Hologram v3"
+        >
+          <HologramIcon className="h-[18px] w-[18px]" />
+        </button>
         <button
           onClick={onOpenSettings}
           className="ml-1 flex h-8 w-8 items-center justify-center rounded-full text-sky-700 transition hover:bg-sky-500/10"

@@ -7,6 +7,7 @@ import { TopBar } from "./TopBar";
 import { ChatDock } from "./ChatDock";
 import { TranscriptPanel } from "./TranscriptPanel";
 import { SettingsModal } from "./SettingsModal";
+import { HologramPanel } from "./HologramPanel";
 import { ChatIcon, CloseIcon } from "./Icons";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
 import { useVoicePlayer } from "@/hooks/useVoicePlayer";
@@ -30,6 +31,7 @@ export default function JarvisApp() {
   const [isThinking, setIsThinking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [voiceError, setVoiceError] = useState<string | null>(null);
+  const [hologramOpen, setHologramOpen] = useState(false);
 
   const voicePlayer = useVoicePlayer();
 
@@ -127,6 +129,8 @@ export default function JarvisApp() {
             appendText(event.delta);
             for (const chunk of chunker.push(event.delta)) speakChunk(chunk);
           } else if (event.type === "action") {
+            // Some tools act on this interface rather than on the machine.
+            if (event.log?.opens === "hologram") setHologramOpen(true);
             // Shown the moment it happens — the action is already done.
             setMessages((prev) =>
               prev.map((m) =>
@@ -251,7 +255,11 @@ export default function JarvisApp() {
 
   return (
     <div className="relative flex h-dvh flex-col overflow-hidden">
-      <TopBar status={status} onOpenSettings={() => setSettingsOpen(true)} />
+      <TopBar
+        status={status}
+        onOpenSettings={() => setSettingsOpen(true)}
+        onOpenHologram={() => setHologramOpen(true)}
+      />
 
       <main className="relative flex flex-1 flex-col items-center justify-center px-4">
         <div className="animate-float relative h-[min(60vw,340px)] w-[min(60vw,340px)] sm:h-[380px] sm:w-[380px]">
@@ -332,6 +340,10 @@ export default function JarvisApp() {
             <TranscriptPanel messages={messages} />
           </motion.aside>
         )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {hologramOpen && <HologramPanel onClose={() => setHologramOpen(false)} />}
       </AnimatePresence>
 
       <AnimatePresence>

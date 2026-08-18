@@ -10,6 +10,7 @@ your email and send WhatsApp messages for you.
 - **Email** — Gmail, via your own Google OAuth app
 - **WhatsApp** — Twilio's WhatsApp API
 - **Music & web** — opens Spotify and any website on your machine, on a search if you like
+- **Hologram v3** — drop in a picture and see it projected as a rotating 3D hologram
 - **Interface** — Next.js + Tailwind + react-three-fiber, light-blue glass theme
 
 ## 1. Install and run
@@ -131,6 +132,25 @@ For production use beyond the sandbox, apply for the
 [WhatsApp Business Platform](https://www.twilio.com/whatsapp) through Twilio
 or Meta directly.
 
+### Hologram v3 (no setup needed)
+
+A projector built into JARVIS. Say *"open Hologram v3"*, or click the pyramid
+icon in the top bar, then drop a picture in — drag it, paste it, or browse for
+it — and it's projected as a hologram you can drag to look around.
+
+Three projections: **Particles** (suspended motes of light), **Volume** (solid
+projected relief) and **Lattice** (a wireframe scan). Depth, resolution, glow,
+and how much of the photograph's own colour survives are all adjustable, and
+depth can be inverted for backlit shots.
+
+The depth is *estimated from the picture itself* — lit surfaces are treated as
+nearer, saturated colour as more likely to be the subject, and the frame's
+centre as nearer than its corners, all smoothed so texture doesn't become
+relief. It's an interpretation, not a measurement: a real depth model would
+mean shipping hundreds of megabytes of weights, and this runs instantly on any
+machine. Dark parts of a picture project as nothing at all, which is what lets
+the subject float free of its background.
+
 ### Apps and websites (no setup needed)
 
 JARVIS runs on your own machine, so he can open things on it:
@@ -225,9 +245,10 @@ src/
       gmail/disconnect/ forget the stored Gmail token
       whatsapp/send/   direct WhatsApp send (used by the tool + testable directly)
     page.tsx, layout.tsx, globals.css
-  components/          Orb (3D), chat UI, settings, top bar
+  components/          Orb (3D), Hologram v3 (3D), chat UI, settings, top bar
   hooks/               voice input (record + transcribe), TTS playback + amplitude analysis
-  lib/                 AI/ElevenLabs/Gmail/WhatsApp/desktop clients, settings store, tools, prompt
+  lib/                 AI/ElevenLabs/Gmail/WhatsApp/desktop clients, depth estimation,
+                       speech chunking, settings store, tools, prompt
 ```
 
 Security notes:

@@ -13,6 +13,11 @@ export interface ActionLogEntry {
   tool: string;
   summary: string;
   ok: boolean;
+  /**
+   * A panel the browser should open in response to this action. Tools run on
+   * the server, so this is how one asks the interface to do something.
+   */
+  opens?: "hologram";
 }
 
 /** Per-stage latency in milliseconds, so slowness can be located, not guessed. */
