@@ -9,7 +9,7 @@ your email and send WhatsApp messages for you.
   (works in every browser), with the built-in Web Speech API as a fallback
 - **Email** — Gmail, via your own Google OAuth app
 - **WhatsApp** — Twilio's WhatsApp API
-- **Music** — opens the Spotify desktop app on your machine
+- **Music & web** — opens Spotify and any website on your machine, on a search if you like
 - **Interface** — Next.js + Tailwind + react-three-fiber, light-blue glass theme
 
 ## 1. Install and run
@@ -131,19 +131,41 @@ For production use beyond the sandbox, apply for the
 [WhatsApp Business Platform](https://www.twilio.com/whatsapp) through Twilio
 or Meta directly.
 
-### Spotify (no setup needed)
+### Apps and websites (no setup needed)
 
-Ask JARVIS to "open Spotify", or "put on some Bowie", and the desktop app opens
-— with a search already run, if you named something. He opens the app and shows
-results; pressing play is still yours. Playback control would need the Spotify
-Web API and an account authorization, which this doesn't use.
+JARVIS runs on your own machine, so he can open things on it:
 
-This works because JARVIS runs on your own machine. What it can do is
-deliberately tiny: open Spotify, optionally with a search. There is no general
-"run a command" ability behind it, no shell is involved, and anything you say
-is percent-encoded down to a known-safe alphabet before it reaches the
-operating system. Turn it off in **Settings → Desktop apps** if you'd rather he
-couldn't.
+- *"open Spotify"* / *"put on some Bowie"* — the desktop app, on a search if you
+  named something. He opens it; pressing play is still yours. Actually starting
+  playback would need the Spotify Web API and an account authorization, which
+  this doesn't use.
+- *"open YouTube"* / *"search YouTube for lo-fi beats"* — the site, or its search
+  results.
+- *"open bbc.co.uk"* — any ordinary website by name or address.
+- *"look up how tall the Eiffel Tower is"* — a web search.
+
+Named sites land on the right search page: youtube, google, maps, gmail, drive,
+calendar, wikipedia, github, reddit, x, linkedin, netflix, imdb, amazon,
+spotify, chatgpt, claude, dr, translate. Anything else works by address.
+
+**What this can and can't do.** Only two things: open Spotify, and open an
+ordinary `http`/`https` page. No shell is ever spawned, arguments are passed as
+an array rather than a command line, and search text is percent-encoded to a
+known-safe alphabet first.
+
+Addresses are parsed and checked before anything is opened. Non-web schemes are
+refused outright — `file:` reads your disk, `javascript:` and `data:` execute in
+the browser, and Windows resolves things like `ms-msdt:` and `search-ms:`
+through registered handlers that have been used to run code. Links to your own
+machine or local network are refused too, so nothing can be aimed at your
+router's admin page or at JARVIS's own API.
+
+One habit worth knowing about, since JARVIS reads your email: he is told to open
+only sites *you* have asked for. A link inside an email is information to report
+to you, never an instruction to follow — if a message tries to get him to visit
+something, he should mention it rather than act on it.
+
+Turn the whole capability off in **Settings → Apps & websites**.
 
 Env equivalent: `DESKTOP_CONTROL=off`.
 
@@ -156,7 +178,7 @@ Env equivalent: `DESKTOP_CONTROL=off`.
   right).
 - Ask things like *"any new emails from Sarah?"*, *"draft a reply saying I'll
   be there at 6"*, *"send Mom a WhatsApp saying I'm running late"*, or
-  *"open Spotify"*.
+  *"open Spotify"*, or *"search YouTube for lo-fi beats"*.
 - JARVIS will show you exactly what it's about to send before sending
   anything, unless you've already dictated the exact wording.
 - The Settings panel (gear icon, top right) shows what's connected and what
@@ -210,8 +232,11 @@ Security notes:
   hint (`••••abcd`), never a full key.
 - The server binds to `127.0.0.1`, so nothing on your network can reach JARVIS
   — it answers only to the machine it runs on.
-- Opening Spotify is the only desktop action that exists, it takes no path or
-  command from the conversation, and it spawns no shell.
+- Opening Spotify and opening an http(s) page are the only desktop actions that
+  exist. No shell is spawned, no path or command is taken from the conversation,
+  and addresses are validated before use — non-web schemes (`file:`,
+  `javascript:`, `data:`, Windows handlers like `ms-msdt:`) and anything on
+  localhost or your local network are refused.
 - `.env.local` and `data/` (the settings store and Gmail token) are gitignored;
   `data/settings.json` is written owner-readable only (mode 0600).
 - If any API key was ever pasted somewhere outside your own `.env.local`

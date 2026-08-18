@@ -524,13 +524,14 @@ export function SettingsModal({
 
           <Section
             icon={<MusicIcon className="h-4 w-4" />}
-            title="Desktop apps"
+            title="Apps & websites"
             ok={Boolean(status?.desktopControl)}
           >
             <p>
-              Lets JARVIS open the Spotify app on this computer — say &quot;open
-              Spotify&quot; or &quot;put on some Bowie&quot;. He opens the app and the
-              search; pressing play is still yours.
+              Lets JARVIS open things on this computer — &quot;open Spotify&quot;,
+              &quot;put on some Bowie&quot;, &quot;open YouTube&quot;, &quot;search
+              YouTube for lo-fi&quot;, or any site you name. Spotify opens to a search;
+              pressing play is still yours.
             </p>
             <div className="flex gap-1.5 rounded-full bg-white/60 p-1">
               {(["on", "off"] as const).map((value) => {
@@ -553,8 +554,9 @@ export function SettingsModal({
               })}
             </div>
             <p className="text-[10px] text-ink-700/50">
-              Opening Spotify is the only thing this permits — there&apos;s no
-              general &quot;run a command&quot; ability behind it.
+              This permits opening Spotify and ordinary web pages, nothing more —
+              no local files, no other protocols, and no general &quot;run a
+              command&quot; ability behind it.
             </p>
           </Section>
         </div>

@@ -40,15 +40,34 @@ async function openUri(uri: string): Promise<void> {
   if (!SAFE_URI.test(uri)) {
     throw new Error("Refusing to open that — it isn't a recognised Spotify link.");
   }
+  await launch(uri);
+}
 
-  // execFile, never exec: arguments are passed as an array and no shell is
-  // spawned to reinterpret them.
+/**
+ * Hand a validated target to the OS to open with its default handler.
+ *
+ * On Windows this goes through explorer.exe rather than `cmd /c start`.
+ * cmd parses its own command line, and `&` — which every URL with more than
+ * one query parameter contains — is a command separator there. explorer.exe is
+ * a plain executable, so execFile's argument array reaches it intact and
+ * nothing gets a chance to reinterpret it as a command.
+ */
+async function launch(target: string): Promise<void> {
   if (process.platform === "win32") {
-    await run("cmd.exe", ["/c", "start", "", uri]);
+    // explorer.exe often exits non-zero even when it opened the target, so
+    // only a failure to start the process itself counts as an error.
+    try {
+      await run("explorer.exe", [target]);
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException).code;
+      if (code === "ENOENT" || code === "EACCES") {
+        await run("rundll32.exe", ["url.dll,FileProtocolHandler", target]);
+      }
+    }
   } else if (process.platform === "darwin") {
-    await run("open", [uri]);
+    await run("open", [target]);
   } else {
-    await run("xdg-open", [uri]);
+    await run("xdg-open", [target]);
   }
 }
 
@@ -85,6 +104,161 @@ async function launchInstalledSpotify(): Promise<boolean> {
     }
   }
   return false;
+}
+
+// Sites worth knowing by name, so "search YouTube for X" lands on results
+// rather than a home page. Anything not listed still works — the model passes
+// a URL instead — this is just for accuracy on the common ones.
+const KNOWN_SITES: Record<string, { home: string; search?: string }> = {
+  youtube: { home: "https://www.youtube.com", search: "https://www.youtube.com/results?search_query=" },
+  google: { home: "https://www.google.com", search: "https://www.google.com/search?q=" },
+  maps: { home: "https://www.google.com/maps", search: "https://www.google.com/maps/search/" },
+  gmail: { home: "https://mail.google.com" },
+  drive: { home: "https://drive.google.com" },
+  calendar: { home: "https://calendar.google.com" },
+  wikipedia: { home: "https://en.wikipedia.org", search: "https://en.wikipedia.org/w/index.php?search=" },
+  github: { home: "https://github.com", search: "https://github.com/search?q=" },
+  reddit: { home: "https://www.reddit.com", search: "https://www.reddit.com/search/?q=" },
+  x: { home: "https://x.com", search: "https://x.com/search?q=" },
+  twitter: { home: "https://x.com", search: "https://x.com/search?q=" },
+  linkedin: { home: "https://www.linkedin.com", search: "https://www.linkedin.com/search/results/all/?keywords=" },
+  netflix: { home: "https://www.netflix.com", search: "https://www.netflix.com/search?q=" },
+  imdb: { home: "https://www.imdb.com", search: "https://www.imdb.com/find/?q=" },
+  amazon: { home: "https://www.amazon.com", search: "https://www.amazon.com/s?k=" },
+  spotify: { home: "https://open.spotify.com", search: "https://open.spotify.com/search/" },
+  chatgpt: { home: "https://chatgpt.com" },
+  claude: { home: "https://claude.ai" },
+  dr: { home: "https://www.dr.dk" },
+  translate: { home: "https://translate.google.com", search: "https://translate.google.com/?text=" },
+};
+
+const DEFAULT_SEARCH = "https://www.google.com/search?q=";
+
+/**
+ * Addresses that shouldn't be reachable this way. A browser opening a page on
+ * your own machine or router is a different thing from opening a public site,
+ * and it isn't what "open a website" is ever meant to mean.
+ */
+function isPrivateHost(hostname: string): boolean {
+  const host = hostname.toLowerCase().replace(/^\[|\]$/g, "");
+
+  if (host === "localhost" || host.endsWith(".localhost")) return true;
+  if (host.endsWith(".local") || host.endsWith(".internal") || host.endsWith(".home.arpa")) {
+    return true;
+  }
+  if (host === "::1" || host.startsWith("fc") || host.startsWith("fd") || host.startsWith("fe80:")) {
+    return true;
+  }
+
+  const ipv4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(host);
+  if (ipv4) {
+    const [a, b] = [Number(ipv4[1]), Number(ipv4[2])];
+    if (a === 0 || a === 10 || a === 127) return true;
+    if (a === 169 && b === 254) return true;
+    if (a === 172 && b >= 16 && b <= 31) return true;
+    if (a === 192 && b === 168) return true;
+  }
+  return false;
+}
+
+/**
+ * Parse and normalise a web address, refusing anything that isn't a plain
+ * public http(s) page.
+ *
+ * The scheme check is the important one. Windows resolves URIs like
+ * `ms-msdt:` or `search-ms:` through registered protocol handlers, some of
+ * which have been used to execute code; `file:` reads local disk and
+ * `javascript:`/`data:` run in the browser. Only http and https ever get
+ * through here.
+ */
+export function normalizeWebUrl(input: string): string {
+  const raw = input.trim();
+  if (!raw) throw new Error("No website given, sir.");
+
+  // A bare domain like "bbc.co.uk" is what people say; assume https.
+  const candidate = /^[a-z][a-z0-9+.-]*:/i.test(raw) ? raw : `https://${raw}`;
+
+  let url: URL;
+  try {
+    url = new URL(candidate);
+  } catch {
+    throw new Error(`"${input}" doesn't look like a website address, sir.`);
+  }
+
+  if (url.protocol !== "https:" && url.protocol !== "http:") {
+    throw new Error(
+      `I'll only open ordinary web pages, sir — "${url.protocol}" isn't one.`
+    );
+  }
+  if (url.username || url.password) {
+    throw new Error("I won't open a link with a username and password baked into it, sir.");
+  }
+  if (!url.hostname.includes(".") && url.hostname !== "localhost") {
+    throw new Error(`"${input}" doesn't look like a website address, sir.`);
+  }
+  if (isPrivateHost(url.hostname)) {
+    throw new Error("That address is on this machine or your local network, sir — I'll leave it be.");
+  }
+
+  // URL.toString() percent-encodes spaces and non-ASCII and punycodes the
+  // host, so what leaves here is always printable ASCII with no whitespace.
+  const normalized = url.toString();
+  if (!/^[\x21-\x7E]+$/.test(normalized)) {
+    throw new Error("That address contains characters I won't pass on, sir.");
+  }
+  return normalized;
+}
+
+export interface OpenWebsiteParams {
+  site?: string;
+  url?: string;
+  query?: string;
+}
+
+export interface OpenWebsiteResult {
+  opened: boolean;
+  url: string;
+  note: string;
+}
+
+export async function openWebsite(params: OpenWebsiteParams): Promise<OpenWebsiteResult> {
+  if (!isDesktopControlEnabled()) {
+    throw new Error(
+      "Opening things on this computer is switched off, sir — enable it in Settings if you'd like it back."
+    );
+  }
+
+  const query = params.query?.trim();
+  const siteKey = params.site?.trim().toLowerCase().replace(/^www\./, "").replace(/\.com$/, "");
+  const known = siteKey ? KNOWN_SITES[siteKey] : undefined;
+
+  let target: string;
+  if (known) {
+    target =
+      query && known.search
+        ? `${known.search}${strictEncode(query)}`
+        : known.home;
+  } else if (params.url?.trim()) {
+    target = params.url.trim();
+  } else if (params.site?.trim()) {
+    // An unknown site name: treat it as a domain if it looks like one,
+    // otherwise search the web for it.
+    const site = params.site.trim();
+    target = /\.[a-z]{2,}$/i.test(site) ? site : `${DEFAULT_SEARCH}${strictEncode(site)}`;
+  } else if (query) {
+    target = `${DEFAULT_SEARCH}${strictEncode(query)}`;
+  } else {
+    throw new Error("Which website would you like open, sir?");
+  }
+
+  const url = normalizeWebUrl(target);
+  await launch(url);
+
+  return {
+    opened: true,
+    url,
+    note: `Opened ${url} in your browser.`,
+  };
 }
 
 export interface OpenSpotifyResult {
