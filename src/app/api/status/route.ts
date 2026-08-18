@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { isAIConfigured, getAIProvider } from "@/lib/ai";
 import { isElevenLabsConfigured } from "@/lib/elevenlabs";
-import { isGmailConfigured } from "@/lib/gmail";
+import { areGmailCredentialsConfigured, isGmailConfigured, redirectUri } from "@/lib/gmail";
 import { isWhatsAppConfigured } from "@/lib/whatsapp";
 import { isTranscriptionConfigured } from "@/lib/transcription";
 import type { IntegrationStatus } from "@/lib/types";
@@ -15,6 +15,8 @@ export async function GET() {
     elevenlabs: isElevenLabsConfigured(),
     transcription: isTranscriptionConfigured(),
     gmail: isGmailConfigured(),
+    gmailCredentials: areGmailCredentialsConfigured(),
+    gmailRedirectUri: redirectUri(),
     whatsapp: isWhatsAppConfigured(),
   };
   return NextResponse.json(status);

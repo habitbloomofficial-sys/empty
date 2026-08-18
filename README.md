@@ -76,14 +76,31 @@ names whichever one it is rather than blaming the key.
 
 ### Gmail (optional — lets JARVIS read/search/send email)
 
-1. In the [Google Cloud Console](https://console.cloud.google.com/), create a
-   project, enable the **Gmail API**, and configure an OAuth consent screen
-   (External is fine; add yourself as a test user).
-2. Create an **OAuth client ID** of type "Web application". Add
-   `http://localhost:3000/api/gmail/callback` as an authorized redirect URI.
-3. Paste the client ID and secret into **Settings → Gmail** and click Save.
-4. Click **Connect Gmail**. The resulting token is stored locally in
-   `data/gmail-token.json` (gitignored) — it never leaves your machine.
+In the [Google Cloud Console](https://console.cloud.google.com/):
+
+1. Create a project (any name).
+2. **APIs & Services → Library**, search for **Gmail API**, and click Enable.
+   Nothing works until this is done.
+3. **APIs & Services → OAuth consent screen**. Choose **External**, fill in the
+   app name and your own email, and under **Audience** add your own Gmail
+   address as a **test user**. Leaving the app in Testing is fine and expected
+   — Google only requires verification to publish an app to other people.
+4. **APIs & Services → Credentials → Create credentials → OAuth client ID**,
+   type **Web application**. Under **Authorized redirect URIs**, add the exact
+   URI shown in JARVIS's Settings → Gmail panel (there's a Copy button):
+   `http://localhost:3000/api/gmail/callback`.
+5. Copy the client ID and secret into **Settings → Gmail** in JARVIS and click
+   **Save**, then **Connect Gmail** and accept every checkbox Google offers.
+
+The token is stored in `data/gmail-token.json` (gitignored, mode 0600) and
+never leaves your machine. If anything goes wrong, JARVIS shows Google's actual
+reason rather than a generic failure — `redirect_uri_mismatch` means step 4
+doesn't match character for character, and "app is blocked" or an access
+warning usually means step 3's test user is missing.
+
+**Declined a permission by mistake?** Scopes are fixed at consent time, so
+granting one later means running the flow again: click **Disconnect**, then
+**Connect Gmail**.
 
 Env equivalents: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`,
 `GOOGLE_REDIRECT_URI`.
@@ -134,8 +151,9 @@ src/
       voices/          list available ElevenLabs voices
       status/          which integrations are configured
       settings/        read (masked) + save API keys from the Settings panel
-      gmail/auth/      start Google OAuth
-      gmail/callback/  finish Google OAuth, store token
+      gmail/auth/       start Google OAuth
+      gmail/callback/   finish Google OAuth, store token
+      gmail/disconnect/ forget the stored Gmail token
       whatsapp/send/   direct WhatsApp send (used by the tool + testable directly)
     page.tsx, layout.tsx, globals.css
   components/          Orb (3D), chat UI, settings, top bar

@@ -21,6 +21,10 @@ export interface IntegrationStatus {
   /** Whether the server can transcribe recorded audio (mic works everywhere). */
   transcription: boolean;
   gmail: boolean;
+  /** Client ID/secret present — the step before authorizing. */
+  gmailCredentials: boolean;
+  /** The redirect URI that must be registered in the Google OAuth client. */
+  gmailRedirectUri: string;
   whatsapp: boolean;
 }
 

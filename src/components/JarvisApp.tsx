@@ -115,9 +115,17 @@ export default function JarvisApp() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     refreshStatus();
     const params = new URLSearchParams(window.location.search);
-    if (params.get("gmail")) {
+    const gmail = params.get("gmail");
+    if (gmail) {
       window.history.replaceState({}, "", window.location.pathname);
       setSettingsOpen(true);
+      if (gmail === "error") {
+        setError(
+          `Gmail couldn't be connected: ${
+            params.get("reason") || "Google didn't say why."
+          }`
+        );
+      }
       refreshStatus();
     }
   }, [refreshStatus]);

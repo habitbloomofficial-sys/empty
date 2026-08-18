@@ -158,6 +158,7 @@ export function SettingsModal({
   const [busySection, setBusySection] = useState<string | null>(null);
   const [savedSection, setSavedSection] = useState<string | null>(null);
   const [checks, setChecks] = useState<Record<string, KeyCheck[]>>({});
+  const [copiedRedirect, setCopiedRedirect] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const applySettings = useCallback((list: SettingView[]) => {
@@ -368,10 +369,48 @@ export function SettingsModal({
             title="Gmail"
             ok={Boolean(status?.gmail)}
           >
-            <p>
-              Create an OAuth client in the Google Cloud Console (see the README), then
-              paste its ID and secret here and click Connect Gmail.
-            </p>
+            {status?.gmail ? (
+              <p className="rounded-lg bg-sky-500/10 px-2.5 py-1.5 text-sky-800">
+                ✓ Connected — JARVIS can search, read, draft, reply to, and send email.
+              </p>
+            ) : (
+              <p>
+                Create an OAuth client (type: Web application) in the Google Cloud
+                Console, paste its ID and secret here, then click Connect Gmail.
+              </p>
+            )}
+
+            {/* redirect_uri_mismatch is the usual reason this fails, so show the
+                exact string Google needs rather than describing it. */}
+            <div className="rounded-lg bg-sky-500/10 px-2.5 py-2">
+              <p className="mb-1 font-semibold text-ink-900">
+                Add this as an Authorized redirect URI in Google:
+              </p>
+              <div className="flex items-center gap-1.5">
+                <code className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap rounded bg-white/70 px-2 py-1 font-mono text-[10px] text-ink-900">
+                  {status?.gmailRedirectUri ?? "http://localhost:3000/api/gmail/callback"}
+                </code>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard
+                      ?.writeText(
+                        status?.gmailRedirectUri ??
+                          "http://localhost:3000/api/gmail/callback"
+                      )
+                      .then(() => setCopiedRedirect(true))
+                      .catch(() => setError("Couldn't copy — select the text instead."));
+                  }}
+                  className="shrink-0 rounded px-2 py-1 text-[10px] font-semibold text-sky-700 hover:bg-sky-500/15"
+                >
+                  {copiedRedirect ? "Copied ✓" : "Copy"}
+                </button>
+              </div>
+              <p className="mt-1 text-[10px] text-ink-700/60">
+                It must match character for character, including http and the port.
+              </p>
+            </div>
+
             <Field
               label="Google client ID"
               view={views.GOOGLE_CLIENT_ID}
@@ -400,13 +439,35 @@ export function SettingsModal({
                 saved={savedSection === "gmail"}
                 checks={checks.gmail}
               />
-              <a
-                href="/api/gmail/auth"
-                className="rounded-full border border-sky-500/40 px-3.5 py-1.5 text-xs font-semibold text-sky-700 hover:bg-sky-500/10"
-              >
-                Connect Gmail
-              </a>
+              {status?.gmailCredentials && (
+                <a
+                  href="/api/gmail/auth"
+                  className="rounded-full border border-sky-500/40 px-3.5 py-1.5 text-xs font-semibold text-sky-700 hover:bg-sky-500/10"
+                >
+                  {status.gmail ? "Reconnect" : "Connect Gmail"}
+                </a>
+              )}
+              {status?.gmail && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await fetch("/api/gmail/disconnect", { method: "POST" }).catch(
+                      () => null
+                    );
+                    onSaved();
+                  }}
+                  className="rounded-full px-3 py-1.5 text-xs font-semibold text-ink-700/60 hover:bg-slate-500/10"
+                >
+                  Disconnect
+                </button>
+              )}
             </div>
+            {!status?.gmailCredentials && (
+              <p className="text-[11px] text-ink-700/50">
+                Save the client ID and secret first — the Connect button appears once
+                they&apos;re stored.
+              </p>
+            )}
           </Section>
 
           <Section

@@ -1,5 +1,5 @@
 import type OpenAI from "openai";
-import { searchEmails, readEmail, sendEmail, createDraft } from "./gmail";
+import { searchEmails, readEmail, sendEmail, createDraft, type ComposeParams } from "./gmail";
 import { sendWhatsAppMessage } from "./whatsapp";
 import type { ActionLogEntry } from "./types";
 
@@ -45,15 +45,27 @@ export const toolDefinitions: OpenAI.Chat.Completions.ChatCompletionTool[] = [
     function: {
       name: "send_email",
       description:
-        "Send an email immediately on the user's behalf. Only call this once the exact recipient, subject, and body have been dictated or clearly approved by the user.",
+        "Send an email immediately on the user's behalf. Only call this once the exact recipient, subject, and body have been dictated or clearly approved by the user. To reply to an email, pass reply_to_message_id and omit 'to' and 'subject' — they're inherited from the original so the reply stays in the same conversation.",
       parameters: {
         type: "object",
         properties: {
-          to: { type: "string", description: "Recipient email address." },
-          subject: { type: "string" },
+          to: {
+            type: "string",
+            description:
+              "Recipient email address. Optional when replying — defaults to the original sender.",
+          },
+          subject: {
+            type: "string",
+            description: "Optional when replying — defaults to 'Re: <original subject>'.",
+          },
           body: { type: "string", description: "Plain text email body." },
+          reply_to_message_id: {
+            type: "string",
+            description:
+              "Message id (from search_emails or read_email) this is a reply to. Threads the reply into the existing conversation.",
+          },
         },
-        required: ["to", "subject", "body"],
+        required: ["body"],
       },
     },
   },
@@ -62,15 +74,19 @@ export const toolDefinitions: OpenAI.Chat.Completions.ChatCompletionTool[] = [
     function: {
       name: "create_email_draft",
       description:
-        "Create a draft email in Gmail without sending it, so the user can review it first.",
+        "Create a draft email in Gmail without sending it, so the user can review it first. Supports replies the same way send_email does.",
       parameters: {
         type: "object",
         properties: {
-          to: { type: "string" },
-          subject: { type: "string" },
+          to: { type: "string", description: "Optional when replying." },
+          subject: { type: "string", description: "Optional when replying." },
           body: { type: "string" },
+          reply_to_message_id: {
+            type: "string",
+            description: "Message id this draft replies to, to keep it in the same thread.",
+          },
         },
-        required: ["to", "subject", "body"],
+        required: ["body"],
       },
     },
   },
@@ -96,6 +112,22 @@ export const toolDefinitions: OpenAI.Chat.Completions.ChatCompletionTool[] = [
   },
 ];
 
+// Tool arguments are snake_case for the model's benefit; the Gmail client
+// takes camelCase.
+function toComposeParams(args: {
+  to?: string;
+  subject?: string;
+  body?: string;
+  reply_to_message_id?: string;
+}): ComposeParams {
+  return {
+    to: args.to,
+    subject: args.subject,
+    body: args.body ?? "",
+    replyToMessageId: args.reply_to_message_id,
+  };
+}
+
 export async function executeTool(
   name: string,
   rawArgs: string
@@ -118,17 +150,25 @@ export async function executeTool(
         };
       }
       case "send_email": {
-        const result = await sendEmail(args);
+        const result = await sendEmail(toComposeParams(args));
         return {
           result,
-          log: { tool: name, summary: `Sent email to ${args.to}: "${args.subject}"`, ok: true },
+          log: {
+            tool: name,
+            summary: `Sent email to ${result.to}: "${result.subject}"`,
+            ok: true,
+          },
         };
       }
       case "create_email_draft": {
-        const result = await createDraft(args);
+        const result = await createDraft(toComposeParams(args));
         return {
           result,
-          log: { tool: name, summary: `Drafted email to ${args.to}: "${args.subject}"`, ok: true },
+          log: {
+            tool: name,
+            summary: `Drafted email to ${result.to}: "${result.subject}"`,
+            ok: true,
+          },
         };
       }
       case "send_whatsapp_message": {
