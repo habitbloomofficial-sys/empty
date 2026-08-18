@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import type OpenAI from "openai";
+import OpenAI from "openai";
 import { getAI, getAIModel } from "@/lib/ai";
+import { adoptGeminiReplacement, isModelNotFound } from "@/lib/geminiModel";
 import { buildSystemPrompt } from "@/lib/systemPrompt";
 import { toolDefinitions, executeTool } from "@/lib/tools";
 import type { ActionLogEntry } from "@/lib/types";
@@ -27,7 +28,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "messages is required" }, { status: 400 });
   }
 
-  let ai;
+  let ai: OpenAI;
   try {
     ai = getAI();
   } catch (err) {
@@ -42,13 +43,28 @@ export async function POST(req: NextRequest) {
 
   const actions: ActionLogEntry[] = [];
 
-  try {
-    for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
-      const completion = await ai.chat.completions.create({
+  // Google retires Gemini models and answers 404 with the name of the
+  // replacement. Adopt it and retry once rather than failing the whole turn.
+  async function complete() {
+    try {
+      return await ai.chat.completions.create({
         model: getAIModel(),
         messages,
         tools: toolDefinitions,
       });
+    } catch (err) {
+      if (!isModelNotFound(err) || !adoptGeminiReplacement(err)) throw err;
+      return ai.chat.completions.create({
+        model: getAIModel(),
+        messages,
+        tools: toolDefinitions,
+      });
+    }
+  }
+
+  try {
+    for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
+      const completion = await complete();
 
       const choice = completion.choices[0];
       const message = choice.message;

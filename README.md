@@ -41,8 +41,14 @@ through Google's OpenAI-compatible endpoint, so the same chat and tool-calling
 code (email, WhatsApp) works unchanged on either provider.
 
 Env equivalents: `GEMINI_API_KEY` / `OPENAI_API_KEY`, with optional
-`GEMINI_MODEL` (default `gemini-2.5-flash`) and `OPENAI_MODEL` (default
-`gpt-4o`). If both keys are set, `AI_PROVIDER=openai|gemini` breaks the tie.
+`GEMINI_MODEL` and `OPENAI_MODEL` (default `gpt-4o`). If both keys are set,
+`AI_PROVIDER=openai|gemini` breaks the tie.
+
+Leave `GEMINI_MODEL` unset unless you want a specific model. Google retires
+Gemini models on its own schedule and answers requests for a retired one with
+a 404 naming its replacement — JARVIS reads that, switches to the named model,
+and carries on, so an unset value keeps working without a code change. Pinning
+a model opts out of that until you change it.
 
 ### ElevenLabs (required for spoken replies — and recommended for the mic)
 

@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import { isElevenLabsConfigured, speechToText } from "./elevenlabs";
+import { adoptGeminiReplacement, geminiModel, isModelNotFound } from "./geminiModel";
 import { getSetting } from "./settings";
 
 // Server-side transcription is what makes the mic work in every browser: the
@@ -77,25 +78,34 @@ async function transcribeWithGemini(
   mimeType: string,
   apiKey: string
 ): Promise<string> {
-  const model = getSetting("GEMINI_MODEL") || "gemini-2.5-flash";
   const data = Buffer.from(await audio.arrayBuffer()).toString("base64");
 
-  const res = await fetch(`${GEMINI_BASE_URL}/models/${model}:generateContent`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-    body: JSON.stringify({
-      contents: [
-        {
-          role: "user",
-          parts: [{ text: TRANSCRIBE_PROMPT }, { inlineData: { mimeType, data } }],
-        },
-      ],
-      generationConfig: { temperature: 0 },
-    }),
-  });
+  const call = async (model: string) => {
+    const res = await fetch(`${GEMINI_BASE_URL}/models/${model}:generateContent`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+      body: JSON.stringify({
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: TRANSCRIBE_PROMPT }, { inlineData: { mimeType, data } }],
+          },
+        ],
+        generationConfig: { temperature: 0 },
+      }),
+    });
+    if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
+    return res;
+  };
 
-  if (!res.ok) {
-    throw new Error(`${res.status} ${await res.text()}`);
+  let res: Response;
+  try {
+    res = await call(geminiModel());
+  } catch (err) {
+    // A retired model 404s and names its successor — adopt it and retry once.
+    const replacement = isModelNotFound(err) ? adoptGeminiReplacement(err) : null;
+    if (!replacement) throw err;
+    res = await call(replacement);
   }
 
   const body = (await res.json()) as {

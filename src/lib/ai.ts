@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { geminiModel } from "./geminiModel";
 import { getSetting } from "./settings";
 
 // JARVIS's brain can run on either OpenAI or Google's Gemini — Gemini exposes
@@ -72,8 +73,6 @@ export function getAI(): OpenAI {
 
 export function getAIModel(): string {
   const provider = detectProvider();
-  if (provider === "gemini") {
-    return getSetting("GEMINI_MODEL") || "gemini-2.5-flash";
-  }
+  if (provider === "gemini") return geminiModel();
   return getSetting("OPENAI_MODEL") || "gpt-4o";
 }
