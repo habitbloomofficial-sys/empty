@@ -9,6 +9,7 @@ your email and send WhatsApp messages for you.
   (works in every browser), with the built-in Web Speech API as a fallback
 - **Email** — Gmail, via your own Google OAuth app
 - **WhatsApp** — Twilio's WhatsApp API
+- **Music** — opens the Spotify desktop app on your machine
 - **Interface** — Next.js + Tailwind + react-three-fiber, light-blue glass theme
 
 ## 1. Install and run
@@ -130,6 +131,22 @@ For production use beyond the sandbox, apply for the
 [WhatsApp Business Platform](https://www.twilio.com/whatsapp) through Twilio
 or Meta directly.
 
+### Spotify (no setup needed)
+
+Ask JARVIS to "open Spotify", or "put on some Bowie", and the desktop app opens
+— with a search already run, if you named something. He opens the app and shows
+results; pressing play is still yours. Playback control would need the Spotify
+Web API and an account authorization, which this doesn't use.
+
+This works because JARVIS runs on your own machine. What it can do is
+deliberately tiny: open Spotify, optionally with a search. There is no general
+"run a command" ability behind it, no shell is involved, and anything you say
+is percent-encoded down to a known-safe alphabet before it reaches the
+operating system. Turn it off in **Settings → Desktop apps** if you'd rather he
+couldn't.
+
+Env equivalent: `DESKTOP_CONTROL=off`.
+
 ## 3. Using it
 
 - Type in the input bar, or tap the mic and speak — the orb and the mic button
@@ -138,7 +155,8 @@ or Meta directly.
   He answers out loud and in the transcript panel (chat bubble icon, bottom
   right).
 - Ask things like *"any new emails from Sarah?"*, *"draft a reply saying I'll
-  be there at 6"*, or *"send Mom a WhatsApp saying I'm running late"*.
+  be there at 6"*, *"send Mom a WhatsApp saying I'm running late"*, or
+  *"open Spotify"*.
 - JARVIS will show you exactly what it's about to send before sending
   anything, unless you've already dictated the exact wording.
 - The Settings panel (gear icon, top right) shows what's connected and what
@@ -182,7 +200,7 @@ src/
     page.tsx, layout.tsx, globals.css
   components/          Orb (3D), chat UI, settings, top bar
   hooks/               voice input (record + transcribe), TTS playback + amplitude analysis
-  lib/                 AI/ElevenLabs/Gmail/WhatsApp clients, settings store, tools, system prompt
+  lib/                 AI/ElevenLabs/Gmail/WhatsApp/desktop clients, settings store, tools, prompt
 ```
 
 Security notes:
@@ -190,6 +208,10 @@ Security notes:
 - No secret is ever sent to the browser — all provider calls happen in API
   route handlers on the server, and `GET /api/settings` returns only a masked
   hint (`••••abcd`), never a full key.
+- The server binds to `127.0.0.1`, so nothing on your network can reach JARVIS
+  — it answers only to the machine it runs on.
+- Opening Spotify is the only desktop action that exists, it takes no path or
+  command from the conversation, and it spawns no shell.
 - `.env.local` and `data/` (the settings store and Gmail token) are gitignored;
   `data/settings.json` is written owner-readable only (mode 0600).
 - If any API key was ever pasted somewhere outside your own `.env.local`

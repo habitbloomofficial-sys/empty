@@ -4,6 +4,7 @@ import { isElevenLabsConfigured } from "@/lib/elevenlabs";
 import { areGmailCredentialsConfigured, isGmailConfigured, redirectUri } from "@/lib/gmail";
 import { isWhatsAppConfigured } from "@/lib/whatsapp";
 import { isTranscriptionConfigured } from "@/lib/transcription";
+import { isDesktopControlEnabled } from "@/lib/desktop";
 import type { IntegrationStatus } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -18,6 +19,7 @@ export async function GET() {
     gmailCredentials: areGmailCredentialsConfigured(),
     gmailRedirectUri: redirectUri(),
     whatsapp: isWhatsAppConfigured(),
+    desktopControl: isDesktopControlEnabled(),
   };
   return NextResponse.json(status);
 }

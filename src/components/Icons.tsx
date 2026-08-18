@@ -93,6 +93,22 @@ export function ChatIcon({ className }: IconProps) {
   );
 }
 
+export function MusicIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className}>
+      <path
+        d="M9 18V6.5l10-2V16"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <ellipse cx="7" cy="18" rx="2.6" ry="2.2" stroke="currentColor" strokeWidth="1.6" />
+      <ellipse cx="17" cy="16" rx="2.6" ry="2.2" stroke="currentColor" strokeWidth="1.6" />
+    </svg>
+  );
+}
+
 export function BrainIcon({ className }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="none" className={className}>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { BrainIcon, ChatIcon, CloseIcon, MailIcon, WhatsAppIcon } from "./Icons";
+import { BrainIcon, ChatIcon, CloseIcon, MailIcon, MusicIcon, WhatsAppIcon } from "./Icons";
 import type { IntegrationStatus } from "@/lib/types";
 
 interface SettingView {
@@ -520,6 +520,42 @@ export function SettingsModal({
               saved={savedSection === "whatsapp"}
               checks={checks.whatsapp}
             />
+          </Section>
+
+          <Section
+            icon={<MusicIcon className="h-4 w-4" />}
+            title="Desktop apps"
+            ok={Boolean(status?.desktopControl)}
+          >
+            <p>
+              Lets JARVIS open the Spotify app on this computer — say &quot;open
+              Spotify&quot; or &quot;put on some Bowie&quot;. He opens the app and the
+              search; pressing play is still yours.
+            </p>
+            <div className="flex gap-1.5 rounded-full bg-white/60 p-1">
+              {(["on", "off"] as const).map((value) => {
+                const active = (status?.desktopControl ? "on" : "off") === value;
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => save("desktop", { DESKTOP_CONTROL: value })}
+                    disabled={busySection === "desktop"}
+                    className={`flex-1 rounded-full px-3 py-1.5 text-xs font-semibold transition disabled:opacity-50 ${
+                      active
+                        ? "bg-sky-500 text-white shadow-sm"
+                        : "text-ink-700/70 hover:bg-sky-500/10"
+                    }`}
+                  >
+                    {value === "on" ? "Allowed" : "Blocked"}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-[10px] text-ink-700/50">
+              Opening Spotify is the only thing this permits — there&apos;s no
+              general &quot;run a command&quot; ability behind it.
+            </p>
           </Section>
         </div>
 

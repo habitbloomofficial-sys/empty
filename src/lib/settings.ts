@@ -26,6 +26,7 @@ export const SETTING_KEYS = [
   "TWILIO_AUTH_TOKEN",
   "TWILIO_WHATSAPP_FROM",
   "TWILIO_WHATSAPP_TO_DEFAULT",
+  "DESKTOP_CONTROL",
 ] as const;
 
 export type SettingKey = (typeof SETTING_KEYS)[number];

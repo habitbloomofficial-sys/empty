@@ -8,6 +8,7 @@ import {
   type ComposeParams,
 } from "./gmail";
 import { sendWhatsAppMessage, isWhatsAppConfigured } from "./whatsapp";
+import { openSpotify, isDesktopControlEnabled } from "./desktop";
 import type { ActionLogEntry } from "./types";
 
 const GMAIL_TOOLS = new Set([
@@ -124,6 +125,25 @@ export const toolDefinitions: OpenAI.Chat.Completions.ChatCompletionTool[] = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "open_spotify",
+      description:
+        "Open the Spotify desktop app on the user's computer, optionally landing on a search for an artist, album, song, or playlist. Use this whenever the user asks to open Spotify or put music on. This opens the app and shows results — it does not press play, so say so.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: {
+            type: "string",
+            description:
+              "Optional artist, album, song, or playlist to search for once Spotify opens. Omit to just open the app.",
+          },
+        },
+        required: [],
+      },
+    },
+  },
 ];
 
 /**
@@ -140,6 +160,7 @@ export function availableTools(): OpenAI.Chat.Completions.ChatCompletionTool[] {
     const name = tool.type === "function" ? tool.function.name : "";
     if (GMAIL_TOOLS.has(name)) return gmail;
     if (name === "send_whatsapp_message") return whatsapp;
+    if (name === "open_spotify") return isDesktopControlEnabled();
     return true;
   });
 }
@@ -199,6 +220,17 @@ export async function executeTool(
           log: {
             tool: name,
             summary: `Drafted email to ${result.to}: "${result.subject}"`,
+            ok: true,
+          },
+        };
+      }
+      case "open_spotify": {
+        const result = await openSpotify(args.query);
+        return {
+          result,
+          log: {
+            tool: name,
+            summary: args.query ? `Opened Spotify — searched "${args.query}"` : "Opened Spotify",
             ok: true,
           },
         };
