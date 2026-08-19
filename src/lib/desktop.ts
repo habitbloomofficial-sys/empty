@@ -281,10 +281,71 @@ export function normalizeWebUrl(input: string): string {
   return normalized;
 }
 
+/**
+ * Browsers that can be told to open a page in a window of its own. Without
+ * one of these, a URL handed to the OS lands as another tab in whatever is
+ * already open — which is not what "open me a window" means.
+ */
+function browserCommands(): { file: string; args: (url: string) => string[] }[] {
+  if (process.platform === "win32") {
+    const candidates = [
+      ["programFiles", "Google", "Chrome", "Application", "chrome.exe"],
+      ["programFilesX86", "Google", "Chrome", "Application", "chrome.exe"],
+      ["localAppData", "Google", "Chrome", "Application", "chrome.exe"],
+      ["programFilesX86", "Microsoft", "Edge", "Application", "msedge.exe"],
+      ["programFiles", "Microsoft", "Edge", "Application", "msedge.exe"],
+      ["programFiles", "BraveSoftware", "Brave-Browser", "Application", "brave.exe"],
+      ["programFiles", "Mozilla Firefox", "firefox.exe"],
+    ];
+    const roots: Record<string, string | undefined> = {
+      programFiles: process.env.ProgramFiles,
+      programFilesX86: process.env["ProgramFiles(x86)"],
+      localAppData: process.env.LOCALAPPDATA,
+    };
+    return candidates
+      .map(([root, ...rest]) => {
+        const base = roots[root];
+        return base ? path.join(base, ...rest) : "";
+      })
+      .filter(Boolean)
+      .map((file) => ({ file, args: (url: string) => ["--new-window", url] }));
+  }
+
+  if (process.platform === "darwin") {
+    return ["Google Chrome", "Microsoft Edge", "Brave Browser", "Firefox"].map((app) => ({
+      file: "open",
+      args: (url: string) => ["-na", app, "--args", "--new-window", url],
+    }));
+  }
+
+  return ["google-chrome", "chromium", "microsoft-edge", "brave-browser", "firefox"].map(
+    (file) => ({ file, args: (url: string) => ["--new-window", url] })
+  );
+}
+
+/** Returns false if no browser could be driven directly. */
+async function openInNewWindow(url: string): Promise<boolean> {
+  for (const { file, args } of browserCommands()) {
+    // On Windows and Linux these are real paths or commands; skip missing ones
+    // rather than paying for a failed spawn each time.
+    if (path.isAbsolute(file) && !fs.existsSync(file)) continue;
+    try {
+      const child = execFile(file, args(url), { windowsHide: false });
+      child.unref();
+      return true;
+    } catch {
+      // Try the next browser.
+    }
+  }
+  return false;
+}
+
 export interface OpenWebsiteParams {
   site?: string;
   url?: string;
   query?: string;
+  /** Open in a window of its own rather than a tab. Defaults to true. */
+  newWindow?: boolean;
 }
 
 export interface OpenWebsiteResult {
@@ -324,12 +385,16 @@ export async function openWebsite(params: OpenWebsiteParams): Promise<OpenWebsit
   }
 
   const url = normalizeWebUrl(target);
-  await launch(url);
+
+  // A window of its own by default — that's what's usually wanted of an
+  // assistant, and it doesn't disturb whatever you already had open.
+  const inWindow = params.newWindow !== false && (await openInNewWindow(url));
+  if (!inWindow) await launch(url);
 
   return {
     opened: true,
     url,
-    note: `Opened ${url} in your browser.`,
+    note: `Opened ${url} in ${inWindow ? "a new browser window" : "your browser"}.`,
   };
 }
 

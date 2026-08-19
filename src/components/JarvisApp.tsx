@@ -11,6 +11,8 @@ import { HologramPanel } from "./HologramPanel";
 import { ChatIcon, CloseIcon } from "./Icons";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
 import { useVoicePlayer } from "@/hooks/useVoicePlayer";
+import { useWakeWord } from "@/hooks/useWakeWord";
+import { nextGreeting } from "@/lib/greeting";
 import { SpeechChunker } from "@/lib/speechChunks";
 import type { ChatMessage, IntegrationStatus, OrbState } from "@/lib/types";
 
@@ -32,6 +34,8 @@ export default function JarvisApp() {
   const [error, setError] = useState<string | null>(null);
   const [voiceError, setVoiceError] = useState<string | null>(null);
   const [hologramOpen, setHologramOpen] = useState(false);
+  const [wakeEnabled, setWakeEnabled] = useState(true);
+  const [greetingPending, setGreetingPending] = useState(false);
 
   const voicePlayer = useVoicePlayer();
 
@@ -205,6 +209,69 @@ export default function JarvisApp() {
 
   const speech = useVoiceInput(handleSend, Boolean(status?.transcription));
 
+  // Wake word. Held off while he's speaking or already listening, so he never
+  // hears his own name in his own voice and wakes himself up.
+  const wake = useWakeWord({
+    enabled: wakeEnabled,
+    paused: voicePlayer.isSpeaking || speech.isListening || speech.isTranscribing || isThinking,
+    onWake: (command) => {
+      // "Hey Jarvis, open YouTube" shouldn't need saying twice — if the
+      // instruction came in the same breath, act on it directly.
+      if (command.trim().length > 2) void handleSend(command.trim());
+      else void speech.start();
+    },
+  });
+
+  useEffect(() => {
+    // Greet on arrival. Browsers refuse to play audio before you've interacted
+    // with the page, so if that refusal happens we wait for the first click or
+    // keypress and greet then, rather than silently skipping it.
+    let greeted = false;
+    const line = nextGreeting();
+
+    const say = async () => {
+      if (greeted) return;
+      greeted = true;
+      let heard = false;
+      try {
+        await voicePlayer.speak(line, undefined, () => {
+          heard = true;
+          // Shown only once it's actually been said, so a greeting the browser
+          // silenced never appears as though it was.
+          setMessages((prev) =>
+            prev.length === 0
+              ? [
+                  {
+                    id: crypto.randomUUID(),
+                    role: "assistant" as const,
+                    content: line,
+                    createdAt: Date.now(),
+                  },
+                ]
+              : prev
+          );
+        });
+      } catch {
+        /* falls through to the retry below */
+      }
+      if (!heard) {
+        greeted = false;
+        setGreetingPending(true);
+        const retry = () => {
+          setGreetingPending(false);
+          void say();
+        };
+        window.addEventListener("pointerdown", retry, { once: true });
+        window.addEventListener("keydown", retry, { once: true });
+      }
+    };
+
+    const timer = setTimeout(() => void say(), 600);
+    return () => clearTimeout(timer);
+    // Runs once on arrival; voicePlayer is stable for the life of the page.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const orbState: OrbState = voicePlayer.isSpeaking
     ? "speaking"
     : isThinking || speech.isTranscribing
@@ -282,6 +349,19 @@ export default function JarvisApp() {
           </div>
         )}
 
+        {greetingPending && (
+          <div className="glass mt-3 max-w-md rounded-xl px-4 py-2 text-center text-xs text-ink-700/70">
+            Click anywhere and I&apos;ll say hello, sir — your browser won&apos;t let me
+            speak until you&apos;ve touched the page.
+          </div>
+        )}
+
+        {wake.error && (
+          <div className="glass mt-3 max-w-md rounded-xl px-4 py-2 text-center text-xs text-amber-700">
+            {wake.error}
+          </div>
+        )}
+
         {!voiceError && voicePlayer.fallbackNotice && (
           <div className="glass mt-3 max-w-md rounded-xl px-4 py-2 text-center text-xs text-amber-700">
             {voicePlayer.fallbackNotice}
@@ -302,6 +382,10 @@ export default function JarvisApp() {
       <div className="relative z-10 w-full px-4 pb-6 sm:pb-8">
         <ChatDock
           onSend={handleSend}
+          wakeSupported={wake.supported}
+          wakeEnabled={wakeEnabled}
+          wakeListening={wake.listening}
+          onToggleWake={() => setWakeEnabled((v) => !v)}
           disabled={isThinking}
           isListening={speech.isListening}
           isTranscribing={speech.isTranscribing}

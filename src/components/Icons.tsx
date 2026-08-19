@@ -146,3 +146,18 @@ export function MemoryIcon({ className }: IconProps) {
     </svg>
   );
 }
+
+export function EarIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className}>
+      <path
+        d="M8 9a4 4 0 1 1 8 0c0 2.2-1.6 3-2.6 4.2-.8 1-.6 2.4-.6 3.3A2.6 2.6 0 0 1 10.2 19c-1.3 0-2.2-.9-2.5-2"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M11 9.2a1.2 1.2 0 0 1 2.2.7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+}

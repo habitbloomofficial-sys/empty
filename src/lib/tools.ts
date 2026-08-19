@@ -246,6 +246,11 @@ export const toolDefinitions: OpenAI.Chat.Completions.ChatCompletionTool[] = [
             description:
               "Optional search terms. With a known site this searches that site; on its own it searches the web.",
           },
+          new_window: {
+            type: "boolean",
+            description:
+              "Open in a browser window of its own. Defaults to true; pass false only if he asks for a tab.",
+          },
         },
         required: [],
       },
@@ -416,6 +421,7 @@ export async function executeTool(
           site: text(args.site),
           url: text(args.url),
           query: text(args.query),
+          newWindow: args.new_window !== false,
         });
         return {
           result,

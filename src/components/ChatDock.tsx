@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { MicIcon, SendIcon } from "./Icons";
+import { EarIcon, MicIcon, SendIcon } from "./Icons";
 
 export function ChatDock({
   onSend,
@@ -12,6 +12,10 @@ export function ChatDock({
   micLevel,
   interimTranscript,
   onToggleMic,
+  wakeSupported,
+  wakeEnabled,
+  wakeListening,
+  onToggleWake,
 }: {
   onSend: (text: string) => void;
   disabled: boolean;
@@ -21,6 +25,10 @@ export function ChatDock({
   micLevel: number;
   interimTranscript: string;
   onToggleMic: () => void;
+  wakeSupported: boolean;
+  wakeEnabled: boolean;
+  wakeListening: boolean;
+  onToggleWake: () => void;
 }) {
   const [value, setValue] = useState("");
 
@@ -73,6 +81,30 @@ export function ChatDock({
         )}
         <MicIcon className="relative h-[18px] w-[18px]" />
       </button>
+
+      {wakeSupported && (
+        <button
+          type="button"
+          onClick={onToggleWake}
+          className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors ${
+            wakeEnabled
+              ? "bg-sky-500/10 text-sky-600 hover:bg-sky-500/20"
+              : "text-ink-700/30 hover:bg-slate-500/10"
+          }`}
+          aria-label={wakeEnabled ? "Stop listening for my name" : "Listen for my name"}
+          title={
+            wakeEnabled
+              ? 'Listening for "Hey JARVIS" — click to switch off'
+              : 'Click to listen for "Hey JARVIS"'
+          }
+        >
+          {/* A quiet pulse while the listener is actually running. */}
+          {wakeEnabled && wakeListening && (
+            <span className="absolute inset-1 rounded-full bg-sky-400/20 animate-pulse" />
+          )}
+          <EarIcon className="relative h-[18px] w-[18px]" />
+        </button>
+      )}
 
       <input
         value={inputValue}

@@ -5,8 +5,8 @@ your email and send WhatsApp messages for you.
 
 - **Brain** — OpenAI or Gemini (chat + tool calling — pick either)
 - **Voice** — ElevenLabs text-to-speech, played back with a live waveform driving the orb
-- **Ears** — your voice, recorded in the browser and transcribed server-side
-  (works in every browser), with the built-in Web Speech API as a fallback
+- **Ears** — say "Hey JARVIS" and he listens; your voice is recorded in the
+  browser and transcribed server-side, so it works in every browser
 - **Email** — Gmail, via your own Google OAuth app
 - **WhatsApp** — Twilio's WhatsApp API
 - **Music & web** — opens and closes Spotify and Discord, and opens any website
@@ -185,7 +185,9 @@ JARVIS runs on your own machine, so he can open things on it:
   Discord treats a close as "minimise to tray".
 - *"open YouTube"* / *"search YouTube for lo-fi beats"* — the site, or its search
   results.
-- *"open bbc.co.uk"* — any ordinary website by name or address.
+- *"open bbc.co.uk"* — any ordinary website by name or address. Sites open in a
+  browser window of their own rather than as another tab in whatever you had
+  open; ask for a tab and you'll get one.
 - *"look up how tall the Eiffel Tower is"* — a web search.
 
 Named sites land on the right search page: youtube, google, maps, gmail, drive,
@@ -216,7 +218,15 @@ Env equivalent: `DESKTOP_CONTROL=off`.
 
 ## 3. Using it
 
-- Type in the input bar, or tap the mic and speak — the orb and the mic button
+- **He greets you when you open him**, alternating between two lines so it
+  isn't the same every time. Browsers refuse to play audio until you've
+  interacted with a page, so on a cold open he may ask you to click once
+  first — after that the browser remembers and he just speaks.
+- **Say "Hey JARVIS"** and he starts listening; no button needed. Say it with
+  the request attached — *"Hey JARVIS, open YouTube"* — and he acts on it
+  straight away rather than waiting for you to repeat yourself. The ear icon
+  beside the microphone turns it off.
+- Or type in the input bar, or tap the mic and speak — the orb and the mic button
   pulse with your voice so you can see it's hearing you, and JARVIS sends
   automatically once you stop talking (tap the mic again to send immediately).
   He answers out loud and in the transcript panel (chat bubble icon, bottom
@@ -228,6 +238,20 @@ Env equivalent: `DESKTOP_CONTROL=off`.
   anything, unless you've already dictated the exact wording.
 - The Settings panel (gear icon, top right) shows what's connected and what
   still needs configuring.
+
+### About the wake word
+
+Listening for a name all day has to be cheap, so it uses the browser's own
+speech recognition purely as a trigger — nothing of ours is uploaded, and it
+costs nothing. Once woken, the accurate pipeline takes over and transcribes
+what you actually said. It needs Chrome or Edge; elsewhere the microphone
+button still works.
+
+It's matched forgivingly on purpose. Across a room "hey JARVIS" comes back as
+"hey Travis" or "hi Jervis" as often as not, so near-misses of the name count —
+but only near the start of a sentence, so mentioning him mid-conversation
+doesn't set him off. He also stops listening for his name while he's speaking,
+so he can't wake himself.
 
 ### If a reply feels slow
 
