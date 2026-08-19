@@ -179,7 +179,8 @@ export function SettingsModal({
 }) {
   const [views, setViews] = useState<Views>({});
   const [drafts, setDrafts] = useState<Record<string, string>>({});
-  const [provider, setProvider] = useState<"gemini" | "openai">("gemini");
+  const [provider, setProvider] = useState<"gemini" | "openrouter" | "openai">("gemini");
+  const [models, setModels] = useState<{ id: string; name: string }[]>([]);
   const [busySection, setBusySection] = useState<string | null>(null);
   const [savedSection, setSavedSection] = useState<string | null>(null);
   const [checks, setChecks] = useState<Record<string, KeyCheck[]>>({});
@@ -200,8 +201,10 @@ export function SettingsModal({
       return seeded;
     });
     const saved = next.AI_PROVIDER?.display?.toLowerCase();
-    if (saved === "openai" || saved === "gemini") {
+    if (saved === "openai" || saved === "gemini" || saved === "openrouter") {
       setProvider(saved);
+    } else if (next.OPENROUTER_API_KEY?.set) {
+      setProvider("openrouter");
     } else if (next.OPENAI_API_KEY?.set && !next.GEMINI_API_KEY?.set) {
       setProvider("openai");
     } else if (next.GEMINI_API_KEY?.set) {
@@ -242,6 +245,23 @@ export function SettingsModal({
     };
   }, []);
 
+  useEffect(() => {
+    if (provider !== "openrouter") return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/models", { cache: "no-store" });
+        const data = await res.json();
+        if (!cancelled && Array.isArray(data.models)) setModels(data.models);
+      } catch {
+        /* the model field still accepts a typed id */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [provider, savedSection]);
+
   const draft = (key: string) => drafts[key] ?? "";
   const setDraft = (key: string, value: string) =>
     setDrafts((prev) => ({ ...prev, [key]: value }));
@@ -281,7 +301,12 @@ export function SettingsModal({
     }
   }
 
-  const brainKey = provider === "gemini" ? "GEMINI_API_KEY" : "OPENAI_API_KEY";
+  const brainKey =
+    provider === "gemini"
+      ? "GEMINI_API_KEY"
+      : provider === "openrouter"
+        ? "OPENROUTER_API_KEY"
+        : "OPENAI_API_KEY";
   const brainKeySet = views[brainKey]?.set ?? false;
 
   return (
@@ -313,7 +338,7 @@ export function SettingsModal({
             <p>Paste an API key below to give JARVIS a brain. You only need one.</p>
 
             <div className="flex gap-1.5 rounded-full bg-white/60 p-1">
-              {(["gemini", "openai"] as const).map((p) => (
+              {(["gemini", "openrouter", "openai"] as const).map((p) => (
                 <button
                   key={p}
                   type="button"
@@ -324,13 +349,15 @@ export function SettingsModal({
                       : "text-ink-700/70 hover:bg-sky-500/10"
                   }`}
                 >
-                  {p === "gemini" ? "Gemini" : "OpenAI"}
+                  {p === "gemini" ? "Gemini" : p === "openrouter" ? "OpenRouter" : "OpenAI"}
                 </button>
               ))}
             </div>
 
             <Field
-              label={provider === "gemini" ? "Gemini API key" : "OpenAI API key"}
+              label={`${
+                provider === "gemini" ? "Gemini" : provider === "openrouter" ? "OpenRouter" : "OpenAI"
+              } API key`}
               view={views[brainKey]}
               value={draft(brainKey)}
               onChange={(v) => setDraft(brainKey, v)}
@@ -339,9 +366,39 @@ export function SettingsModal({
                   ? views[brainKey]?.display
                   : provider === "gemini"
                     ? "AIza…"
-                    : "sk-…"
+                    : provider === "openrouter"
+                      ? "sk-or-v1-…"
+                      : "sk-…"
               }
             />
+
+            {provider === "openrouter" && (
+              <label className="block">
+                <span className="mb-1 block text-[11px] font-semibold text-ink-900">Model</span>
+                <input
+                  list="openrouter-models"
+                  value={draft("OPENROUTER_MODEL")}
+                  onChange={(e) => setDraft("OPENROUTER_MODEL", e.target.value)}
+                  placeholder="anthropic/claude-… — start typing to search"
+                  autoComplete="off"
+                  spellCheck={false}
+                  className="w-full rounded-lg border border-white/80 bg-white/70 px-3 py-2 font-mono text-xs text-ink-900 placeholder:font-sans placeholder:text-ink-700/35 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/30"
+                />
+                <span className="mt-1 block text-[10px] text-ink-700/50">
+                  {models.length > 0
+                    ? `${models.length} models on your key that can use tools. Save the key first if the list is empty.`
+                    : "Save your key and reopen this panel to load the list of models."}
+                </span>
+                {/* Populated from your own account, so it is never out of date. */}
+                <datalist id="openrouter-models">
+                  {models.map((model) => (
+                    <option key={model.id} value={model.id}>
+                      {model.name}
+                    </option>
+                  ))}
+                </datalist>
+              </label>
+            )}
 
             {provider === "gemini" && (
               <p>
@@ -358,11 +415,30 @@ export function SettingsModal({
               </p>
             )}
 
+            {provider === "openrouter" && (
+              <p>
+                One key for most of the frontier models — get one at{" "}
+                <a
+                  href="https://openrouter.ai/keys"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-medium text-sky-600 underline"
+                >
+                  openrouter.ai/keys
+                </a>
+                . Only models that can call tools are listed, since JARVIS needs
+                them to open apps and read email.
+              </p>
+            )}
+
             <SaveButton
               onClick={() =>
                 save("brain", {
                   AI_PROVIDER: provider,
                   ...(draft(brainKey).trim() ? { [brainKey]: draft(brainKey) } : {}),
+                  ...(provider === "openrouter"
+                    ? { OPENROUTER_MODEL: draft("OPENROUTER_MODEL") }
+                    : {}),
                 })
               }
               busy={busySection === "brain"}

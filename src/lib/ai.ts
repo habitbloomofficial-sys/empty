@@ -5,26 +5,47 @@ import { getSetting } from "./settings";
 // JARVIS's brain can run on either OpenAI or Google's Gemini — Gemini exposes
 // an OpenAI-compatible endpoint, so the same "openai" SDK and the same
 // chat-completions + tool-calling code in api/chat/route.ts work for both.
-export type AIProvider = "openai" | "gemini";
+export type AIProvider = "openai" | "gemini" | "openrouter";
 
 const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/";
+
+// OpenRouter fronts most of the frontier models behind one OpenAI-compatible
+// endpoint and one key, which is the point of using it: pick a stronger brain
+// without changing any of this code.
+const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
+
+/**
+ * Used only if no model has been chosen. The Settings panel fetches the live
+ * list from OpenRouter and lets you pick, so this is a starting point rather
+ * than a recommendation — model names there change faster than this file does.
+ */
+export const OPENROUTER_FALLBACK_MODEL = "openai/gpt-4o";
 
 function detectProvider(): AIProvider | null {
   const forced = getSetting("AI_PROVIDER")?.toLowerCase();
   if (forced === "gemini") return "gemini";
   if (forced === "openai") return "openai";
+  if (forced === "openrouter") return "openrouter";
 
-  // Auto: prefer OpenAI if both are set, otherwise use whichever key exists.
+  // Auto: whichever key exists. OpenRouter first — someone who configured it
+  // did so to reach a better model than the one they already had.
+  if (getSetting("OPENROUTER_API_KEY")) return "openrouter";
   if (getSetting("OPENAI_API_KEY")) return "openai";
   if (getSetting("GEMINI_API_KEY")) return "gemini";
   return null;
 }
 
 function keyFor(provider: AIProvider): string | undefined {
-  return provider === "gemini"
-    ? getSetting("GEMINI_API_KEY")
-    : getSetting("OPENAI_API_KEY");
+  if (provider === "gemini") return getSetting("GEMINI_API_KEY");
+  if (provider === "openrouter") return getSetting("OPENROUTER_API_KEY");
+  return getSetting("OPENAI_API_KEY");
 }
+
+const PROVIDER_LABELS: Record<AIProvider, string> = {
+  openai: "OpenAI",
+  gemini: "Gemini",
+  openrouter: "OpenRouter",
+};
 
 export function isAIConfigured(): boolean {
   const provider = detectProvider();
@@ -48,10 +69,8 @@ export function getAI(): OpenAI {
   if (!provider || !apiKey) {
     throw new Error(
       provider
-        ? `The AI provider is set to "${provider}", but no ${
-            provider === "gemini" ? "Gemini" : "OpenAI"
-          } API key has been saved yet — add one in Settings.`
-        : "No AI brain configured yet, sir — add an OpenAI or Gemini API key in Settings."
+        ? `The AI provider is set to "${provider}", but no ${PROVIDER_LABELS[provider]} API key has been saved yet — add one in Settings.`
+        : "No AI brain configured yet, sir — add a Gemini, OpenRouter, or OpenAI API key in Settings."
     );
   }
 
@@ -63,10 +82,20 @@ export function getAI(): OpenAI {
 
   cachedProvider = provider;
   cachedKey = apiKey;
-  cachedClient =
-    provider === "gemini"
-      ? new OpenAI({ apiKey, baseURL: GEMINI_BASE_URL })
-      : new OpenAI({ apiKey });
+
+  if (provider === "gemini") {
+    cachedClient = new OpenAI({ apiKey, baseURL: GEMINI_BASE_URL });
+  } else if (provider === "openrouter") {
+    cachedClient = new OpenAI({
+      apiKey,
+      baseURL: OPENROUTER_BASE_URL,
+      // OpenRouter attributes traffic by these; harmless, and it keeps the
+      // request identifiable in your own dashboard.
+      defaultHeaders: { "HTTP-Referer": "http://localhost:3000", "X-Title": "JARVIS" },
+    });
+  } else {
+    cachedClient = new OpenAI({ apiKey });
+  }
 
   return cachedClient;
 }
@@ -103,5 +132,8 @@ export function isUnsupportedParameter(error: unknown, parameter: string): boole
 export function getAIModel(): string {
   const provider = detectProvider();
   if (provider === "gemini") return geminiModel();
+  if (provider === "openrouter") {
+    return getSetting("OPENROUTER_MODEL") || OPENROUTER_FALLBACK_MODEL;
+  }
   return getSetting("OPENAI_MODEL") || "gpt-4o";
 }

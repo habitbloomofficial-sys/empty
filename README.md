@@ -3,7 +3,7 @@
 A personal AI assistant: a floating 3D orb, a voice, and a brain that can read
 your email and send WhatsApp messages for you.
 
-- **Brain** — OpenAI or Gemini (chat + tool calling — pick either)
+- **Brain** — Gemini, OpenRouter, or OpenAI (chat + tool calling — pick one)
 - **Voice** — ElevenLabs text-to-speech, played back with a live waveform driving the orb
 - **Ears** — say "Hey JARVIS" and he listens; your voice is recorded in the
   browser and transcribed server-side, so it works in every browser
@@ -39,18 +39,28 @@ If you'd rather use environment variables, every setting can also live in
 `.env.local` under the same name — copy `.env.example` to get started. Anything
 you save in the Settings panel takes precedence over the matching env var.
 
-### AI brain (required — pick OpenAI or Gemini, you only need one)
+### AI brain (required — pick one of three, you only need one)
 
-In **Settings → AI brain**, choose Gemini or OpenAI and paste the key.
+In **Settings → AI brain**, choose a provider and paste the key.
 
-**Gemini** is the easy option — get a free key at
-[Google AI Studio](https://aistudio.google.com/apikey). JARVIS talks to it
-through Google's OpenAI-compatible endpoint, so the same chat and tool-calling
-code (email, WhatsApp) works unchanged on either provider.
+**Gemini** is the easy option — a free key from
+[Google AI Studio](https://aistudio.google.com/apikey).
 
-Env equivalents: `GEMINI_API_KEY` / `OPENAI_API_KEY`, with optional
-`GEMINI_MODEL` and `OPENAI_MODEL` (default `gpt-4o`). If both keys are set,
-`AI_PROVIDER=openai|gemini` breaks the tie.
+**OpenRouter** is the one to use if Gemini feels not quite sharp enough. One
+key reaches most of the frontier models — Claude, GPT, Gemini Pro and the rest
+— and you pick which from a dropdown. That list is fetched live from your own
+account rather than written into this code, so it can't go stale, and it's
+narrowed to models that can call tools, since JARVIS needs those to open apps
+and read email. Get a key at [openrouter.ai/keys](https://openrouter.ai/keys).
+
+**OpenAI** works directly too, with your own `sk-` key.
+
+All three speak the same OpenAI-compatible protocol, so every feature works
+identically whichever you choose.
+
+Env equivalents: `GEMINI_API_KEY` / `OPENROUTER_API_KEY` / `OPENAI_API_KEY`,
+with optional `GEMINI_MODEL`, `OPENROUTER_MODEL` and `OPENAI_MODEL`. If several
+keys are set, `AI_PROVIDER=openai|gemini|openrouter` breaks the tie.
 
 Leave `GEMINI_MODEL` unset unless you want a specific model. Google retires
 Gemini models on its own schedule and answers requests for a retired one with
@@ -297,6 +307,7 @@ src/
       voices/          list available ElevenLabs voices
       status/          which integrations are configured
       settings/        read (masked) + save API keys from the Settings panel
+      models/          models available on your OpenRouter key, tool-capable only
       memory/          what JARVIS remembers about you, and forgetting it
       gmail/auth/       start Google OAuth
       gmail/callback/   finish Google OAuth, store token

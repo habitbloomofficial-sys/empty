@@ -32,7 +32,15 @@ export function TopBar({
         <StatusChip
           ok={Boolean(status?.brain)}
           icon={<BrainIcon className="h-4 w-4" />}
-          label={status?.brainProvider === "gemini" ? "Gemini" : status?.brainProvider === "openai" ? "OpenAI" : "Brain"}
+          label={
+            status?.brainProvider === "gemini"
+              ? "Gemini"
+              : status?.brainProvider === "openrouter"
+                ? "OpenRouter"
+                : status?.brainProvider === "openai"
+                  ? "OpenAI"
+                  : "Brain"
+          }
         />
         <StatusChip ok={Boolean(status?.gmail)} icon={<MailIcon className="h-4 w-4" />} label="Email" />
         <StatusChip ok={Boolean(status?.whatsapp)} icon={<WhatsAppIcon className="h-4 w-4" />} label="WhatsApp" />

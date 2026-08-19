@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
-import { getAI, getAIModel, getReasoningEffort, isUnsupportedParameter } from "@/lib/ai";
+import { getAI, getAIModel, getReasoningEffort } from "@/lib/ai";
 import { adoptGeminiReplacement, isModelNotFound } from "@/lib/geminiModel";
 import { buildSystemPrompt } from "@/lib/systemPrompt";
 import { availableTools, executeTool, TOOL_NAMES } from "@/lib/tools";
@@ -15,6 +15,30 @@ interface IncomingMessage {
 }
 
 const MAX_TOOL_ROUNDS = 5;
+
+/**
+ * Model failures reach the user, so they have to say something. The SDK's own
+ * wording for a rejected request is "400 status code (no body)", which tells
+ * nobody anything.
+ */
+function describeModelFailure(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  const status = (error as { status?: number })?.status;
+
+  if (status === 401 || status === 403 || /api[_ ]key/i.test(message)) {
+    return "The AI provider refused my key, sir — check it in Settings.";
+  }
+  if (status === 429 || /quota|rate.?limit/i.test(message)) {
+    return "The AI provider is rate limiting me, sir — a moment and try again.";
+  }
+  if (status === 400 && /no body/i.test(message)) {
+    return "The AI provider rejected the request, sir, without saying why. Worth a retry, or check the model name in Settings.";
+  }
+  if (status && status >= 500) {
+    return "The AI provider is having trouble at their end, sir — try again shortly.";
+  }
+  return message;
+}
 
 /** One accumulating tool call, reassembled from streamed fragments. */
 interface PartialToolCall {
@@ -53,44 +77,65 @@ export async function POST(req: NextRequest) {
   ];
 
   const tools = availableTools();
-  let sendReasoningEffort = true;
+
+  /**
+   * Optional request fields, in the order they're worth trying. Providers
+   * disagree about which of these they accept, and the disagreement arrives as
+   * a bare 400 — so rather than predicting it, ask for what's wanted first and
+   * step down until something is accepted.
+   */
+  function optionalFieldVariants(): Record<string, unknown>[] {
+    const effort = getReasoningEffort();
+    const variants: Record<string, unknown>[] = [];
+    if (effort) {
+      variants.push({ reasoning_effort: effort });
+      // "low" is understood everywhere reasoning_effort exists at all.
+      if (effort !== "low") variants.push({ reasoning_effort: "low" });
+    }
+    // Nothing optional whatsoever: the request every implementation accepts.
+    variants.push({});
+    return variants;
+  }
+
+  const variants = optionalFieldVariants();
+  let variantIndex = 0;
 
   function request(): OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming {
-    const effort = sendReasoningEffort ? getReasoningEffort() : null;
     return {
       model: getAIModel(),
       messages,
       stream: true,
       ...(tools.length > 0 ? { tools } : {}),
-      ...(effort
-        ? // reasoning_effort is the portable spelling; Gemini also honours its
-          // own thinking_config, and sending both means the budget is actually
-          // respected rather than quietly defaulted.
-          ({
-            reasoning_effort: effort,
-            ...(effort === "none"
-              ? { extra_body: { google: { thinking_config: { thinking_budget: 0 } } } }
-              : {}),
-          } as Record<string, unknown>)
-        : {}),
-    };
+      ...variants[variantIndex],
+    } as OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming;
+  }
+
+  /** A rejected request, as opposed to a network or server failure. */
+  function isBadRequest(error: unknown): boolean {
+    return (error as { status?: number })?.status === 400;
   }
 
   // The SDK awaits response headers before returning the stream, so a retired
-  // model or an unsupported parameter still surfaces here, not mid-stream.
+  // model or a refused field surfaces here rather than mid-stream.
   async function openStream() {
-    try {
-      return await ai.chat.completions.create(request());
-    } catch (err) {
-      if (isUnsupportedParameter(err, "reasoning_effort")) {
-        sendReasoningEffort = false;
-        return ai.chat.completions.create(request());
+    // Bounded: each pass either advances the variant or adopts a new model,
+    // and both run out.
+    for (let attempt = 0; attempt < variants.length + 2; attempt++) {
+      try {
+        return await ai.chat.completions.create(request());
+      } catch (err) {
+        if (isModelNotFound(err) && adoptGeminiReplacement(err)) continue;
+        // Gemini returns streaming errors as a JSON array, which the SDK can't
+        // read — so the reason is often literally "400 status code (no body)".
+        // Matching on the message is therefore hopeless; step down on any 400.
+        if (isBadRequest(err) && variantIndex < variants.length - 1) {
+          variantIndex++;
+          continue;
+        }
+        throw err;
       }
-      if (isModelNotFound(err) && adoptGeminiReplacement(err)) {
-        return ai.chat.completions.create(request());
-      }
-      throw err;
     }
+    throw new Error("I couldn't get a reply from the model, sir — every request shape was refused.");
   }
 
   const encoder = new TextEncoder();
@@ -185,7 +230,7 @@ export async function POST(req: NextRequest) {
           timings: { model: modelMs, tools: toolMs, total: Date.now() - startedAt },
         });
       } catch (err) {
-        send({ type: "error", error: err instanceof Error ? err.message : String(err) });
+        send({ type: "error", error: describeModelFailure(err) });
       } finally {
         controller.close();
       }

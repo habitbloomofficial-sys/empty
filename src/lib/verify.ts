@@ -23,6 +23,7 @@ const VERIFIABLE: Partial<Record<SettingKey, Verifier>> = {
   ELEVENLABS_API_KEY: verifyElevenLabs,
   OPENAI_API_KEY: verifyOpenAI,
   GEMINI_API_KEY: verifyGemini,
+  OPENROUTER_API_KEY: verifyOpenRouter,
 };
 
 export function isVerifiableKey(key: SettingKey): boolean {
@@ -114,6 +115,31 @@ async function verifyGemini(value: string): Promise<string> {
     return "Key accepted, but the Generative Language API isn't enabled on that Google project yet.";
   }
   return `Saved, but Google wouldn't confirm it (HTTP ${res.status}).`;
+}
+
+async function verifyOpenRouter(value: string): Promise<string> {
+  // /key reports the credit and limits attached to this key specifically, so
+  // it confirms the key rather than merely that OpenRouter is up.
+  const res = await fetch("https://openrouter.ai/api/v1/key", {
+    headers: { Authorization: `Bearer ${value}` },
+    cache: "no-store",
+  });
+
+  if (res.ok) {
+    const body = (await res.json().catch(() => null)) as {
+      data?: { limit_remaining?: number | null; usage?: number };
+    } | null;
+    const remaining = body?.data?.limit_remaining;
+    if (typeof remaining === "number" && remaining <= 0) {
+      return "Key verified, but this OpenRouter key has no credit left.";
+    }
+    return "OpenRouter key verified.";
+  }
+
+  if (res.status === 401) {
+    throw new Error("OpenRouter rejected that key. Keys start with sk-or- — check it was copied in full.");
+  }
+  return `Saved, but OpenRouter wouldn't confirm it (HTTP ${res.status}).`;
 }
 
 export async function verifyKey(key: SettingKey, value: string): Promise<KeyCheck | null> {
