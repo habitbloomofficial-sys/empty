@@ -1,5 +1,19 @@
 import { interpretElevenLabsError } from "./elevenlabsErrors";
-import type { SettingKey } from "./settings";
+import { getSetting, type SettingKey } from "./settings";
+import { normalizeVoiceId } from "./voiceId";
+
+/**
+ * No probe may hang. Node's fetch has no timeout of its own, so a provider
+ * that accepts the connection and then goes quiet holds the save request open
+ * indefinitely — and the browser, which does give up, reports it as a bare
+ * "Failed to fetch". Every check below is bounded so the panel always gets an
+ * answer to show.
+ */
+const PROBE_TIMEOUT_MS = 10_000;
+
+function timed(): { signal: AbortSignal } {
+  return { signal: AbortSignal.timeout(PROBE_TIMEOUT_MS) };
+}
 
 // Checking a key the moment it's pasted turns a confusing runtime failure
 // ("transcription failed: 400 …") into an answer at the point of the mistake.
@@ -21,6 +35,7 @@ type Verifier = (value: string) => Promise<KeyCheck["message"]>;
 
 const VERIFIABLE: Partial<Record<SettingKey, Verifier>> = {
   ELEVENLABS_API_KEY: verifyElevenLabs,
+  ELEVENLABS_VOICE_ID: verifyVoiceId,
   OPENAI_API_KEY: verifyOpenAI,
   GEMINI_API_KEY: verifyGemini,
   OPENROUTER_API_KEY: verifyOpenRouter,
@@ -48,6 +63,7 @@ async function verifyElevenLabs(value: string): Promise<string> {
       res = await fetch(`https://api.elevenlabs.io/v1${path}`, {
         headers: { "xi-api-key": value },
         cache: "no-store",
+        ...timed(),
       });
     } catch (err) {
       throw err instanceof Error ? err : new Error(String(err));
@@ -81,10 +97,58 @@ async function verifyElevenLabs(value: string): Promise<string> {
   return `Saved, but ElevenLabs wouldn't confirm it: ${lastMessage} If speech and voice stop working, edit the key in ElevenLabs (profile → API Keys) and give it access to all endpoints.`;
 }
 
+/**
+ * A voice id is the one setting where being wrong is silent: speech simply
+ * falls back to the browser's robot voice and nothing says why. So check it at
+ * the point it's typed, and separate the three failures that look identical
+ * from the outside — a mistyped id, a real id that hasn't been added to My
+ * Voices, and a voice this account's plan can't reach.
+ */
+async function verifyVoiceId(value: string): Promise<string> {
+  const id = normalizeVoiceId(value);
+  if (!id) {
+    throw new Error(
+      "That doesn't contain a voice id. In ElevenLabs open Voices → My Voices, click the voice, and copy the ID — 20 characters like pNInz6obpgDQGcFmaJgB. A share link works here too."
+    );
+  }
+
+  const key = getSetting("ELEVENLABS_API_KEY");
+  if (!key) return `Voice id saved (${id}). Add your ElevenLabs key and I'll check it against your library.`;
+
+  let res: Response;
+  try {
+    res = await fetch(`https://api.elevenlabs.io/v1/voices/${encodeURIComponent(id)}`, {
+      headers: { "xi-api-key": key },
+      cache: "no-store",
+      ...timed(),
+    });
+  } catch (err) {
+    throw err instanceof Error ? err : new Error(String(err));
+  }
+
+  if (res.ok) {
+    const body = (await res.json().catch(() => null)) as { name?: string } | null;
+    return body?.name ? `Voice set to “${body.name}”.` : "Voice id verified.";
+  }
+
+  // 404 is the interesting one, and the reason this check exists: the id is
+  // real, it just isn't in this account yet.
+  if (res.status === 404) {
+    throw new Error(
+      "ElevenLabs has no voice with that id in your library. If you copied it from the Voice Library, open the voice there and click “Add to my voices” first — then copy the id from Voices → My Voices."
+    );
+  }
+
+  const verdict = interpretElevenLabsError(res.status, await res.text());
+  if (verdict.keyIsInvalid === true) throw new Error(verdict.message);
+  return `Voice id saved, but ElevenLabs wouldn't confirm it: ${verdict.message}`;
+}
+
 async function verifyOpenAI(value: string): Promise<string> {
   const res = await fetch("https://api.openai.com/v1/models", {
     headers: { Authorization: `Bearer ${value}` },
     cache: "no-store",
+    ...timed(),
   });
   if (res.ok) return "OpenAI key verified.";
 
@@ -102,6 +166,7 @@ async function verifyGemini(value: string): Promise<string> {
   const res = await fetch("https://generativelanguage.googleapis.com/v1beta/models", {
     headers: { "x-goog-api-key": value },
     cache: "no-store",
+    ...timed(),
   });
   if (res.ok) return "Gemini key verified.";
 
@@ -123,6 +188,7 @@ async function verifyOpenRouter(value: string): Promise<string> {
   const res = await fetch("https://openrouter.ai/api/v1/key", {
     headers: { Authorization: `Bearer ${value}` },
     cache: "no-store",
+    ...timed(),
   });
 
   if (res.ok) {
@@ -151,7 +217,10 @@ export async function verifyKey(key: SettingKey, value: string): Promise<KeyChec
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     // A network failure says nothing about the key, so don't cry wolf.
-    if (/fetch failed|ENOTFOUND|ECONNREFUSED|ETIMEDOUT|EAI_AGAIN|network|socket/i.test(message)) {
+    if (
+      /fetch failed|ENOTFOUND|ECONNREFUSED|ETIMEDOUT|EAI_AGAIN|network|socket/i.test(message) ||
+      (err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError"))
+    ) {
       return {
         key,
         ok: true,

@@ -77,9 +77,21 @@ a model opts out of that until you change it.
 
 ### ElevenLabs (required for spoken replies — and recommended for the mic)
 
-Paste your key in **Settings → ElevenLabs voice**. JARVIS defaults to the
-"Adam" premade voice; set a different voice ID there (or call
-`GET /api/voices`) to see what's on your account.
+Paste your key in **Settings → ElevenLabs voice**. The **Voice** dropdown
+underneath lists the voices on your own account, fetched live, so there is no
+id to type or get wrong — pick one and press **Hear it** to audition it before
+saving. A voice the list doesn't know about can still be set by hand via
+"Paste a voice ID instead…", which accepts a bare id, a share link, or a
+copied `Voice ID: …` line.
+
+**Using a voice from the ElevenLabs Voice Library.** A voice id is only a
+name, not a licence — pasting one doesn't grant access to a voice your account
+doesn't have. Open the voice in the Voice Library and click **Add to my
+voices** first; it then appears in the dropdown and works like any other. Two
+things can stop that: some library voices are restricted to paid plans and
+can't be added on the free tier, and **every** generation spends characters
+from your monthly quota whichever voice makes it — a free voice is not free to
+speak. JARVIS says which of the two it hit rather than falling silent.
 
 The same key also powers **speech-to-text**. So does a Gemini or OpenAI key —
 transcription tries each configured provider in turn, so any one working key

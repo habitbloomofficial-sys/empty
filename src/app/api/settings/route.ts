@@ -10,6 +10,19 @@ import {
   type SettingKey,
 } from "@/lib/settings";
 import { isVerifiableKey, verifyKey, type KeyCheck } from "@/lib/verify";
+import { normalizeVoiceId } from "@/lib/voiceId";
+
+/**
+ * Tidy a value before it's stored. Only the voice id needs it so far: people
+ * paste share links and labelled lines, and every one of those is a clear
+ * statement of which voice they want.
+ */
+function clean(key: SettingKey, value: string): string {
+  if (key === "ELEVENLABS_VOICE_ID" && value.trim()) {
+    return normalizeVoiceId(value) || value.trim();
+  }
+  return value;
+}
 
 export const runtime = "nodejs";
 
@@ -65,7 +78,7 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
-    updates[key] = value;
+    updates[key] = clean(key, value);
   }
 
   if (Object.keys(updates).length === 0) {

@@ -1,7 +1,44 @@
 import { interpretElevenLabsError } from "./elevenlabsErrors";
 import { getSetting } from "./settings";
+import { normalizeVoiceId } from "./voiceId";
 
 const ELEVENLABS_API_BASE = "https://api.elevenlabs.io/v1";
+
+/**
+ * Every call out to ElevenLabs is bounded.
+ *
+ * Node's fetch has no timeout of its own, so a stalled connection hangs the
+ * request handler for as long as the socket stays open. The browser gives up
+ * long before that and reports a bare "Failed to fetch", which reads as "the
+ * app is broken" rather than "the network went quiet". A deadline turns that
+ * into a sentence someone can act on.
+ */
+const REQUEST_TIMEOUT_MS = 15_000;
+// Speech is generated as it plays, so the meter runs for the length of the
+// utterance, not the length of a round trip.
+const SPEECH_TIMEOUT_MS = 45_000;
+
+/** A timed request, with the deadline reported as a sentence rather than a DOMException. */
+export async function elevenLabsFetch(
+  path: string,
+  init: RequestInit = {},
+  timeoutMs = REQUEST_TIMEOUT_MS
+): Promise<Response> {
+  try {
+    return await fetch(`${ELEVENLABS_API_BASE}${path}`, {
+      ...init,
+      cache: "no-store",
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+  } catch (err) {
+    if (err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError")) {
+      throw new Error(
+        `ElevenLabs didn't answer within ${Math.round(timeoutMs / 1000)} seconds — the connection to them is down or very slow.`
+      );
+    }
+    throw err;
+  }
+}
 
 // Adam — a deep, composed, classic ElevenLabs premade voice. A solid default
 // for a JARVIS-style butler voice. Override with ELEVENLABS_VOICE_ID.
@@ -10,7 +47,9 @@ const FALLBACK_VOICE_ID = "pNInz6obpgDQGcFmaJgB";
 // Resolved per call rather than at module load, so a voice saved in Settings
 // applies without restarting the server.
 export function defaultVoiceId(): string {
-  return getSetting("ELEVENLABS_VOICE_ID") || FALLBACK_VOICE_ID;
+  // Normalized on the way out as well as on the way in: a value that predates
+  // this (or was typed straight into .env.local) still resolves to an id.
+  return normalizeVoiceId(getSetting("ELEVENLABS_VOICE_ID") ?? "") || FALLBACK_VOICE_ID;
 }
 
 // Flash is ElevenLabs' lowest-latency model — the difference is very audible
@@ -47,15 +86,31 @@ export interface ElevenLabsVoice {
 }
 
 export async function listVoices(): Promise<ElevenLabsVoice[]> {
-  const res = await fetch(`${ELEVENLABS_API_BASE}/voices`, {
-    headers: { "xi-api-key": apiKey() },
-    cache: "no-store",
-  });
+  const res = await elevenLabsFetch("/voices", { headers: { "xi-api-key": apiKey() } });
   if (!res.ok) {
     throw await elevenLabsError(res, "Couldn't list ElevenLabs voices");
   }
   const data = (await res.json()) as { voices: ElevenLabsVoice[] };
   return data.voices;
+}
+
+/**
+ * One voice, by id — the check behind "is this id actually usable?".
+ *
+ * A voice from the Voice Library has an id long before it has anything to do
+ * with your account. Until it's been added to My Voices this returns 404, and
+ * that distinction is the whole difference between "wrong id" and "right id,
+ * not added yet".
+ */
+export async function getVoice(voiceId: string): Promise<ElevenLabsVoice | null> {
+  const res = await elevenLabsFetch(`/voices/${encodeURIComponent(voiceId)}`, {
+    headers: { "xi-api-key": apiKey() },
+  });
+  if (res.status === 404) return null;
+  if (!res.ok) {
+    throw await elevenLabsError(res, "Couldn't check that voice");
+  }
+  return (await res.json()) as ElevenLabsVoice;
 }
 
 /**
@@ -68,11 +123,11 @@ export async function speechToText(audio: Blob, filename = "speech.webm"): Promi
   form.append("file", audio, filename);
   form.append("model_id", "scribe_v1");
 
-  const res = await fetch(`${ELEVENLABS_API_BASE}/speech-to-text`, {
-    method: "POST",
-    headers: { "xi-api-key": apiKey() },
-    body: form,
-  });
+  const res = await elevenLabsFetch(
+    "/speech-to-text",
+    { method: "POST", headers: { "xi-api-key": apiKey() }, body: form },
+    SPEECH_TIMEOUT_MS
+  );
 
   if (!res.ok) {
     throw await elevenLabsError(res, "ElevenLabs transcription failed");
@@ -91,8 +146,8 @@ export async function textToSpeechStream(
   text: string,
   voiceId?: string
 ): Promise<ReadableStream<Uint8Array>> {
-  const res = await fetch(
-    `${ELEVENLABS_API_BASE}/text-to-speech/${voiceId || defaultVoiceId()}/stream?output_format=mp3_44100_128`,
+  const res = await elevenLabsFetch(
+    `/text-to-speech/${encodeURIComponent(normalizeVoiceId(voiceId ?? "") || defaultVoiceId())}/stream?output_format=mp3_44100_128`,
     {
       method: "POST",
       headers: {
@@ -110,7 +165,8 @@ export async function textToSpeechStream(
           use_speaker_boost: true,
         },
       }),
-    }
+    },
+    SPEECH_TIMEOUT_MS
   );
 
   if (!res.ok) {

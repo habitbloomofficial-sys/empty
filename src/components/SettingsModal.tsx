@@ -11,6 +11,17 @@ import {
   WhatsAppIcon,
 } from "./Icons";
 import type { IntegrationStatus } from "@/lib/types";
+import { describeClientFetchError, postJson } from "@/lib/clientFetch";
+import { normalizeVoiceId } from "@/lib/voiceId";
+
+interface VoiceOption {
+  id: string;
+  name: string;
+  category: string | null;
+}
+
+/** Short enough not to burn credits, long enough to judge a voice by. */
+const VOICE_TEST_LINE = "All operations are up and running, sir.";
 
 interface SettingView {
   key: string;
@@ -133,12 +144,15 @@ function SaveButton({
   saved,
   disabled,
   checks,
+  extra,
 }: {
   onClick: () => void;
   busy: boolean;
   saved: boolean;
   disabled?: boolean;
   checks?: KeyCheck[];
+  /** Rendered beside Save — a second action that belongs to the same row. */
+  extra?: React.ReactNode;
 }) {
   return (
     <div className="space-y-1.5 pt-0.5">
@@ -151,6 +165,7 @@ function SaveButton({
         >
           {busy ? "Checking…" : "Save"}
         </button>
+        {extra}
         {saved && <span className="text-[11px] font-medium text-sky-700">Saved ✓</span>}
       </div>
       {checks?.map((check) => (
@@ -187,6 +202,11 @@ export function SettingsModal({
   const [copiedRedirect, setCopiedRedirect] = useState(false);
   const [memories, setMemories] = useState<MemoryEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [voices, setVoices] = useState<VoiceOption[]>([]);
+  const [voicesNote, setVoicesNote] = useState<string | null>(null);
+  const [byId, setById] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testNote, setTestNote] = useState<string | null>(null);
 
   const applySettings = useCallback((list: SettingView[]) => {
     const next: Views = {};
@@ -262,6 +282,25 @@ export function SettingsModal({
     };
   }, [provider, savedSection]);
 
+  // The voice list, refetched after a save so a newly added key fills it in.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/voices", { cache: "no-store" });
+        const data = await res.json();
+        if (cancelled) return;
+        setVoices(Array.isArray(data.voices) ? data.voices : []);
+        setVoicesNote(typeof data.error === "string" ? data.error : null);
+      } catch (err) {
+        if (!cancelled) setVoicesNote(describeClientFetchError(err));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [savedSection]);
+
   const draft = (key: string) => drafts[key] ?? "";
   const setDraft = (key: string, value: string) =>
     setDrafts((prev) => ({ ...prev, [key]: value }));
@@ -272,16 +311,14 @@ export function SettingsModal({
     setSavedSection(null);
     setChecks((prev) => ({ ...prev, [section]: [] }));
     try {
-      const res = await fetch("/api/settings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updates),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Couldn't save those settings.");
+      const data = await postJson<{ settings?: SettingView[]; checks?: KeyCheck[] }>(
+        "/api/settings",
+        updates
+      );
       if (Array.isArray(data.settings)) applySettings(data.settings);
-      if (Array.isArray(data.checks)) {
-        setChecks((prev) => ({ ...prev, [section]: data.checks }));
+      const reported = data.checks;
+      if (Array.isArray(reported)) {
+        setChecks((prev) => ({ ...prev, [section]: reported }));
       }
       // Clear the secret inputs — they're saved now, and the masked hint
       // underneath is the confirmation that they landed.
@@ -295,9 +332,40 @@ export function SettingsModal({
       setSavedSection(section);
       onSaved();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(describeClientFetchError(err));
     } finally {
       setBusySection(null);
+    }
+  }
+
+  /**
+   * Speak one line in the chosen voice, before saving it. A voice id is
+   * unreadable, so hearing it is the only check that means anything.
+   */
+  async function testVoice() {
+    setTesting(true);
+    setTestNote(null);
+    try {
+      const id = normalizeVoiceId(draft("ELEVENLABS_VOICE_ID"));
+      const res = await fetch("/api/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: VOICE_TEST_LINE, ...(id ? { voiceId: id } : {}) }),
+        signal: AbortSignal.timeout(45_000),
+      });
+      if (!res.ok) {
+        const body = (await res.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(body?.error || `The server answered ${res.status}.`);
+      }
+      const url = URL.createObjectURL(await res.blob());
+      const audio = new Audio(url);
+      audio.addEventListener("ended", () => URL.revokeObjectURL(url), { once: true });
+      await audio.play();
+      setTestNote(null);
+    } catch (err) {
+      setTestNote(describeClientFetchError(err));
+    } finally {
+      setTesting(false);
     }
   }
 
@@ -460,14 +528,68 @@ export function SettingsModal({
               onChange={(v) => setDraft("ELEVENLABS_API_KEY", v)}
               placeholder={views.ELEVENLABS_API_KEY?.display || "sk_…"}
             />
-            <Field
-              label="Voice ID (optional)"
-              view={views.ELEVENLABS_VOICE_ID}
-              value={draft("ELEVENLABS_VOICE_ID")}
-              onChange={(v) => setDraft("ELEVENLABS_VOICE_ID", v)}
-              placeholder="Leave blank for the default 'Adam' voice"
-              hint="Find voice IDs in your ElevenLabs voice library."
-            />
+            {/* A voice id is 20 unreadable characters, so picking from the
+                account's own voices beats typing one and hoping. The id box is
+                still there for a voice the list doesn't know about. */}
+            {voices.length > 0 && !byId ? (
+              <label className="block">
+                <span className="mb-1 block text-[11px] font-semibold text-ink-900">
+                  Voice
+                </span>
+                <select
+                  value={
+                    voices.some((v) => v.id === normalizeVoiceId(draft("ELEVENLABS_VOICE_ID")))
+                      ? normalizeVoiceId(draft("ELEVENLABS_VOICE_ID"))
+                      : ""
+                  }
+                  onChange={(e) => {
+                    if (e.target.value === "__other__") {
+                      setById(true);
+                      return;
+                    }
+                    setDraft("ELEVENLABS_VOICE_ID", e.target.value);
+                  }}
+                  className="w-full rounded-lg border border-white/80 bg-white/70 px-3 py-2 text-xs text-ink-900 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/30"
+                >
+                  <option value="">Default voice (Adam)</option>
+                  {voices.map((voice) => (
+                    <option key={voice.id} value={voice.id}>
+                      {voice.name}
+                      {voice.category ? ` — ${voice.category}` : ""}
+                    </option>
+                  ))}
+                  <option value="__other__">Paste a voice ID instead…</option>
+                </select>
+                <span className="mt-1 block text-[10px] text-ink-700/50">
+                  These are the voices in your ElevenLabs account. To use one from
+                  the Voice Library, open it there and click “Add to my voices” —
+                  it appears here straight after.
+                </span>
+              </label>
+            ) : (
+              <Field
+                label="Voice ID"
+                view={views.ELEVENLABS_VOICE_ID}
+                value={draft("ELEVENLABS_VOICE_ID")}
+                onChange={(v) => setDraft("ELEVENLABS_VOICE_ID", v)}
+                placeholder="Leave blank for the default 'Adam' voice"
+                hint={
+                  voicesNote ??
+                  "Paste the ID from ElevenLabs → Voices → My Voices. A share link works too."
+                }
+              />
+            )}
+
+            {voices.length > 0 && byId && (
+              <button
+                type="button"
+                onClick={() => setById(false)}
+                className="text-[11px] font-medium text-sky-600 hover:underline"
+              >
+                ← Back to my voices
+              </button>
+            )}
+
             <SaveButton
               onClick={() =>
                 save("voice", {
@@ -480,7 +602,22 @@ export function SettingsModal({
               busy={busySection === "voice"}
               saved={savedSection === "voice"}
               checks={checks.voice}
+              extra={
+                <button
+                  type="button"
+                  onClick={testVoice}
+                  disabled={testing || !status?.elevenlabs}
+                  className="rounded-full border border-sky-500/40 px-3.5 py-1.5 text-xs font-semibold text-sky-700 transition hover:bg-sky-500/10 disabled:opacity-40"
+                >
+                  {testing ? "Speaking…" : "Hear it"}
+                </button>
+              }
             />
+            {testNote && (
+              <p className="rounded-lg bg-rose-500/10 px-2.5 py-1.5 text-[11px] text-rose-700">
+                ⚠ {testNote}
+              </p>
+            )}
           </Section>
 
           <Section

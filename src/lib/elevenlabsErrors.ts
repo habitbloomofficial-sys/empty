@@ -49,6 +49,14 @@ export function interpretElevenLabsError(
     };
   }
 
+  if (/voice_not_found|voice does not exist|invalid[_ ]voice/i.test(haystack)) {
+    return {
+      keyIsInvalid: false,
+      message:
+        "The key is fine, but that voice id isn't in your ElevenLabs library. A voice in the Voice Library has an id before it has anything to do with your account — open it there, click \u201CAdd to my voices\u201D, then use the id shown under My Voices.",
+    };
+  }
+
   if (/missing_permissions|missing the permission/i.test(haystack)) {
     return {
       keyIsInvalid: false,

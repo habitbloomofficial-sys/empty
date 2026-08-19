@@ -12,6 +12,7 @@ import { ChatIcon, CloseIcon } from "./Icons";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
 import { useVoicePlayer } from "@/hooks/useVoicePlayer";
 import { useWakeWord } from "@/hooks/useWakeWord";
+import { describeClientFetchError } from "@/lib/clientFetch";
 import { nextGreeting } from "@/lib/greeting";
 import { SpeechChunker } from "@/lib/speechChunks";
 import { SmallTalk, describeActions } from "@/lib/smallTalk";
@@ -245,7 +246,10 @@ export default function JarvisApp() {
     } catch (err) {
       stopFillers();
       setIsThinking(false);
-      setError(err instanceof Error ? err.message : String(err));
+      // Same treatment as the Settings panel: a request that never reached the
+      // server says "Failed to fetch" and nothing else, which reads as JARVIS
+      // being broken rather than the terminal having been closed.
+      setError(describeClientFetchError(err));
     } finally {
       stopFillers();
     }
