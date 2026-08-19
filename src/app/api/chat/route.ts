@@ -3,7 +3,8 @@ import OpenAI from "openai";
 import { getAI, getAIModel, getReasoningEffort, isUnsupportedParameter } from "@/lib/ai";
 import { adoptGeminiReplacement, isModelNotFound } from "@/lib/geminiModel";
 import { buildSystemPrompt } from "@/lib/systemPrompt";
-import { availableTools, executeTool } from "@/lib/tools";
+import { availableTools, executeTool, TOOL_NAMES } from "@/lib/tools";
+import { normalizeToolName } from "@/lib/toolCalls";
 import type { ActionLogEntry } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -123,7 +124,11 @@ export async function POST(req: NextRequest) {
           }
           modelMs += Date.now() - modelStart;
 
-          const calls = [...partials.values()].filter((call) => call.name);
+          // Providers that resend a whole tool call rather than streaming it
+          // in pieces leave the name doubled up; collapse it before use.
+          const calls = [...partials.values()]
+            .map((call) => ({ ...call, name: normalizeToolName(call.name, TOOL_NAMES) }))
+            .filter((call) => call.name);
           if (calls.length === 0) {
             send({
               type: "done",

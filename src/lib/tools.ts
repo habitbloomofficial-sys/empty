@@ -9,6 +9,7 @@ import {
 } from "./gmail";
 import { sendWhatsAppMessage, isWhatsAppConfigured } from "./whatsapp";
 import { openSpotify, openWebsite, isDesktopControlEnabled } from "./desktop";
+import { normalizeToolName, parseToolArguments } from "./toolCalls";
 import type { ActionLogEntry } from "./types";
 
 const GMAIL_TOOLS = new Set([
@@ -184,6 +185,11 @@ export const toolDefinitions: OpenAI.Chat.Completions.ChatCompletionTool[] = [
   },
 ];
 
+/** Every tool name that exists, for validating what comes back off the stream. */
+export const TOOL_NAMES: readonly string[] = toolDefinitions.map((tool) =>
+  tool.type === "function" ? tool.function.name : ""
+);
+
 /**
  * Only the tools that can actually do something. Offering Gmail tools with no
  * Gmail connected doesn't just waste prompt tokens — the model tries one, it
@@ -208,38 +214,60 @@ export function availableTools(): OpenAI.Chat.Completions.ChatCompletionTool[] {
   });
 }
 
+/** Read a string argument, treating blank and wrong-typed values as absent. */
+function text(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+/** Read a number argument, tolerating a model that sends it as a string. */
+function count(value: unknown): number | undefined {
+  const n = typeof value === "string" ? Number(value) : value;
+  return typeof n === "number" && Number.isFinite(n) ? n : undefined;
+}
+
+/** A required string argument — a missing one is a failed call, not a guess. */
+function required(value: unknown, field: string): string {
+  const found = text(value);
+  if (!found) throw new Error(`That action needs a "${field}", sir, and none was given.`);
+  return found;
+}
+
 // Tool arguments are snake_case for the model's benefit; the Gmail client
 // takes camelCase.
-function toComposeParams(args: {
-  to?: string;
-  subject?: string;
-  body?: string;
-  reply_to_message_id?: string;
-}): ComposeParams {
+function toComposeParams(args: Record<string, unknown>): ComposeParams {
   return {
-    to: args.to,
-    subject: args.subject,
-    body: args.body ?? "",
-    replyToMessageId: args.reply_to_message_id,
+    to: text(args.to),
+    subject: text(args.subject),
+    body: text(args.body) ?? "",
+    replyToMessageId: text(args.reply_to_message_id),
   };
 }
 
 export async function executeTool(
-  name: string,
+  rawName: string,
   rawArgs: string
 ): Promise<{ result: unknown; log: ActionLogEntry }> {
-  const args = rawArgs ? JSON.parse(rawArgs) : {};
+  // Everything below runs inside the try, so a malformed tool call comes back
+  // as a failed action the model can react to rather than an exception that
+  // takes down the whole reply.
+  const name = normalizeToolName(rawName, TOOL_NAMES);
   try {
+    const args = parseToolArguments(rawArgs);
     switch (name) {
       case "search_emails": {
-        const results = await searchEmails(args.query ?? "", args.max_results ?? 8);
+        const query = text(args.query) ?? "";
+        const results = await searchEmails(query, count(args.max_results) ?? 8);
         return {
           result: results,
-          log: { tool: name, summary: `Searched emails for "${args.query || "recent"}" — ${results.length} found`, ok: true },
+          log: {
+            tool: name,
+            summary: `Searched emails for "${query || "recent"}" — ${results.length} found`,
+            ok: true,
+          },
         };
       }
       case "read_email": {
-        const result = await readEmail(args.message_id);
+        const result = await readEmail(required(args.message_id, "message id"));
         return {
           result,
           log: { tool: name, summary: `Read email: ${result.subject}`, ok: true },
@@ -268,12 +296,13 @@ export async function executeTool(
         };
       }
       case "open_spotify": {
-        const result = await openSpotify(args.query);
+        const query = text(args.query);
+        const result = await openSpotify(query);
         return {
           result,
           log: {
             tool: name,
-            summary: args.query ? `Opened Spotify — searched "${args.query}"` : "Opened Spotify",
+            summary: query ? `Opened Spotify — searched "${query}"` : "Opened Spotify",
             ok: true,
           },
         };
@@ -290,17 +319,29 @@ export async function executeTool(
         };
       }
       case "open_website": {
-        const result = await openWebsite(args);
+        const result = await openWebsite({
+          site: text(args.site),
+          url: text(args.url),
+          query: text(args.query),
+        });
         return {
           result,
           log: { tool: name, summary: `Opened ${result.url}`, ok: true },
         };
       }
       case "send_whatsapp_message": {
-        const result = await sendWhatsAppMessage(args);
+        const to = text(args.to) ?? "";
+        const result = await sendWhatsAppMessage({
+          to,
+          message: required(args.message, "message"),
+        });
         return {
           result,
-          log: { tool: name, summary: `Sent WhatsApp message${args.to ? ` to ${args.to}` : ""}`, ok: true },
+          log: {
+            tool: name,
+            summary: `Sent WhatsApp message${to ? ` to ${to}` : ""}`,
+            ok: true,
+          },
         };
       }
       default:
