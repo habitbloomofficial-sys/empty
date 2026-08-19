@@ -129,6 +129,52 @@ export function isUnsupportedParameter(error: unknown, parameter: string): boole
   );
 }
 
+/**
+ * A ceiling on the reply length.
+ *
+ * Without one, providers assume the model's own maximum — 16k tokens on many
+ * OpenRouter models — and OpenRouter refuses the request outright if your
+ * balance couldn't cover a reply that long, even though the actual reply would
+ * be three sentences. It also stops a runaway answer costing real money.
+ * JARVIS is spoken aloud; a couple of thousand tokens is already far more than
+ * anyone wants read to them.
+ */
+const DEFAULT_MAX_TOKENS = 2000;
+
+/** Lowered at runtime when a provider tells us what the balance can afford. */
+let learnedMaxTokens: number | null = null;
+
+export function getMaxTokens(): number {
+  const configured = Number(getSetting("MAX_TOKENS"));
+  const base =
+    Number.isFinite(configured) && configured > 0 ? Math.floor(configured) : DEFAULT_MAX_TOKENS;
+  return learnedMaxTokens ? Math.min(base, learnedMaxTokens) : base;
+}
+
+/**
+ * "You requested up to 16384 tokens, but can only afford 4000." Take the
+ * number it offers rather than guessing, and keep some headroom — the balance
+ * can move between one request and the next.
+ */
+export function adoptAffordableLimit(error: unknown): number | null {
+  const message = error instanceof Error ? error.message : String(error);
+  const match = /can only afford\s+(\d+)/i.exec(message);
+  if (!match) return null;
+
+  const affordable = Math.max(256, Math.floor(Number(match[1]) * 0.8));
+  if (learnedMaxTokens !== null && affordable >= learnedMaxTokens) return null;
+
+  learnedMaxTokens = affordable;
+  return affordable;
+}
+
+/** True when a provider is refusing on cost rather than on correctness. */
+export function isPaymentRequired(error: unknown): boolean {
+  const status = (error as { status?: number })?.status;
+  const message = error instanceof Error ? error.message : String(error);
+  return status === 402 || /can only afford|more credits/i.test(message);
+}
+
 export function getAIModel(): string {
   const provider = detectProvider();
   if (provider === "gemini") return geminiModel();

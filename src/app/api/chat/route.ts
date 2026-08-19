@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
-import { getAI, getAIModel, getReasoningEffort } from "@/lib/ai";
+import {
+  adoptAffordableLimit,
+  getAI,
+  getAIModel,
+  getMaxTokens,
+  getReasoningEffort,
+  isPaymentRequired,
+} from "@/lib/ai";
 import { adoptGeminiReplacement, isModelNotFound } from "@/lib/geminiModel";
 import { buildSystemPrompt } from "@/lib/systemPrompt";
 import { availableTools, executeTool, TOOL_NAMES } from "@/lib/tools";
@@ -33,6 +40,9 @@ function describeModelFailure(error: unknown): string {
   }
   if (status === 400 && /no body/i.test(message)) {
     return "The AI provider rejected the request, sir, without saying why. Worth a retry, or check the model name in Settings.";
+  }
+  if (status === 402 || /more credits|can only afford/i.test(message)) {
+    return "Your OpenRouter balance won't cover a reply, sir — add credit at openrouter.ai/settings/credits, or pick a cheaper model in Settings.";
   }
   if (status && status >= 500) {
     return "The AI provider is having trouble at their end, sir — try again shortly.";
@@ -105,6 +115,10 @@ export async function POST(req: NextRequest) {
       model: getAIModel(),
       messages,
       stream: true,
+      // Always capped. Left unset, providers assume the model's own maximum
+      // and OpenRouter refuses the request if the balance couldn't cover a
+      // reply that long — even when the real answer is one sentence.
+      max_tokens: getMaxTokens(),
       ...(tools.length > 0 ? { tools } : {}),
       ...variants[variantIndex],
     } as OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming;
@@ -125,6 +139,9 @@ export async function POST(req: NextRequest) {
         return await ai.chat.completions.create(request());
       } catch (err) {
         if (isModelNotFound(err) && adoptGeminiReplacement(err)) continue;
+        // Refused on cost: the provider says what the balance can afford, so
+        // take that number and ask again rather than failing the turn.
+        if (isPaymentRequired(err) && adoptAffordableLimit(err)) continue;
         // Gemini returns streaming errors as a JSON array, which the SDK can't
         // read — so the reason is often literally "400 status code (no body)".
         // Matching on the message is therefore hopeless; step down on any 400.

@@ -58,6 +58,13 @@ and read email. Get a key at [openrouter.ai/keys](https://openrouter.ai/keys).
 All three speak the same OpenAI-compatible protocol, so every feature works
 identically whichever you choose.
 
+Replies are capped at 2000 tokens. Left uncapped, providers assume the model's
+own maximum — 16k on many OpenRouter models — and OpenRouter refuses a request
+outright if your balance couldn't cover a reply that long, even when the actual
+answer is one sentence. If it ever refuses anyway, JARVIS reads the figure it
+says you can afford and asks again within it. Raise or lower the cap with
+`MAX_TOKENS`.
+
 Env equivalents: `GEMINI_API_KEY` / `OPENROUTER_API_KEY` / `OPENAI_API_KEY`,
 with optional `GEMINI_MODEL`, `OPENROUTER_MODEL` and `OPENAI_MODEL`. If several
 keys are set, `AI_PROVIDER=openai|gemini|openrouter` breaks the tie.
