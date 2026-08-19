@@ -44,6 +44,12 @@ export interface IntegrationStatus {
   whatsapp: boolean;
   /** Whether JARVIS may open or close apps on this machine. */
   desktopControl: boolean;
+  /** Whether a YouTube key is available for channel statistics. */
+  youtube: boolean;
+  /** The channel reported on by default, if one is set. */
+  youtubeChannel: string | null;
+  /** The folders JARVIS is allowed to search, by label. */
+  fileRoots: string[];
   /** How many things he currently remembers about you. */
   memories: number;
 }

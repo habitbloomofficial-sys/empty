@@ -16,6 +16,8 @@ import {
   isDesktopControlEnabled,
 } from "./desktop";
 import { forget, remember } from "./memory";
+import { channelStats, isYouTubeConfigured, recentVideos } from "./youtube";
+import { isFileSearchEnabled, openFile, searchFiles } from "./files";
 import { normalizeToolName, parseToolArguments } from "./toolCalls";
 import type { ActionLogEntry } from "./types";
 
@@ -256,6 +258,84 @@ export const toolDefinitions: OpenAI.Chat.Completions.ChatCompletionTool[] = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "youtube_stats",
+      description:
+        "Look up statistics for a YouTube channel — his own unless he names another. Returns subscribers, total views and video count, and by default the most recent uploads with the views, likes and comments on each. Use this for anything about how the channel or its videos are doing.",
+      parameters: {
+        type: "object",
+        properties: {
+          channel: {
+            type: "string",
+            description:
+              "Which channel: an @handle, a channel URL, or a channel id. Leave this out for his own channel, which is already configured.",
+          },
+          include_videos: {
+            type: "boolean",
+            description:
+              "Include recent uploads and their numbers. Defaults to true; pass false when only the channel totals are wanted.",
+          },
+          limit: {
+            type: "number",
+            description: "How many recent uploads to look at (default 10, max 50).",
+          },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "search_files",
+      description:
+        "Search his own folders — Desktop, Documents, Downloads, Pictures, Videos, Music — for a file by name. Returns the full path, folder, size and last-changed date of each match. Use this whenever he asks where a file is, or to find a document, picture, video, or something he downloaded. This finds files; it does not read what is inside them.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: {
+            type: "string",
+            description:
+              "Distinctive words from the file's name, e.g. \"tax return 2024\". Not a sentence — every word given must appear in the name.",
+          },
+          folder: {
+            type: "string",
+            description: "Limit the search to one folder by name, e.g. \"Downloads\".",
+          },
+          kind: {
+            type: "string",
+            description:
+              "Limit to a type of file: document, spreadsheet, presentation, image, video, audio, archive, code — or a bare extension such as \"pdf\".",
+          },
+          limit: {
+            type: "number",
+            description: "How many matches to return (default 12, max 40).",
+          },
+        },
+        required: ["query"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "open_file",
+      description:
+        "Open a file or folder in whatever program his computer normally uses for it. Only ever pass a path that came back from search_files — never one assembled from guesswork.",
+      parameters: {
+        type: "object",
+        properties: {
+          path: {
+            type: "string",
+            description: "The full path of the file, exactly as search_files reported it.",
+          },
+        },
+        required: ["path"],
+      },
+    },
+  },
 ];
 
 /** Every tool name that exists, for validating what comes back off the stream. */
@@ -280,6 +360,8 @@ export function availableTools(): OpenAI.Chat.Completions.ChatCompletionTool[] {
     if (name === "open_app" || name === "close_app" || name === "open_website") {
       return isDesktopControlEnabled();
     }
+    if (name === "youtube_stats") return isYouTubeConfigured();
+    if (name === "search_files" || name === "open_file") return isFileSearchEnabled();
     // Hologram v3 is a panel in this app, not an action on the machine, so it
     // isn't gated behind the desktop-control switch.
     if (name === "open_hologram") return true;
@@ -427,6 +509,60 @@ export async function executeTool(
           result,
           log: { tool: name, summary: `Opened ${result.url}`, ok: true },
         };
+      }
+      case "youtube_stats": {
+        const channel = text(args.channel);
+        const wantsVideos = args.include_videos !== false;
+
+        if (!wantsVideos) {
+          const stats = await channelStats(channel);
+          return {
+            result: stats,
+            log: {
+              tool: name,
+              summary: `${stats.title}: ${stats.subscribers?.toLocaleString() ?? "hidden"} subscribers, ${stats.views.toLocaleString()} views`,
+              ok: true,
+            },
+          };
+        }
+
+        const report = await recentVideos(channel, count(args.limit) ?? 10);
+        return {
+          result: report,
+          log: {
+            tool: name,
+            summary: `${report.channel.title}: ${report.channel.subscribers?.toLocaleString() ?? "hidden"} subscribers, ${report.videos.length} recent uploads`,
+            ok: true,
+          },
+        };
+      }
+      case "search_files": {
+        const query = required(args.query, "search");
+        const outcome = await searchFiles({
+          query,
+          folder: text(args.folder),
+          kind: text(args.kind),
+          limit: count(args.limit),
+        });
+        return {
+          result: {
+            ...outcome,
+            // Said plainly in the result so the model repeats it rather than
+            // reporting "nothing found" as though the folders were empty.
+            note: outcome.truncated
+              ? "The search hit its time limit before covering everything, so there may be more."
+              : undefined,
+          },
+          log: {
+            tool: name,
+            summary: `Searched ${outcome.searched.join(", ")} for "${query}" — ${outcome.matches.length} found`,
+            ok: true,
+          },
+        };
+      }
+      case "open_file": {
+        const result = await openFile(required(args.path, "path"));
+        return { result, log: { tool: name, summary: result.note, ok: true } };
       }
       case "send_whatsapp_message": {
         const to = text(args.to) ?? "";

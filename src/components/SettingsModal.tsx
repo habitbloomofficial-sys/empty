@@ -5,9 +5,11 @@ import {
   BrainIcon,
   ChatIcon,
   CloseIcon,
+  FolderIcon,
   MailIcon,
   MemoryIcon,
   MusicIcon,
+  PlayIcon,
   WhatsAppIcon,
 } from "./Icons";
 import type { IntegrationStatus } from "@/lib/types";
@@ -810,9 +812,112 @@ export function SettingsModal({
               })}
             </div>
             <p className="text-[10px] text-ink-700/50">
-              This permits opening Spotify and ordinary web pages, nothing more —
-              no local files, no other protocols, and no general &quot;run a
-              command&quot; ability behind it.
+              This permits opening Spotify, ordinary web pages, and files found by
+              the search below — nothing else. No other protocols, and no general
+              &quot;run a command&quot; ability behind it.
+            </p>
+          </Section>
+
+          <Section
+            icon={<PlayIcon className="h-4 w-4" />}
+            title="YouTube"
+            ok={Boolean(status?.youtube)}
+          >
+            <p>
+              Lets JARVIS report on your channel — subscribers, total views, and how
+              your recent uploads are doing. Ask him &quot;how&apos;s the channel
+              doing?&quot; once this is set.
+            </p>
+            <Field
+              label="YouTube Data API key"
+              view={views.YOUTUBE_API_KEY}
+              value={draft("YOUTUBE_API_KEY")}
+              onChange={(v) => setDraft("YOUTUBE_API_KEY", v)}
+              placeholder="AIza…"
+              hint={
+                <>
+                  Free from{" "}
+                  <a
+                    href="https://console.cloud.google.com/apis/library/youtube.googleapis.com"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-sky-600 underline"
+                  >
+                    Google Cloud
+                  </a>
+                  : enable “YouTube Data API v3”, then create an API key. Leave this
+                  blank to try your Gemini key — it works if YouTube is enabled on the
+                  same project.
+                </>
+              }
+            />
+            <Field
+              label="Your channel"
+              view={views.YOUTUBE_CHANNEL}
+              value={draft("YOUTUBE_CHANNEL")}
+              onChange={(v) => setDraft("YOUTUBE_CHANNEL", v)}
+              placeholder="@yourhandle"
+              hint="Your @handle, channel URL, or channel ID — whichever you have to hand."
+            />
+            <SaveButton
+              onClick={() =>
+                save("youtube", {
+                  ...(draft("YOUTUBE_API_KEY").trim()
+                    ? { YOUTUBE_API_KEY: draft("YOUTUBE_API_KEY") }
+                    : {}),
+                  YOUTUBE_CHANNEL: draft("YOUTUBE_CHANNEL"),
+                })
+              }
+              busy={busySection === "youtube"}
+              saved={savedSection === "youtube"}
+              checks={checks.youtube}
+            />
+            <p className="text-[10px] text-ink-700/50">
+              These are the public numbers, the same ones on your channel page.
+              YouTube rounds subscriber counts above a thousand, and watch time and
+              impressions live in Studio behind a separate login.
+            </p>
+          </Section>
+
+          <Section
+            icon={<FolderIcon className="h-4 w-4" />}
+            title="Files"
+            ok={(status?.fileRoots?.length ?? 0) > 0}
+          >
+            <p>
+              JARVIS can find files in your own folders — ask him &quot;where&apos;s
+              my tax return?&quot; or &quot;find the video I downloaded
+              yesterday&quot; — and open what he finds. He can see where files are,
+              not what is inside them.
+            </p>
+            {status?.fileRoots && status.fileRoots.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {status.fileRoots.map((root) => (
+                  <span
+                    key={root}
+                    className="rounded-full bg-sky-500/10 px-2 py-0.5 text-[10px] font-medium text-sky-700"
+                  >
+                    {root}
+                  </span>
+                ))}
+              </div>
+            )}
+            <Field
+              label="Extra folders (optional)"
+              view={views.FILE_SEARCH_ROOTS}
+              value={draft("FILE_SEARCH_ROOTS")}
+              onChange={(v) => setDraft("FILE_SEARCH_ROOTS", v)}
+              placeholder="D:\\Projects; E:\\Archive"
+              hint="Full paths, separated by semicolons. Everything outside these folders and the ones above is invisible to him."
+            />
+            <SaveButton
+              onClick={() => save("files", { FILE_SEARCH_ROOTS: draft("FILE_SEARCH_ROOTS") })}
+              busy={busySection === "files"}
+              saved={savedSection === "files"}
+            />
+            <p className="text-[10px] text-ink-700/50">
+              Searching follows the Apps &amp; websites switch above — turn that off
+              and file search goes with it.
             </p>
           </Section>
           <Section

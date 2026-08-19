@@ -10,11 +10,20 @@ your email and send WhatsApp messages for you.
 - **Email** — Gmail, via your own Google OAuth app
 - **WhatsApp** — Twilio's WhatsApp API
 - **Music & web** — opens and closes Spotify and Discord, and opens any website
+- **YouTube** — subscribers, views, and how your recent uploads are performing
+- **Files** — finds things in your own folders and opens them
 - **Hologram v3** — drop in a picture and see it projected as a rotating 3D hologram
 - **Memory** — remembers things about you between sessions
 - **Interface** — Next.js + Tailwind + react-three-fiber, light-blue glass theme
 
 ## 1. Install and run
+
+Double-click **START-JARVIS.bat** (Windows) or run **./start-jarvis.sh** (macOS
+and Linux). The first run installs what's needed and prepares the app; after
+that it starts in a couple of seconds and opens your browser on its own.
+Closing the window shuts JARVIS down.
+
+Or, from a terminal:
 
 ```bash
 npm install
@@ -27,6 +36,41 @@ Open http://localhost:3000.
 dev` exists for editing code: it recompiles each page and route the first time
 you hit it, which on Windows can add tens of seconds to your first request and
 makes JARVIS feel far slower than he is.
+
+### JARVIS is yours, and doesn't need anything to stay running
+
+Nothing here calls Anthropic, and nothing here needs Claude, Claude Code, or
+any subscription to them. Claude Code was the tool used to *write* this; it has
+no part in *running* it. The whole thing is an ordinary Node.js app in a folder
+on your computer, and it keeps working whether or not that tool is ever opened
+again — check `package.json` if you want to see for yourself: the dependencies
+are Next.js, React, three.js, the OpenAI SDK, googleapis, and Twilio. No
+Anthropic anything.
+
+What JARVIS does need is:
+
+- **Node.js**, installed once from [nodejs.org](https://nodejs.org/en/download).
+- **This folder**, wherever you keep it. Move it, back it up, copy it to another
+  machine — it's self-contained.
+- **Your own API keys**, which you already have. They live in `data/settings.json`
+  inside this folder, on your computer only. That file is never committed to git
+  and never leaves the machine.
+- **An internet connection**, because Gemini, OpenRouter, ElevenLabs and Gmail
+  are online services. Those are your accounts, billed to you, unrelated to any
+  subscription used to build this.
+
+**To start it without a terminal**, right-click `START-JARVIS.bat` → *Send to* →
+*Desktop (create shortcut)*. Rename the shortcut to JARVIS, and give it an icon
+via right-click → Properties → Change Icon if you like.
+
+**To start it automatically when you log in**, press `Win`+`R`, type
+`shell:startup`, press Enter, and drop a shortcut to `START-JARVIS.bat` into the
+folder that opens.
+
+**To keep it up to date**, run `git pull` and then double-click
+`REBUILD-JARVIS.bat`. Your settings and memories live in `data/` and are left
+alone by a rebuild. If you'd rather stop pulling changes entirely, that's fine
+too — the copy you have keeps working exactly as it is.
 
 ## 2. Configuration
 
@@ -244,6 +288,65 @@ something, he should mention it rather than act on it.
 Turn the whole capability off in **Settings → Apps & websites**.
 
 Env equivalent: `DESKTOP_CONTROL=off`.
+
+### YouTube (optional — lets JARVIS report on your channel)
+
+Ask *"how's the channel doing?"*, *"how did my last video do?"*, or *"what's my
+best upload this month?"* and he'll go and look.
+
+1. Open [Google Cloud Console](https://console.cloud.google.com/apis/library/youtube.googleapis.com)
+   and enable **YouTube Data API v3**. It's free — 10,000 units a day, and a
+   full check-in costs about three.
+2. **APIs & Services → Credentials → Create credentials → API key.**
+3. If you set restrictions on the key, use **IP addresses** or none. An
+   HTTP-referrer restriction will not work: JARVIS calls YouTube from your
+   computer, not from a web page.
+4. Paste it into **Settings → YouTube**, along with your channel — the @handle,
+   the channel URL, or the channel ID, whichever you have. He confirms the
+   channel by name so you can see he found the right one.
+
+Already have a Gemini key? Leave the YouTube key blank and he'll try it. It
+works if YouTube Data API v3 is enabled on the same Google project, and he says
+so plainly if it isn't.
+
+**What he can see:** subscribers, total views, video count, and per-video views,
+likes and comments for recent uploads — the public numbers, the same ones on
+your channel page. YouTube itself rounds subscriber counts above a thousand, so
+he says when a figure is approximate. Watch time, impressions and click-through
+are Analytics-API data that needs an owner login, and he doesn't have it.
+
+Env equivalents: `YOUTUBE_API_KEY`, `YOUTUBE_CHANNEL`.
+
+### Files (no setup needed)
+
+Ask *"where's my tax return?"*, *"find the invoice from March"*, *"what did I
+download yesterday?"* — and then *"open it"*.
+
+He searches by the words in a file's name and reports the path, folder, size and
+last-changed date of what he finds, best match first. Ties break towards the
+file you touched most recently, which is almost always the one you meant. You
+can narrow by folder (*"in Downloads"*) or by type (*"the PDF"*, *"that video"*).
+
+**Where he can look.** Your Desktop, Documents, Downloads, Pictures, Videos and
+Music, plus the OneDrive versions of those if OneDrive has taken them over. Add
+more in **Settings → Files** — full paths separated by semicolons. Everything
+outside that list is invisible to him: not filtered out of the results, never
+visited.
+
+**What this can and can't do.** It finds files and opens them; it does not read
+what is inside them. A file can only be opened if it was found under one of the
+folders above, so a path that came from anywhere else — including one the model
+invented — is refused. Symlinks are never followed, which is the one way a
+search that starts inside your Documents could otherwise end up somewhere else.
+System and dependency folders (`node_modules`, `AppData`, `Windows`, dotfolders)
+are skipped, and a search gives up after six seconds rather than grinding
+through a whole disk — when it does, he tells you the answer may be incomplete
+instead of claiming there's nothing there.
+
+File search follows the same switch as apps and websites: turn off **Settings →
+Apps & websites** and it goes with it.
+
+Env equivalent: `FILE_SEARCH_ROOTS=D:\Projects;E:\Archive`.
 
 ## 3. Using it
 

@@ -161,3 +161,33 @@ export function EarIcon({ className }: IconProps) {
     </svg>
   );
 }
+
+export function PlayIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className}>
+      <rect
+        x="2.5"
+        y="5"
+        width="19"
+        height="14"
+        rx="4"
+        stroke="currentColor"
+        strokeWidth="1.6"
+      />
+      <path d="M10 9.2 15 12l-5 2.8V9.2Z" fill="currentColor" />
+    </svg>
+  );
+}
+
+export function FolderIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className}>
+      <path
+        d="M3 7.5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.5.7l1 1.2H19a2 2 0 0 1 2 2v7.1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7.5Z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}

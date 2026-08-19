@@ -1,0 +1,4 @@
+# Batch files are read by cmd.exe, which needs CRLF. Everything else stays as
+# it is so a checkout on any platform produces a working launcher.
+*.bat text eol=crlf
+*.sh text eol=lf

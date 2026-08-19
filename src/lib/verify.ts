@@ -39,6 +39,8 @@ const VERIFIABLE: Partial<Record<SettingKey, Verifier>> = {
   OPENAI_API_KEY: verifyOpenAI,
   GEMINI_API_KEY: verifyGemini,
   OPENROUTER_API_KEY: verifyOpenRouter,
+  YOUTUBE_API_KEY: verifyYouTubeKey,
+  YOUTUBE_CHANNEL: verifyYouTubeChannel,
 };
 
 export function isVerifiableKey(key: SettingKey): boolean {
@@ -142,6 +144,61 @@ async function verifyVoiceId(value: string): Promise<string> {
   const verdict = interpretElevenLabsError(res.status, await res.text());
   if (verdict.keyIsInvalid === true) throw new Error(verdict.message);
   return `Voice id saved, but ElevenLabs wouldn't confirm it: ${verdict.message}`;
+}
+
+/**
+ * A YouTube key, checked against the cheapest call in the API.
+ *
+ * i18nLanguages costs one quota unit and names nothing, which makes it a
+ * better probe than looking up a real channel: it proves the key works and
+ * that YouTube Data API v3 is switched on, without spending the daily budget
+ * or hard-coding somebody else's channel into this file.
+ */
+async function verifyYouTubeKey(value: string): Promise<string> {
+  const res = await fetch(
+    `https://www.googleapis.com/youtube/v3/i18nLanguages?part=snippet&key=${encodeURIComponent(value)}`,
+    { cache: "no-store", ...timed() }
+  );
+  if (res.ok) return "YouTube key verified.";
+
+  const body = await res.text();
+  if (/SERVICE_DISABLED|has not been used in project|is disabled/i.test(body)) {
+    throw new Error(
+      "That key is real, but YouTube Data API v3 isn't enabled for its Google project. Open console.cloud.google.com → APIs & Services → Library, search “YouTube Data API v3”, and enable it — it's free."
+    );
+  }
+  if (/ipRefererBlocked|API_KEY_HTTP_REFERRER_BLOCKED|referer/i.test(body)) {
+    throw new Error(
+      "That key is restricted to particular websites. JARVIS calls YouTube from your computer rather than a web page, so set the key's Application restrictions to “None”."
+    );
+  }
+  if (/API_KEY_INVALID|API key not valid/i.test(body)) {
+    throw new Error("Google says that key isn't valid. Copy it again in full.");
+  }
+  return `Saved, but Google wouldn't confirm it (HTTP ${res.status}).`;
+}
+
+/** The channel itself — resolved and named back, so it's clear it's the right one. */
+async function verifyYouTubeChannel(value: string): Promise<string> {
+  if (!getSetting("YOUTUBE_API_KEY") && !getSetting("GEMINI_API_KEY")) {
+    return "Channel saved. Add a YouTube key and I'll confirm I can find it.";
+  }
+  const { channelStats } = await import("./youtube");
+  let stats: Awaited<ReturnType<typeof channelStats>>;
+  try {
+    stats = await channelStats(value);
+  } catch (err) {
+    // The key check above already said this, in the same panel, a line higher.
+    // Saying it twice reads as two problems.
+    if (/key isn't valid|isn't switched on|restricted to particular|quota/i.test(String(err))) {
+      return "Channel saved — I'll confirm it once the key above is working.";
+    }
+    throw err;
+  }
+  const subscribers = stats.subscribersHidden
+    ? "subscribers hidden"
+    : `${stats.subscribers?.toLocaleString() ?? "?"} subscribers`;
+  return `Found “${stats.title}” — ${subscribers}, ${stats.videos.toLocaleString()} videos.`;
 }
 
 async function verifyOpenAI(value: string): Promise<string> {

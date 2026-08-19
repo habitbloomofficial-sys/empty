@@ -511,3 +511,19 @@ export async function closeApp(id: AppId): Promise<AppActionResult> {
   }
   return { app: id, note: `Closed ${app.label}.` };
 }
+
+/**
+ * Open a local file or folder with whatever application the OS has registered
+ * for it.
+ *
+ * The path is not validated here, deliberately: it must already have come back
+ * from a search inside an allowed root (see resolveInsideRoots in files.ts).
+ * Keeping the check there means there is exactly one place that decides what
+ * is reachable, rather than two that can disagree. What this side guarantees
+ * is that the path stays one argument — execFile takes an array, so no shell
+ * ever sees it and nothing in a filename can become a command.
+ */
+export async function openLocalPath(target: string): Promise<void> {
+  requireDesktopControl();
+  await launch(target);
+}

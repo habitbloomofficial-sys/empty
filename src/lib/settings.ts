@@ -29,7 +29,10 @@ export const SETTING_KEYS = [
   "TWILIO_AUTH_TOKEN",
   "TWILIO_WHATSAPP_FROM",
   "TWILIO_WHATSAPP_TO_DEFAULT",
+  "YOUTUBE_API_KEY",
+  "YOUTUBE_CHANNEL",
   "DESKTOP_CONTROL",
+  "FILE_SEARCH_ROOTS",
 ] as const;
 
 export type SettingKey = (typeof SETTING_KEYS)[number];
@@ -43,6 +46,7 @@ const SECRET_KEYS = new Set<SettingKey>([
   "ELEVENLABS_API_KEY",
   "GOOGLE_CLIENT_SECRET",
   "TWILIO_AUTH_TOKEN",
+  "YOUTUBE_API_KEY",
 ]);
 
 export function isSecretKey(key: SettingKey): boolean {

@@ -5,6 +5,8 @@ import { areGmailCredentialsConfigured, isGmailConfigured, redirectUri } from "@
 import { isWhatsAppConfigured } from "@/lib/whatsapp";
 import { isTranscriptionConfigured } from "@/lib/transcription";
 import { isDesktopControlEnabled } from "@/lib/desktop";
+import { configuredChannel, isYouTubeConfigured } from "@/lib/youtube";
+import { isFileSearchEnabled, searchRoots } from "@/lib/files";
 import { memoryCount } from "@/lib/memory";
 import type { IntegrationStatus } from "@/lib/types";
 
@@ -21,6 +23,9 @@ export async function GET() {
     gmailRedirectUri: redirectUri(),
     whatsapp: isWhatsAppConfigured(),
     desktopControl: isDesktopControlEnabled(),
+    youtube: isYouTubeConfigured(),
+    youtubeChannel: configuredChannel() ?? null,
+    fileRoots: isFileSearchEnabled() ? searchRoots().map((root) => root.label) : [],
     memories: memoryCount(),
   };
   return NextResponse.json(status);
