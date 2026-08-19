@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   BrainIcon,
   ChatIcon,
+  ClockIcon,
   CloseIcon,
   FolderIcon,
   MailIcon,
@@ -15,6 +16,7 @@ import {
 import type { IntegrationStatus } from "@/lib/types";
 import { describeClientFetchError, postJson } from "@/lib/clientFetch";
 import { normalizeVoiceId } from "@/lib/voiceId";
+import { MemoryPanel } from "./MemoryPanel";
 
 interface VoiceOption {
   id: string;
@@ -977,6 +979,14 @@ export function SettingsModal({
                 Forget everything
               </button>
             )}
+          </Section>
+
+          <Section
+            icon={<ClockIcon className="h-4 w-4" />}
+            title="Sessions & notes"
+            ok={(status?.sessionDays ?? 0) > 0}
+          >
+            <MemoryPanel onChanged={onSaved} />
           </Section>
         </div>
 

@@ -16,6 +16,7 @@ import {
   isDesktopControlEnabled,
 } from "./desktop";
 import { forget, remember } from "./memory";
+import { noteLesson, searchSessions } from "./sessions";
 import { channelStats, isYouTubeConfigured, recentVideos } from "./youtube";
 import { isFileSearchEnabled, openFile, searchFiles } from "./files";
 import { normalizeToolName, parseToolArguments } from "./toolCalls";
@@ -336,6 +337,48 @@ export const toolDefinitions: OpenAI.Chat.Completions.ChatCompletionTool[] = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "recall",
+      description:
+        "Look through your own session history — a dated, timestamped record of what you and he actually did together. Use this whenever he asks what happened, when something was done, what you were working on, or to check your own account of the past before giving it. Never answer a question about the past from imagination when this can answer it from the record.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: {
+            type: "string",
+            description:
+              "Words to look for in the history, e.g. \"spotify\" or \"youtube channel\". Leave empty to get the most recent entries.",
+          },
+          limit: {
+            type: "number",
+            description: "How many entries to return (default 12, max 40).",
+          },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "note_lesson",
+      description:
+        "Write down a lesson learned — something that went wrong and what settled it, or a way of doing something he prefers that you only discovered by getting it wrong. These are read back at the start of every conversation, so the same mistake isn't made twice. One short sentence.",
+      parameters: {
+        type: "object",
+        properties: {
+          lesson: {
+            type: "string",
+            description:
+              "The lesson, in one sentence, e.g. \"His ElevenLabs key is restricted, so voice listing fails but speech works.\"",
+          },
+        },
+        required: ["lesson"],
+      },
+    },
+  },
 ];
 
 /** Every tool name that exists, for validating what comes back off the stream. */
@@ -361,6 +404,8 @@ export function availableTools(): OpenAI.Chat.Completions.ChatCompletionTool[] {
       return isDesktopControlEnabled();
     }
     if (name === "youtube_stats") return isYouTubeConfigured();
+    // Memory needs no configuration and is never worth withholding.
+    if (name === "recall" || name === "note_lesson") return true;
     if (name === "search_files" || name === "open_file") return isFileSearchEnabled();
     // Hologram v3 is a panel in this app, not an action on the machine, so it
     // isn't gated behind the desktop-control switch.
@@ -508,6 +553,31 @@ export async function executeTool(
         return {
           result,
           log: { tool: name, summary: `Opened ${result.url}`, ok: true },
+        };
+      }
+      case "recall": {
+        const query = text(args.query) ?? "";
+        const hits = searchSessions(query, Math.min(count(args.limit) ?? 12, 40));
+        return {
+          result: {
+            hits,
+            note:
+              hits.length === 0
+                ? "Nothing in the session history matches that."
+                : "These are dated records of what actually happened. Quote the dates and times as given.",
+          },
+          log: {
+            tool: name,
+            summary: `Recalled "${query || "recent history"}" — ${hits.length} entries`,
+            ok: true,
+          },
+        };
+      }
+      case "note_lesson": {
+        const lesson = noteLesson(required(args.lesson, "lesson"));
+        return {
+          result: { noted: lesson },
+          log: { tool: name, summary: `Noted: ${lesson}`, ok: true },
         };
       }
       case "youtube_stats": {

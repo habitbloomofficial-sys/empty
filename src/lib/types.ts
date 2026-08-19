@@ -52,6 +52,8 @@ export interface IntegrationStatus {
   fileRoots: string[];
   /** How many things he currently remembers about you. */
   memories: number;
+  /** How many days of session history are on disk. */
+  sessionDays: number;
 }
 
 export type OrbState = "idle" | "listening" | "thinking" | "speaking";

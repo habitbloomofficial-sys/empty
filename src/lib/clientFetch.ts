@@ -26,12 +26,13 @@ export function describeClientFetchError(error: unknown): string {
 export async function postJson<T>(
   url: string,
   body: unknown,
-  timeoutMs = DEFAULT_TIMEOUT_MS
+  options: { method?: string; timeoutMs?: number } = {}
 ): Promise<T> {
+  const { method = "POST", timeoutMs = DEFAULT_TIMEOUT_MS } = options;
   let res: Response;
   try {
     res = await fetch(url, {
-      method: "POST",
+      method,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(timeoutMs),

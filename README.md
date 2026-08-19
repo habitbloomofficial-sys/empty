@@ -13,7 +13,8 @@ your email and send WhatsApp messages for you.
 - **YouTube** — subscribers, views, and how your recent uploads are performing
 - **Files** — finds things in your own folders and opens them
 - **Hologram v3** — drop in a picture and see it projected as a rotating 3D hologram
-- **Memory** — remembers things about you between sessions
+- **Memory** — layered Markdown files and a dated session log; picks up where
+  you left off, and survives a crash
 - **Interface** — Next.js + Tailwind + react-three-fiber, light-blue glass theme
 
 ## 1. Install and run
@@ -208,23 +209,90 @@ or Meta directly.
 
 ### Memory (no setup needed)
 
-JARVIS keeps what he learns about you between sessions — names of people in
-your life, preferences, how you like things done, ongoing projects. He saves
-these himself as they come up, in one short sentence each, and they're included
-in every conversation from then on. Ask him to forget something and he will.
+JARVIS remembers, in layers, and all of it is plain Markdown in `data/memory/`
+that you can open and edit:
 
-**Settings → Memory** lists everything he's holding, with a Forget button on
-each and a Forget everything below them.
+```
+data/memory/
+├── MEMORY.md          what he knows — one short fact per line
+├── USER.md            who you are and how you like things done
+├── NOTES.md           lessons learned; things that went wrong once already
+└── sessions/
+    ├── 2026-08-17.md
+    ├── 2026-08-18.md
+    └── 2026-08-19.md  today
+```
 
-It's kept in `data/memory.json` (gitignored, mode 0600) — plain sentences in a
-file you can read, not embeddings in a database. Nothing leaves your machine,
-and there's no account or API key involved. The store sits behind one module,
-so a hosted memory service can be added later without touching anything else.
+Nothing here needs an account, an API key, or a hosted service. It's files on
+your disk (mode 0600, gitignored), and it never leaves the machine.
 
-Two details worth knowing: restating a fact refreshes it rather than
-duplicating it, and the better-written version is kept — speech arrives without
-capitals, so "his sister is called maja" won't overwrite "His sister is called
-Maja." The oldest, least-mentioned memories fall off first once there are 200.
+**Facts** — `MEMORY.md`. He saves these himself as they come up: names of people
+in your life, preferences, standing arrangements. Restating one refreshes it
+rather than duplicating it, and the better-written version wins — speech arrives
+without capitals, so "his sister is called maja" won't overwrite "His sister is
+called Maja." Add a line by hand and he knows it; delete one and he doesn't.
+
+**About you** — `USER.md`. Read at the start of every conversation. Short: who
+you are, what he should never have to ask twice.
+
+**Lessons** — `NOTES.md`. When something goes wrong and the cause turns out to
+be somewhere else, he writes one line here so the same hour isn't lost twice.
+You can add your own.
+
+**Sessions** — one file per day, every entry stamped with the time:
+
+```markdown
+# Session 2026-08-19
+
+Status: ⏸ paused
+Opened: 08h37
+
+## RECAP
+- 08h37 — Session opened (new day)
+- 09h15 — "open spotify" → Opened Spotify
+- 11h02 — "how's the channel doing" → 1,240 subscribers
+```
+
+Every turn that does something is written here as it happens. Ask *"what did we
+do on Tuesday?"* or *"when did I last check the channel?"* and he searches these
+files rather than inventing an answer — a real record, with real times.
+
+#### Opening him resumes where you left off
+
+Opening JARVIS opens a session, and what he says depends on what he finds:
+
+| What he finds | What happens |
+|---|---|
+| No file for today | **New day.** He greets you and recalls what the last session amounted to. |
+| Today's file, marked ⏸ or 🔒 | **Resuming.** "Picking up where we left off — 08h50, you asked me to find your tax return…" |
+| Today's file, no marker, gone quiet | **Interruption.** "We were interrupted, sir. Before that…" |
+
+Closing the tab marks the session paused; **Settings → Sessions & notes → Close
+today's session** marks it closed. A session that ends without either — a crash,
+a lid closing, a power cut — is recognised by the silence, not merely by the
+missing marker, so an ordinary page refresh is never mistaken for a crash.
+
+#### Keeping it small
+
+The whole memory is budgeted to roughly 4,000 characters of the prompt: about
+you (900), lessons (700), today's log (900), a line on the last session (300),
+and the facts (1,800). Beyond that it's trimmed on line boundaries, oldest and
+least-mentioned first. This is deliberate — a memory that grows without limit
+eventually crowds out the instructions that make JARVIS himself, and he gets
+duller the more he remembers. History belongs in the session files, which are
+searched on demand rather than carried in every request.
+
+Headings and `>` blockquotes in the editable files are for whoever opens them
+and are stripped before they reach the prompt, so the instructions in a file
+never get read back to him as though they were facts about you.
+
+**Settings → Memory** lists the facts, with a Forget button on each.
+**Settings → Sessions & notes** shows the session timeline day by day and lets
+you edit `USER.md` and `NOTES.md` in place. Session logs are shown but not
+editable there — a history you can rewrite is not a history.
+
+If you used JARVIS before this, `data/memory.json` is converted automatically on
+first run and kept as `data/memory.json.migrated`; nothing is lost.
 
 ### Hologram v3 (no setup needed)
 

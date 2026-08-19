@@ -12,7 +12,7 @@ import { ChatIcon, CloseIcon } from "./Icons";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
 import { useVoicePlayer } from "@/hooks/useVoicePlayer";
 import { useWakeWord } from "@/hooks/useWakeWord";
-import { describeClientFetchError } from "@/lib/clientFetch";
+import { describeClientFetchError, postJson } from "@/lib/clientFetch";
 import { nextGreeting } from "@/lib/greeting";
 import { SpeechChunker } from "@/lib/speechChunks";
 import { SmallTalk, describeActions } from "@/lib/smallTalk";
@@ -38,6 +38,9 @@ export default function JarvisApp() {
   const [hologramOpen, setHologramOpen] = useState(false);
   const [wakeEnabled, setWakeEnabled] = useState(true);
   const [greetingPending, setGreetingPending] = useState(false);
+  // What he remembers of where things stood. undefined until the session has
+  // been opened; "" once opened with nothing worth saying.
+  const [briefing, setBriefing] = useState<string | undefined>(undefined);
 
   const voicePlayer = useVoicePlayer();
 
@@ -278,11 +281,48 @@ export default function JarvisApp() {
   });
 
   useEffect(() => {
+    // Opening JARVIS opens a session. He works out whether this is a new day,
+    // a session being picked up, or one that stopped without saying so, and
+    // hands back a line about where things stood — which is the difference
+    // between an assistant who greets you and one who remembers you.
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await postJson<{ briefing?: string }>("/api/session", { action: "open" });
+        if (!cancelled) setBriefing(typeof data.briefing === "string" ? data.briefing : "");
+      } catch {
+        // No briefing is a worse greeting, not a broken app — let him speak.
+        if (!cancelled) setBriefing("");
+      }
+    })();
+
+    // Closing the tab is a pause, not a crash — say so on the way out. A
+    // beacon is the only request the browser promises to finish during unload.
+    const pause = () => {
+      navigator.sendBeacon?.(
+        "/api/session",
+        new Blob([JSON.stringify({ action: "pause" })], { type: "application/json" })
+      );
+    };
+    window.addEventListener("pagehide", pause);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("pagehide", pause);
+    };
+  }, []);
+
+  useEffect(() => {
     // Greet on arrival. Browsers refuse to play audio before you've interacted
     // with the page, so if that refusal happens we wait for the first click or
     // keypress and greet then, rather than silently skipping it.
+    //
+    // Held until the briefing has been fetched (or failed), so the greeting and
+    // what he remembers arrive as one sentence rather than two.
+    if (briefing === undefined) return;
+
     let greeted = false;
-    const line = nextGreeting();
+    const greeting = nextGreeting();
+    const line = briefing ? `${greeting} ${briefing}` : greeting;
 
     const say = async () => {
       if (greeted) return;
@@ -321,11 +361,11 @@ export default function JarvisApp() {
       }
     };
 
-    const timer = setTimeout(() => void say(), 600);
+    const timer = setTimeout(() => void say(), 300);
     return () => clearTimeout(timer);
-    // Runs once on arrival; voicePlayer is stable for the life of the page.
+    // Runs once the briefing has landed; voicePlayer is stable for the page.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [briefing]);
 
   const orbState: OrbState = voicePlayer.isSpeaking
     ? "speaking"

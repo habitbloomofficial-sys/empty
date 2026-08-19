@@ -12,6 +12,8 @@ import { adoptGeminiReplacement, isModelNotFound } from "@/lib/geminiModel";
 import { buildSystemPrompt } from "@/lib/systemPrompt";
 import { availableTools, executeTool, TOOL_NAMES } from "@/lib/tools";
 import { normalizeToolName } from "@/lib/toolCalls";
+import { logRecap } from "@/lib/sessions";
+import { recapLine } from "@/lib/sessionFormat";
 import type { ActionLogEntry } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -87,6 +89,23 @@ export async function POST(req: NextRequest) {
   ];
 
   const tools = availableTools();
+
+  // What he asked for this turn, kept for the session log below.
+  const askedFor = [...incoming].reverse().find((m) => m.role === "user")?.content ?? "";
+
+  /**
+   * Write the turn into today's session log. Done here rather than in the
+   * tools, so one line describes the whole exchange — what was asked and what
+   * came of it — which is what makes the log readable weeks later.
+   */
+  function recordTurn(actions: ActionLogEntry[]): void {
+    try {
+      const line = recapLine(askedFor, actions);
+      if (line) logRecap(line);
+    } catch {
+      // A memory that can't be written must never cost him his reply.
+    }
+  }
 
   /**
    * Optional request fields, in the order they're worth trying. Providers
@@ -202,6 +221,7 @@ export async function POST(req: NextRequest) {
             .map((call) => ({ ...call, name: normalizeToolName(call.name, TOOL_NAMES) }))
             .filter((call) => call.name);
           if (calls.length === 0) {
+            recordTurn(actions);
             send({
               type: "done",
               reply: content,
@@ -240,6 +260,7 @@ export async function POST(req: NextRequest) {
           });
         }
 
+        recordTurn(actions);
         send({
           type: "done",
           reply: "I've taken several steps but need a moment more, sir — could you ask me to continue?",
