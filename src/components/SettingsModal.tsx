@@ -1,7 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { BrainIcon, ChatIcon, CloseIcon, MailIcon, MusicIcon, WhatsAppIcon } from "./Icons";
+import {
+  BrainIcon,
+  ChatIcon,
+  CloseIcon,
+  MailIcon,
+  MemoryIcon,
+  MusicIcon,
+  WhatsAppIcon,
+} from "./Icons";
 import type { IntegrationStatus } from "@/lib/types";
 
 interface SettingView {
@@ -12,6 +20,12 @@ interface SettingView {
   source: "saved" | "env" | "unset";
 }
 
+interface MemoryEntry {
+  id: string;
+  text: string;
+  updatedAt: number;
+}
+
 interface KeyCheck {
   key: string;
   ok: boolean;
@@ -19,6 +33,17 @@ interface KeyCheck {
 }
 
 type Views = Record<string, SettingView>;
+
+async function fetchMemories(): Promise<MemoryEntry[]> {
+  try {
+    const res = await fetch("/api/memory", { cache: "no-store" });
+    const data = await res.json();
+    return Array.isArray(data.memories) ? data.memories : [];
+  } catch {
+    // The rest of the panel still works without them.
+    return [];
+  }
+}
 
 function Section({
   icon,
@@ -159,6 +184,7 @@ export function SettingsModal({
   const [savedSection, setSavedSection] = useState<string | null>(null);
   const [checks, setChecks] = useState<Record<string, KeyCheck[]>>({});
   const [copiedRedirect, setCopiedRedirect] = useState(false);
+  const [memories, setMemories] = useState<MemoryEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const applySettings = useCallback((list: SettingView[]) => {
@@ -198,6 +224,23 @@ export function SettingsModal({
       cancelled = true;
     };
   }, [applySettings]);
+
+  const loadMemories = useCallback(async () => {
+    setMemories(await fetchMemories());
+  }, []);
+
+  useEffect(() => {
+    // Same shape as the settings fetch above: an async read guarded against a
+    // panel that closes before it lands.
+    let cancelled = false;
+    (async () => {
+      const list = await fetchMemories();
+      if (!cancelled) setMemories(list);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const draft = (key: string) => drafts[key] ?? "";
   const setDraft = (key: string, value: string) =>
@@ -558,6 +601,64 @@ export function SettingsModal({
               no local files, no other protocols, and no general &quot;run a
               command&quot; ability behind it.
             </p>
+          </Section>
+          <Section
+            icon={<MemoryIcon className="h-4 w-4" />}
+            title="Memory"
+            ok={memories.length > 0}
+          >
+            <p>
+              Things JARVIS has learned about you, kept between sessions. He saves
+              these himself as they come up — names, preferences, how you like things
+              done — and you can ask him to forget any of them.
+            </p>
+
+            {memories.length === 0 ? (
+              <p className="text-[11px] text-ink-700/50">
+                Nothing yet. He&apos;ll start remembering as you talk.
+              </p>
+            ) : (
+              <ul className="max-h-44 space-y-1 overflow-y-auto">
+                {memories.map((memory) => (
+                  <li
+                    key={memory.id}
+                    className="group flex items-start gap-2 rounded-lg bg-white/50 px-2.5 py-1.5"
+                  >
+                    <span className="flex-1 text-[11px] leading-relaxed text-ink-900">
+                      {memory.text}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        await fetch(`/api/memory?id=${encodeURIComponent(memory.id)}`, {
+                          method: "DELETE",
+                        }).catch(() => null);
+                        await loadMemories();
+                        onSaved();
+                      }}
+                      className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold text-ink-700/40 hover:bg-rose-500/10 hover:text-rose-600"
+                      aria-label="Forget this"
+                    >
+                      Forget
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {memories.length > 0 && (
+              <button
+                type="button"
+                onClick={async () => {
+                  await fetch("/api/memory", { method: "DELETE" }).catch(() => null);
+                  await loadMemories();
+                  onSaved();
+                }}
+                className="rounded-full px-3 py-1.5 text-xs font-semibold text-ink-700/60 hover:bg-slate-500/10"
+              >
+                Forget everything
+              </button>
+            )}
           </Section>
         </div>
 

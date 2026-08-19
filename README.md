@@ -11,6 +11,7 @@ your email and send WhatsApp messages for you.
 - **WhatsApp** — Twilio's WhatsApp API
 - **Music & web** — opens and closes Spotify and Discord, and opens any website
 - **Hologram v3** — drop in a picture and see it projected as a rotating 3D hologram
+- **Memory** — remembers things about you between sessions
 - **Interface** — Next.js + Tailwind + react-three-fiber, light-blue glass theme
 
 ## 1. Install and run
@@ -132,6 +133,26 @@ For production use beyond the sandbox, apply for the
 [WhatsApp Business Platform](https://www.twilio.com/whatsapp) through Twilio
 or Meta directly.
 
+### Memory (no setup needed)
+
+JARVIS keeps what he learns about you between sessions — names of people in
+your life, preferences, how you like things done, ongoing projects. He saves
+these himself as they come up, in one short sentence each, and they're included
+in every conversation from then on. Ask him to forget something and he will.
+
+**Settings → Memory** lists everything he's holding, with a Forget button on
+each and a Forget everything below them.
+
+It's kept in `data/memory.json` (gitignored, mode 0600) — plain sentences in a
+file you can read, not embeddings in a database. Nothing leaves your machine,
+and there's no account or API key involved. The store sits behind one module,
+so a hosted memory service can be added later without touching anything else.
+
+Two details worth knowing: restating a fact refreshes it rather than
+duplicating it, and the better-written version is kept — speech arrives without
+capitals, so "his sister is called maja" won't overwrite "His sister is called
+Maja." The oldest, least-mentioned memories fall off first once there are 200.
+
 ### Hologram v3 (no setup needed)
 
 A projector built into JARVIS. Say *"open Hologram v3"*, or click the pyramid
@@ -246,6 +267,7 @@ src/
       voices/          list available ElevenLabs voices
       status/          which integrations are configured
       settings/        read (masked) + save API keys from the Settings panel
+      memory/          what JARVIS remembers about you, and forgetting it
       gmail/auth/       start Google OAuth
       gmail/callback/   finish Google OAuth, store token
       gmail/disconnect/ forget the stored Gmail token
@@ -253,8 +275,8 @@ src/
     page.tsx, layout.tsx, globals.css
   components/          Orb (3D), Hologram v3 (3D), chat UI, settings, top bar
   hooks/               voice input (record + transcribe), TTS playback + amplitude analysis
-  lib/                 AI/ElevenLabs/Gmail/WhatsApp/desktop clients, depth estimation,
-                       speech chunking, settings store, tools, prompt
+  lib/                 AI/ElevenLabs/Gmail/WhatsApp/desktop clients, persistent memory,
+                       depth estimation, speech chunking, settings store, tools, prompt
 ```
 
 Security notes:
@@ -270,7 +292,7 @@ Security notes:
   and addresses are validated before use — non-web schemes (`file:`,
   `javascript:`, `data:`, Windows handlers like `ms-msdt:`) and anything on
   localhost or your local network are refused.
-- `.env.local` and `data/` (the settings store and Gmail token) are gitignored;
+- `.env.local` and `data/` (settings, Gmail token, and memories) are gitignored;
   `data/settings.json` is written owner-readable only (mode 0600).
 - If any API key was ever pasted somewhere outside your own `.env.local`
   (a chat, a ticket, a screenshot), treat it as compromised and rotate it.

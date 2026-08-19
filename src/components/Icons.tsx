@@ -132,3 +132,17 @@ export function HologramIcon({ className }: IconProps) {
     </svg>
   );
 }
+
+export function MemoryIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className}>
+      <rect x="6" y="6" width="12" height="12" rx="2.4" stroke="currentColor" strokeWidth="1.6" />
+      <path
+        d="M9.5 3.5v2.5M14.5 3.5v2.5M9.5 18v2.5M14.5 18v2.5M3.5 9.5H6M3.5 14.5H6M18 9.5h2.5M18 14.5h2.5"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}

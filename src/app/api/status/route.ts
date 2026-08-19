@@ -5,6 +5,7 @@ import { areGmailCredentialsConfigured, isGmailConfigured, redirectUri } from "@
 import { isWhatsAppConfigured } from "@/lib/whatsapp";
 import { isTranscriptionConfigured } from "@/lib/transcription";
 import { isDesktopControlEnabled } from "@/lib/desktop";
+import { memoryCount } from "@/lib/memory";
 import type { IntegrationStatus } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -20,6 +21,7 @@ export async function GET() {
     gmailRedirectUri: redirectUri(),
     whatsapp: isWhatsAppConfigured(),
     desktopControl: isDesktopControlEnabled(),
+    memories: memoryCount(),
   };
   return NextResponse.json(status);
 }

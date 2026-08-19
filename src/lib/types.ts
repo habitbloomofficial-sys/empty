@@ -42,8 +42,10 @@ export interface IntegrationStatus {
   /** The redirect URI that must be registered in the Google OAuth client. */
   gmailRedirectUri: string;
   whatsapp: boolean;
-  /** Whether JARVIS may open desktop apps (Spotify) on this machine. */
+  /** Whether JARVIS may open or close apps on this machine. */
   desktopControl: boolean;
+  /** How many things he currently remembers about you. */
+  memories: number;
 }
 
 export type OrbState = "idle" | "listening" | "thinking" | "speaking";
