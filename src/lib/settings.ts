@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { writeFileAtomic } from "./atomicWrite";
 
 // Runtime settings layered on top of .env.local. Everything JARVIS needs can
 // be typed into the Settings panel instead of hand-editing an env file, which
@@ -33,6 +34,8 @@ export const SETTING_KEYS = [
   "YOUTUBE_CHANNEL",
   "DESKTOP_CONTROL",
   "FILE_SEARCH_ROOTS",
+  "USER_TITLE",
+  "HUMOUR",
 ] as const;
 
 export type SettingKey = (typeof SETTING_KEYS)[number];
@@ -126,9 +129,8 @@ export function saveSettings(updates: Partial<Record<SettingKey, string>>): void
     }
   }
 
-  fs.mkdirSync(path.dirname(SETTINGS_PATH), { recursive: true });
   // 0600: this file holds API keys, so keep it readable only by its owner.
-  fs.writeFileSync(SETTINGS_PATH, JSON.stringify(next, null, 2), { mode: 0o600 });
+  writeFileAtomic(SETTINGS_PATH, JSON.stringify(next, null, 2));
 
   cache = next;
   try {

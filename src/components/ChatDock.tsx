@@ -11,6 +11,7 @@ export function ChatDock({
   micSupported,
   micLevel,
   interimTranscript,
+  handsFree,
   onToggleMic,
   wakeSupported,
   wakeEnabled,
@@ -24,6 +25,8 @@ export function ChatDock({
   micSupported: boolean;
   micLevel: number;
   interimTranscript: string;
+  /** The microphone is on and staying on between questions. */
+  handsFree: boolean;
   onToggleMic: () => void;
   wakeSupported: boolean;
   wakeEnabled: boolean;
@@ -41,10 +44,15 @@ export function ChatDock({
   }
 
   const inputValue = isListening
-    ? interimTranscript || "Listening… I'll send when you pause."
+    ? interimTranscript ||
+      (handsFree
+        ? "Listening — just talk. I'll send when you pause."
+        : "Listening… I'll send when you pause.")
     : isTranscribing
       ? "Transcribing…"
-      : value;
+      : handsFree
+        ? "Microphone on — say something whenever you like."
+        : value;
 
   return (
     <form
@@ -58,14 +66,16 @@ export function ChatDock({
         className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors disabled:opacity-30 ${
           isListening
             ? "bg-sky-500 text-white"
-            : "bg-sky-500/10 text-sky-600 hover:bg-sky-500/20"
+            : handsFree
+              ? "bg-sky-500/25 text-sky-700 ring-2 ring-sky-400/60"
+              : "bg-sky-500/10 text-sky-600 hover:bg-sky-500/20"
         }`}
-        aria-label={isListening ? "Stop listening" : "Start listening"}
+        aria-label={handsFree || isListening ? "Turn the microphone off" : "Turn the microphone on"}
         title={
           micSupported
-            ? isListening
-              ? "Tap to send now"
-              : "Talk to JARVIS"
+            ? handsFree || isListening
+              ? "Microphone is on and stays on — click to switch it off"
+              : "Turn the microphone on and leave it on"
             : "Voice input not supported in this browser"
         }
       >

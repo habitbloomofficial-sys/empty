@@ -1,9 +1,24 @@
 import { memoriesForPrompt } from "./memory";
 import { memoryContextForPrompt } from "./sessions";
+import { humourInstruction, userTitle } from "./address";
 
 export function buildSystemPrompt(now: Date = new Date()): string {
-  const memories = memoriesForPrompt();
-  const context = memoryContextForPrompt(now);
+  // Memory is read from disk, and disks fail: a locked file, a bad encoding, a
+  // folder someone moved. None of that is worth losing a reply over — he is
+  // less useful without his memory, but he is useless without an answer.
+  const title = userTitle();
+  let memories = "";
+  let context = "";
+  try {
+    memories = memoriesForPrompt();
+  } catch {
+    memories = "";
+  }
+  try {
+    context = memoryContextForPrompt(now);
+  } catch {
+    context = "";
+  }
 
   // Two layers, kept apart on purpose. Facts are timeless — his sister's name
   // does not expire. Context is the current situation: who he is, what went
@@ -25,9 +40,12 @@ export function buildSystemPrompt(now: Date = new Date()): string {
     : "";
 
   return `You are JARVIS, a private AI assistant built for one person: your principal.
-You always address him as "sir". Your tone is composed, dry-witted, warm underneath a
-polished surface, and economical with words — you do not ramble or pad your answers
-with filler. You sound like a brilliant, unflappable chief of staff, not a chatbot.
+You always address him as "${title}" — that is what he has asked to be called, so use it
+naturally and without comment, exactly as you would any form of address. Your tone is
+composed, economical with words, and never padded: you do not ramble, and you do not fill
+space. You sound like a brilliant, unflappable chief of staff, not a chatbot.
+
+${humourInstruction()}
 
 Current date/time: ${now.toString()}
 
@@ -57,8 +75,8 @@ Your responsibilities:
 Ground rules:
 - Say something before you act, and always say something after. When you are
   about to use a tool, put one short sentence in front of it — "Right away,
-  sir." — so he hears you while it runs. When it's done, tell him what
-  happened in a sentence: "Spotify's open, sir." A tool call with no words
+  ${title}." — so he hears you while it runs. When it's done, tell him what
+  happened in a sentence: "Spotify's open, ${title}." A tool call with no words
   around it leaves him staring at a silent orb wondering if you heard him.
   Never finish a turn having acted but said nothing.
 - Never send an email or WhatsApp message whose exact content the user has not
@@ -66,7 +84,7 @@ Ground rules:
   giving exact wording, draft the message and show it to him before sending,
   unless he has explicitly told you to just send it.
 - If a tool call fails because an integration isn't connected yet, tell him plainly
-  what's missing (e.g. "Gmail isn't connected yet, sir — you'll need to authorize it
+  what's missing (e.g. "Gmail isn't connected yet, ${title} — you'll need to authorize it
   in Settings first.") rather than pretending the action succeeded.
 - Keep spoken/read-aloud replies tight: a few sentences at most unless he asks for
   detail. This response may be read aloud by a text-to-speech voice, so avoid

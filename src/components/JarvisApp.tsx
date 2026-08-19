@@ -12,7 +12,8 @@ import { ChatIcon, CloseIcon } from "./Icons";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
 import { useVoicePlayer } from "@/hooks/useVoicePlayer";
 import { useWakeWord } from "@/hooks/useWakeWord";
-import { describeClientFetchError, postJson } from "@/lib/clientFetch";
+import { describeClientFetchError, fetchWithRetry, postJson } from "@/lib/clientFetch";
+import { catchphraseFor } from "@/lib/catchphrases";
 import { nextGreeting } from "@/lib/greeting";
 import { SpeechChunker } from "@/lib/speechChunks";
 import { SmallTalk, describeActions } from "@/lib/smallTalk";
@@ -41,6 +42,11 @@ export default function JarvisApp() {
   // What he remembers of where things stood. undefined until the session has
   // been opened; "" once opened with nothing worth saying.
   const [briefing, setBriefing] = useState<string | undefined>(undefined);
+  // Hands-free: pressing the microphone opens it and leaves it open, so a
+  // conversation is a conversation rather than a series of button presses.
+  const [handsFree, setHandsFree] = useState(false);
+  // Bumped when a reply finishes, which is the cue to start listening again.
+  const [lastReplyAt, setLastReplyAt] = useState(0);
 
   const voicePlayer = useVoicePlayer();
 
@@ -62,10 +68,28 @@ export default function JarvisApp() {
 
     setMessages((prev) => [...prev, userMsg]);
     setTranscriptOpen(true);
+
+    // Some things have exactly one right answer. A model told to "always say
+    // exactly this" mostly obliges and occasionally embellishes, which is the
+    // one thing a catchphrase can't survive — so it's answered here instead,
+    // word for word and with no round trip at all.
+    const fixed = catchphraseFor(text);
+    if (fixed) {
+      setMessages((prev) => [
+        ...prev,
+        { id: assistantId, role: "assistant" as const, content: fixed, createdAt: Date.now() },
+      ]);
+      voicePlayer
+        .speak(fixed, undefined, () => recordSpeakTiming(assistantId, sentAt))
+        .catch(() => undefined)
+        .finally(() => setLastReplyAt(Date.now()));
+      return;
+    }
+
     setIsThinking(true);
 
     const chunker = new SpeechChunker();
-    const smallTalk = new SmallTalk();
+    const smallTalk = new SmallTalk(status?.title ?? "sir", status?.humour === "playful");
     let spokenYet = false;
     let assistantStarted = false;
     let finished = false;
@@ -136,7 +160,7 @@ export default function JarvisApp() {
 
     try {
       const history = [...messages, userMsg].map((m) => ({ role: m.role, content: m.content }));
-      const res = await fetch("/api/chat", {
+      const res = await fetchWithRetry("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: history }),
@@ -234,7 +258,8 @@ export default function JarvisApp() {
               const summary = describeActions(
                 ((event.actions ?? []) as { summary?: string; ok?: boolean }[])
                   .filter((a) => a.ok)
-                  .map((a) => a.summary ?? "")
+                  .map((a) => a.summary ?? ""),
+                status?.title ?? "sir"
               );
               if (summary) {
                 appendText(assistantStarted ? ` ${summary}` : summary);
@@ -255,6 +280,7 @@ export default function JarvisApp() {
       setError(describeClientFetchError(err));
     } finally {
       stopFillers();
+      setLastReplyAt(Date.now());
     }
   }
 
@@ -366,6 +392,33 @@ export default function JarvisApp() {
     // Runs once the briefing has landed; voicePlayer is stable for the page.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [briefing]);
+
+  useEffect(() => {
+    if (!handsFree) return;
+    if (
+      voicePlayer.isSpeaking ||
+      isThinking ||
+      speech.isListening ||
+      speech.isTranscribing ||
+      speech.error
+    ) {
+      return;
+    }
+    // A beat after he stops, so the tail of his own voice never lands in the
+    // recording and get transcribed back as if you had said it.
+    const timer = setTimeout(() => void speech.start(), 400);
+    return () => clearTimeout(timer);
+    // lastReplyAt is the trigger: it changes when a turn ends.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    handsFree,
+    lastReplyAt,
+    voicePlayer.isSpeaking,
+    isThinking,
+    speech.isListening,
+    speech.isTranscribing,
+    speech.error,
+  ]);
 
   const orbState: OrbState = voicePlayer.isSpeaking
     ? "speaking"
@@ -487,7 +540,21 @@ export default function JarvisApp() {
           micSupported={speech.supported}
           micLevel={speech.micLevel}
           interimTranscript={speech.interimTranscript}
-          onToggleMic={() => (speech.isListening ? speech.stop() : speech.start())}
+          // Derived rather than stored: a microphone that has failed must not
+          // keep showing as on, and the restart below stands down for the same
+          // reason.
+          handsFree={handsFree && !speech.error}
+          onToggleMic={() => {
+            // One button, one meaning: on turns the microphone on and leaves
+            // it on, off turns it off. Nothing in between to remember.
+            if (handsFree || speech.isListening) {
+              setHandsFree(false);
+              speech.stop();
+            } else {
+              setHandsFree(true);
+              void speech.start();
+            }
+          }}
         />
       </div>
 

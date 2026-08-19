@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { writeFileAtomic } from "./atomicWrite";
 import { MEMORY_DIR } from "./memory";
 import {
   clockTime,
@@ -97,13 +98,11 @@ export function readNotes(): string {
 }
 
 export function writeUserProfile(text: string): void {
-  fs.mkdirSync(MEMORY_DIR, { recursive: true });
-  fs.writeFileSync(USER_PATH, text, { mode: 0o600 });
+  writeFileAtomic(USER_PATH, text);
 }
 
 export function writeNotes(text: string): void {
-  fs.mkdirSync(MEMORY_DIR, { recursive: true });
-  fs.writeFileSync(NOTES_PATH, text, { mode: 0o600 });
+  writeFileAtomic(NOTES_PATH, text);
 }
 
 /** Append one lesson to NOTES.md, dated. */
@@ -129,8 +128,7 @@ export function readSession(date: string): SessionLog | null {
 }
 
 function writeSession(session: SessionLog): void {
-  fs.mkdirSync(SESSIONS_DIR, { recursive: true });
-  fs.writeFileSync(sessionFile(session.date), renderSession(session), { mode: 0o600 });
+  writeFileAtomic(sessionFile(session.date), renderSession(session));
 }
 
 /** Session dates on disk, newest first. */

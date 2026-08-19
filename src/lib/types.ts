@@ -54,6 +54,10 @@ export interface IntegrationStatus {
   memories: number;
   /** How many days of session history are on disk. */
   sessionDays: number;
+  /** What he calls you. */
+  title: string;
+  /** How funny he's allowed to be. */
+  humour: "dry" | "playful" | "off";
 }
 
 export type OrbState = "idle" | "listening" | "thinking" | "speaking";

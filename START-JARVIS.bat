@@ -33,6 +33,17 @@ if not exist ".next\BUILD_ID" (
   if errorlevel 1 goto failed
 )
 
+rem If JARVIS is already running, use that one. Starting a second copy just
+rem fails to take the port, and then you have a browser window pointed at a
+rem server that never came up - which looks exactly like JARVIS being broken.
+powershell -NoProfile -Command "try{$null=Invoke-WebRequest -UseBasicParsing 'http://127.0.0.1:3000' -TimeoutSec 2; exit 0}catch{exit 1}" >nul 2>nul
+if not errorlevel 1 (
+  echo   JARVIS is already running - opening it.
+  echo.
+  start "" http://127.0.0.1:3000
+  exit /b 0
+)
+
 rem Open the browser only once the server actually answers, so the first thing
 rem seen is JARVIS rather than a connection error. Runs alongside the server
 rem below, which holds this window.
@@ -45,6 +56,10 @@ call npm run start
 
 echo.
 echo   JARVIS has stopped.
+echo.
+echo   If that happened immediately with an "address already in use" error,
+echo   another copy is still running. Close its window, or restart the
+echo   computer, then try again.
 pause
 exit /b 0
 

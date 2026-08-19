@@ -11,6 +11,7 @@ import {
   MemoryIcon,
   MusicIcon,
   PlayIcon,
+  SparkleIcon,
   WhatsAppIcon,
 } from "./Icons";
 import type { IntegrationStatus } from "@/lib/types";
@@ -979,6 +980,72 @@ export function SettingsModal({
                 Forget everything
               </button>
             )}
+          </Section>
+
+          <Section
+            icon={<SparkleIcon className="h-4 w-4" />}
+            title="Personality"
+            ok
+          >
+            <p>
+              How JARVIS speaks to you. Both apply everywhere — spoken replies,
+              typed ones, and the little things he says while he works.
+            </p>
+            <Field
+              label="He calls you"
+              view={views.USER_TITLE}
+              value={draft("USER_TITLE")}
+              onChange={(v) => setDraft("USER_TITLE", v)}
+              placeholder="sir"
+              hint="Anything you like — sir, boss, captain, your name. Leave blank for “sir”."
+            />
+            <div>
+              <span className="mb-1 block text-[11px] font-semibold text-ink-900">Humour</span>
+              <div className="flex gap-1.5 rounded-full bg-white/60 p-1">
+                {(
+                  [
+                    ["dry", "Dry"],
+                    ["playful", "Playful"],
+                    ["off", "Straight"],
+                  ] as const
+                ).map(([value, label]) => {
+                  const active = (draft("HUMOUR") || status?.humour || "dry") === value;
+                  return (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setDraft("HUMOUR", value)}
+                      className={`flex-1 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                        active
+                          ? "bg-sky-500 text-white shadow-sm"
+                          : "text-ink-700/70 hover:bg-sky-500/10"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+              <span className="mt-1 block text-[10px] text-ink-700/50">
+                Playful teases you, gets smug when it pulls something off, and acts
+                mildly put upon before doing exactly as asked. It drops the act when
+                something actually matters.
+              </span>
+            </div>
+            <SaveButton
+              onClick={() =>
+                save("personality", {
+                  USER_TITLE: draft("USER_TITLE"),
+                  HUMOUR: draft("HUMOUR") || "dry",
+                })
+              }
+              busy={busySection === "personality"}
+              saved={savedSection === "personality"}
+            />
+            <p className="text-[10px] text-ink-700/50">
+              Some things stay fixed whatever you set here: say “Hey JARVIS,
+              daddy&apos;s home” and the answer is always, exactly, “Welcome home.”
+            </p>
           </Section>
 
           <Section

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toMonoWav } from "@/lib/audio";
+import { describeClientFetchError } from "@/lib/clientFetch";
 
 // Two ways to hear you, in order of preference:
 //
@@ -199,10 +200,19 @@ export function useVoiceInput(
 
           const form = new FormData();
           form.append("audio", upload, filename);
-          const res = await fetch("/api/transcribe", { method: "POST", body: form });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error || "Transcription failed.");
-          const text = (data.text ?? "").trim();
+          let res: Response;
+          try {
+            res = await fetch("/api/transcribe", { method: "POST", body: form });
+          } catch (err) {
+            throw new Error(describeClientFetchError(err));
+          }
+          // A failing route can answer with an HTML error page, and calling
+          // .json() on that throws something about tokens that helps nobody.
+          const data = (await res.json().catch(() => null)) as { text?: string; error?: string } | null;
+          if (!res.ok) {
+            throw new Error(data?.error || `Transcription failed (HTTP ${res.status}).`);
+          }
+          const text = (data?.text ?? "").trim();
           if (!text) {
             setError("I didn't catch anything, sir — try again a little closer to the mic.");
             return;

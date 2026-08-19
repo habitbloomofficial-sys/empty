@@ -207,6 +207,29 @@ For production use beyond the sandbox, apply for the
 [WhatsApp Business Platform](https://www.twilio.com/whatsapp) through Twilio
 or Meta directly.
 
+### Personality (no setup needed)
+
+**Settings → Personality** decides how he talks to you.
+
+**He calls you** — "sir" by default. Put anything you like in there: boss,
+captain, your own name. It's used everywhere, including the small things he says
+while he's working.
+
+**Humour** — *Dry* is the default: understatement, the occasional raised eyebrow
+in sentence form, never a joke instead of an answer. *Playful* teases you, gets
+smug when it pulls something off, and acts mildly put upon before doing exactly
+as asked — and drops the act entirely when something actually matters.
+*Straight* switches it off.
+
+**Catchphrases.** Some things have exactly one right answer, and those are
+handled in code rather than by the model — a model told to "always reply with
+exactly this" mostly obliges and occasionally improvises, which is the one thing
+a catchphrase cannot survive. Say **"Hey JARVIS, daddy's home"** and the answer
+is always, exactly, **"Welcome home."** — instantly, with no request to the model
+at all. They're a table in `src/lib/catchphrases.ts` if you want to add more.
+
+Env equivalents: `USER_TITLE`, `HUMOUR`.
+
 ### Memory (no setup needed)
 
 JARVIS remembers, in layers, and all of it is plain Markdown in `data/memory/`
@@ -422,6 +445,11 @@ Env equivalent: `FILE_SEARCH_ROOTS=D:\Projects;E:\Archive`.
   isn't the same every time. Browsers refuse to play audio until you've
   interacted with a page, so on a cold open he may ask you to click once
   first — after that the browser remembers and he just speaks.
+- **Press the microphone once and it stays on.** It reopens itself after every
+  reply, so a conversation is a conversation rather than a series of button
+  presses. The button keeps a ring around it while the microphone is live, and
+  pressing it again switches it off. If the microphone fails, it stands down
+  rather than pretending to listen.
 - **Say "Hey JARVIS"** and he starts listening; no button needed. Say it with
   the request attached — *"Hey JARVIS, open YouTube"* — and he acts on it
   straight away rather than waiting for you to repeat yourself. The ear icon
@@ -452,6 +480,23 @@ It's matched forgivingly on purpose. Across a room "hey JARVIS" comes back as
 but only near the start of a sentence, so mentioning him mid-conversation
 doesn't set him off. He also stops listening for his name while he's speaking,
 so he can't wake himself.
+
+### If you see "Failed to fetch"
+
+That's the browser saying the request never reached the server. JARVIS now
+retries once automatically, so a momentary hiccup passes without you noticing;
+if it still can't get through, it says so in words rather than showing you that
+phrase.
+
+The usual cause on a local install is **two copies fighting over the same
+port**. Only one thing can listen on port 3000, so a second `START-JARVIS.bat`
+(or an `npm run fast` in a terminal while the launcher is already running) fails
+to start and leaves you with a browser window pointed at a server that never
+came up. The launcher now checks first and simply opens the copy that's already
+running.
+
+If it persists: close every JARVIS window, check no stray `node` process is left
+(Task Manager → Details), and start it again with `START-JARVIS.bat`.
 
 ### If a reply feels slow
 

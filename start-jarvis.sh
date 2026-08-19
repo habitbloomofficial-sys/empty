@@ -11,6 +11,13 @@ command -v node >/dev/null || {
 [ -d node_modules ] || npm install
 [ -f .next/BUILD_ID ] || npm run build
 
+# Already running? Use that one rather than failing to take the port.
+if curl -sf -o /dev/null http://127.0.0.1:3000; then
+  echo "JARVIS is already running - opening it."
+  (xdg-open http://127.0.0.1:3000 2>/dev/null || open http://127.0.0.1:3000 2>/dev/null) &
+  exit 0
+fi
+
 # Open the browser once the server answers, not before.
 (
   for _ in $(seq 1 120); do

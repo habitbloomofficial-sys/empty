@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { writeFileAtomic } from "./atomicWrite";
 
 // What JARVIS knows about you between sessions.
 //
@@ -105,9 +106,8 @@ function migrateLegacy(): void {
 }
 
 function writeFacts(facts: string[], index: Index): void {
-  fs.mkdirSync(MEMORY_DIR, { recursive: true });
   const body = facts.map((fact) => `- ${fact}`).join("\n");
-  fs.writeFileSync(MEMORY_PATH, `${MEMORY_HEADER}\n${body}\n`, { mode: 0o600 });
+  writeFileAtomic(MEMORY_PATH, `${MEMORY_HEADER}\n${body}\n`);
 
   // Only for facts that still exist, so the index can't grow forever.
   const kept: Index = {};
@@ -115,7 +115,7 @@ function writeFacts(facts: string[], index: Index): void {
     const id = idFor(fact);
     kept[id] = index[id] ?? { createdAt: Date.now(), updatedAt: Date.now() };
   }
-  fs.writeFileSync(INDEX_PATH, JSON.stringify(kept, null, 2), { mode: 0o600 });
+  writeFileAtomic(INDEX_PATH, JSON.stringify(kept, null, 2));
 }
 
 function load(): Memory[] {

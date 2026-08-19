@@ -19,6 +19,43 @@ export function describeClientFetchError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+/** True for the failures that are worth trying again rather than reporting. */
+function isTransient(error: unknown): boolean {
+  // A TypeError from fetch means the request never completed: the server was
+  // restarting, the socket was reset, the machine slept. None of those are
+  // reasons to lose what someone just said.
+  return error instanceof TypeError;
+}
+
+/**
+ * fetch, with one automatic retry when the request never reached the server.
+ *
+ * This is the difference between "Failed to fetch" and not noticing anything
+ * happened. A local server restarting takes well under a second, and a person
+ * mid-conversation should not be the one to work out that they should try
+ * again.
+ */
+export async function fetchWithRetry(
+  url: string,
+  init: RequestInit = {},
+  { retries = 1, backoffMs = 700 }: { retries?: number; backoffMs?: number } = {}
+): Promise<Response> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await fetch(url, init);
+    } catch (err) {
+      lastError = err;
+      // A body can only be sent once, so anything streaming a body up (an
+      // audio upload) must not be replayed blindly.
+      const replayable = !init.body || typeof init.body === "string";
+      if (!isTransient(err) || !replayable || attempt === retries) break;
+      await new Promise((resolve) => setTimeout(resolve, backoffMs));
+    }
+  }
+  throw new Error(describeClientFetchError(lastError));
+}
+
 /**
  * POST JSON and read JSON back, with a deadline and a legible failure.
  * Errors carry the server's own `error` field when there is one.
@@ -29,17 +66,12 @@ export async function postJson<T>(
   options: { method?: string; timeoutMs?: number } = {}
 ): Promise<T> {
   const { method = "POST", timeoutMs = DEFAULT_TIMEOUT_MS } = options;
-  let res: Response;
-  try {
-    res = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(timeoutMs),
-    });
-  } catch (err) {
-    throw new Error(describeClientFetchError(err));
-  }
+  const res = await fetchWithRetry(url, {
+    method,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(timeoutMs),
+  });
 
   const data = (await res.json().catch(() => null)) as (T & { error?: string }) | null;
   if (!res.ok) {

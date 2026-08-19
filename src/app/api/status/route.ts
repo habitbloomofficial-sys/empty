@@ -9,6 +9,7 @@ import { configuredChannel, isYouTubeConfigured } from "@/lib/youtube";
 import { isFileSearchEnabled, searchRoots } from "@/lib/files";
 import { memoryCount } from "@/lib/memory";
 import { listSessionDates } from "@/lib/sessions";
+import { humour, userTitle } from "@/lib/address";
 import type { IntegrationStatus } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -29,6 +30,8 @@ export async function GET() {
     fileRoots: isFileSearchEnabled() ? searchRoots().map((root) => root.label) : [],
     memories: memoryCount(),
     sessionDays: listSessionDates().length,
+    title: userTitle(),
+    humour: humour(),
   };
   return NextResponse.json(status);
 }
