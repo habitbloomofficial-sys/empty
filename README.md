@@ -9,7 +9,7 @@ your email and send WhatsApp messages for you.
   (works in every browser), with the built-in Web Speech API as a fallback
 - **Email** — Gmail, via your own Google OAuth app
 - **WhatsApp** — Twilio's WhatsApp API
-- **Music & web** — opens Spotify and any website on your machine, on a search if you like
+- **Music & web** — opens and closes Spotify and Discord, and opens any website
 - **Hologram v3** — drop in a picture and see it projected as a rotating 3D hologram
 - **Interface** — Next.js + Tailwind + react-three-fiber, light-blue glass theme
 
@@ -159,6 +159,9 @@ JARVIS runs on your own machine, so he can open things on it:
   named something. He opens it; pressing play is still yours. Actually starting
   playback would need the Spotify Web API and an account authorization, which
   this doesn't use.
+- *"open Discord"*, *"close Spotify"*, *"quit Discord"* — Spotify and Discord can
+  both be opened and closed. Closing asks politely first and then insists, since
+  Discord treats a close as "minimise to tray".
 - *"open YouTube"* / *"search YouTube for lo-fi beats"* — the site, or its search
   results.
 - *"open bbc.co.uk"* — any ordinary website by name or address.
@@ -168,8 +171,9 @@ Named sites land on the right search page: youtube, google, maps, gmail, drive,
 calendar, wikipedia, github, reddit, x, linkedin, netflix, imdb, amazon,
 spotify, chatgpt, claude, dr, translate. Anything else works by address.
 
-**What this can and can't do.** Only two things: open Spotify, and open an
-ordinary `http`/`https` page. No shell is ever spawned, arguments are passed as
+**What this can and can't do.** Open or close Spotify and Discord, and open an
+ordinary `http`/`https` page. The apps are a fixed table — nothing from a
+conversation ever becomes an executable path or a process name. No shell is ever spawned, arguments are passed as
 an array rather than a command line, and search text is percent-encoded to a
 known-safe alphabet first.
 
@@ -213,7 +217,9 @@ turns "it feels slow" into a stage you can point at.
 What each stage responds to:
 
 Replies stream, so text appears as it's written and JARVIS starts speaking on
-the first finished sentence rather than after the last one. When he runs an
+the first finished sentence rather than after the last one. When he's about to
+do something he acknowledges first — "Right away, sir." — and you hear that
+while the action runs, not after it. When he runs an
 action, it shows in the transcript the moment it happens — the wait you see
 after that is only the closing sentence being written.
 
@@ -258,8 +264,9 @@ Security notes:
   hint (`••••abcd`), never a full key.
 - The server binds to `127.0.0.1`, so nothing on your network can reach JARVIS
   — it answers only to the machine it runs on.
-- Opening Spotify and opening an http(s) page are the only desktop actions that
-  exist. No shell is spawned, no path or command is taken from the conversation,
+- Opening and closing Spotify and Discord, and opening an http(s) page, are the
+  only desktop actions that exist. Which processes may be terminated is a fixed
+  table in the code. No shell is spawned, no path or command comes from the conversation,
   and addresses are validated before use — non-web schemes (`file:`,
   `javascript:`, `data:`, Windows handlers like `ms-msdt:`) and anything on
   localhost or your local network are refused.

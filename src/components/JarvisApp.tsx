@@ -128,6 +128,12 @@ export default function JarvisApp() {
           if (event.type === "text") {
             appendText(event.delta);
             for (const chunk of chunker.push(event.delta)) speakChunk(chunk);
+            // A flush marks text that shouldn't wait for a full sentence to
+            // accumulate — an acknowledgement spoken while the action runs.
+            if (event.flush) {
+              const now = chunker.flush();
+              if (now) speakChunk(now);
+            }
           } else if (event.type === "action") {
             // Some tools act on this interface rather than on the machine.
             if (event.log?.opens === "hologram") setHologramOpen(true);

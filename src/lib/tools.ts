@@ -8,7 +8,13 @@ import {
   type ComposeParams,
 } from "./gmail";
 import { sendWhatsAppMessage, isWhatsAppConfigured } from "./whatsapp";
-import { openSpotify, openWebsite, isDesktopControlEnabled } from "./desktop";
+import {
+  openApp,
+  closeApp,
+  openWebsite,
+  isKnownApp,
+  isDesktopControlEnabled,
+} from "./desktop";
 import { normalizeToolName, parseToolArguments } from "./toolCalls";
 import type { ActionLogEntry } from "./types";
 
@@ -129,19 +135,43 @@ export const toolDefinitions: OpenAI.Chat.Completions.ChatCompletionTool[] = [
   {
     type: "function",
     function: {
-      name: "open_spotify",
+      name: "open_app",
       description:
-        "Open the Spotify desktop app on the user's computer, optionally landing on a search for an artist, album, song, or playlist. Use this whenever the user asks to open Spotify or put music on. This opens the app and shows results — it does not press play, so say so.",
+        "Open a desktop app on the user's computer. Spotify can also land on a search for an artist, album, song, or playlist — that shows results but does not press play, so say so.",
       parameters: {
         type: "object",
         properties: {
+          app: {
+            type: "string",
+            enum: ["spotify", "discord"],
+            description: "Which app to open.",
+          },
           query: {
             type: "string",
             description:
-              "Optional artist, album, song, or playlist to search for once Spotify opens. Omit to just open the app.",
+              "Spotify only: an artist, album, song, or playlist to search for once it opens. Omit to just open the app.",
           },
         },
-        required: [],
+        required: ["app"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "close_app",
+      description:
+        "Quit a desktop app on the user's computer. Use this when he asks to close, quit, or shut down one of these apps.",
+      parameters: {
+        type: "object",
+        properties: {
+          app: {
+            type: "string",
+            enum: ["spotify", "discord"],
+            description: "Which app to close.",
+          },
+        },
+        required: ["app"],
       },
     },
   },
@@ -204,7 +234,7 @@ export function availableTools(): OpenAI.Chat.Completions.ChatCompletionTool[] {
     const name = tool.type === "function" ? tool.function.name : "";
     if (GMAIL_TOOLS.has(name)) return gmail;
     if (name === "send_whatsapp_message") return whatsapp;
-    if (name === "open_spotify" || name === "open_website") {
+    if (name === "open_app" || name === "close_app" || name === "open_website") {
       return isDesktopControlEnabled();
     }
     // Hologram v3 is a panel in this app, not an action on the machine, so it
@@ -295,17 +325,18 @@ export async function executeTool(
           },
         };
       }
-      case "open_spotify": {
+      case "open_app": {
+        const app = required(args.app, "app").toLowerCase();
+        if (!isKnownApp(app)) throw new Error(`I can't open "${app}", sir.`);
         const query = text(args.query);
-        const result = await openSpotify(query);
-        return {
-          result,
-          log: {
-            tool: name,
-            summary: query ? `Opened Spotify — searched "${query}"` : "Opened Spotify",
-            ok: true,
-          },
-        };
+        const result = await openApp(app, query);
+        return { result, log: { tool: name, summary: result.note, ok: true } };
+      }
+      case "close_app": {
+        const app = required(args.app, "app").toLowerCase();
+        if (!isKnownApp(app)) throw new Error(`I can't close "${app}", sir.`);
+        const result = await closeApp(app);
+        return { result, log: { tool: name, summary: result.note, ok: true } };
       }
       case "open_hologram": {
         // Nothing to do on this side — the panel lives in the browser, so the

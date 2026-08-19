@@ -16,6 +16,18 @@ interface IncomingMessage {
 
 const MAX_TOOL_ROUNDS = 5;
 
+// Said the moment an action begins, when the model dived straight into the
+// tool without a word. Speech then starts while the action is still running,
+// instead of after it — which is the difference between an assistant that
+// feels immediate and one that feels asleep.
+const ACKNOWLEDGEMENTS = [
+  "Right away, sir.",
+  "Of course, sir.",
+  "On it, sir.",
+  "Certainly, sir.",
+  "Consider it done, sir.",
+];
+
 /** One accumulating tool call, reassembled from streamed fragments. */
 interface PartialToolCall {
   id: string;
@@ -96,6 +108,9 @@ export async function POST(req: NextRequest) {
       const actions: ActionLogEntry[] = [];
       let modelMs = 0;
       let toolMs = 0;
+      // Once per turn, not once per round: a multi-step job shouldn't say
+      // "right away" three times.
+      let acknowledged = false;
 
       try {
         for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
@@ -112,6 +127,21 @@ export async function POST(req: NextRequest) {
             if (delta.content) {
               content += delta.content;
               send({ type: "text", delta: delta.content });
+            }
+
+            if ((delta.tool_calls?.length ?? 0) > 0 && !acknowledged) {
+              acknowledged = true;
+              // Only when the model said nothing itself — if it already
+              // acknowledged in its own words, that's better than ours.
+              if (!content.trim()) {
+                const phrase =
+                  ACKNOWLEDGEMENTS[Math.floor(Math.random() * ACKNOWLEDGEMENTS.length)];
+                content += phrase;
+                // flush: speak this now rather than waiting for the chunker to
+                // accumulate a full sentence's worth — the whole point is that
+                // it is heard before the action, and it is only four words.
+                send({ type: "text", delta: phrase, flush: true });
+              }
             }
 
             for (const call of delta.tool_calls ?? []) {

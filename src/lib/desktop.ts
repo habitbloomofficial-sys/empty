@@ -71,31 +71,88 @@ async function launch(target: string): Promise<void> {
   }
 }
 
-/** Known install locations, tried if the spotify: protocol isn't registered. */
-function spotifyExecutables(): string[] {
-  if (process.platform === "win32") {
-    const appData = process.env.APPDATA;
-    const programFiles = process.env.ProgramFiles;
-    return [
-      appData ? path.join(appData, "Spotify", "Spotify.exe") : "",
-      programFiles ? path.join(programFiles, "Spotify", "Spotify.exe") : "",
-    ].filter(Boolean);
-  }
-  if (process.platform === "darwin") {
-    return ["/Applications/Spotify.app"];
-  }
-  return ["/usr/bin/spotify", "/snap/bin/spotify", "/var/lib/flatpak/exports/bin/com.spotify.Client"];
+// The apps JARVIS may open and close. A registry rather than a pile of
+// special cases: adding one is a table entry, and nothing anywhere else can
+// name an executable or a process to kill.
+
+export type AppId = "spotify" | "discord";
+
+interface DesktopApp {
+  label: string;
+  /** Protocol URI registered by the installer. */
+  uri: string;
+  /** Some apps can be opened straight onto a search. */
+  search?: (query: string) => string;
+  /** Executables to terminate, per platform. Nothing else is ever named. */
+  processes: Partial<Record<NodeJS.Platform, string[]>>;
+  /** Where to look if the protocol handler isn't registered. */
+  paths: () => string[];
 }
 
-async function launchInstalledSpotify(): Promise<boolean> {
-  for (const candidate of spotifyExecutables()) {
+function windowsPaths(...segments: string[][]): string[] {
+  const roots: Record<string, string | undefined> = {
+    appData: process.env.APPDATA,
+    localAppData: process.env.LOCALAPPDATA,
+    programFiles: process.env.ProgramFiles,
+  };
+  return segments
+    .map(([root, ...rest]) => {
+      const base = roots[root];
+      return base ? path.join(base, ...rest) : "";
+    })
+    .filter(Boolean);
+}
+
+const APPS: Record<AppId, DesktopApp> = {
+  spotify: {
+    label: "Spotify",
+    uri: "spotify:",
+    search: (query) => `spotify:search:${strictEncode(query)}`,
+    processes: { win32: ["Spotify.exe"], darwin: ["Spotify"], linux: ["spotify"] },
+    paths: () => {
+      if (process.platform === "win32") {
+        return windowsPaths(["appData", "Spotify", "Spotify.exe"], ["programFiles", "Spotify", "Spotify.exe"]);
+      }
+      if (process.platform === "darwin") return ["/Applications/Spotify.app"];
+      return ["/usr/bin/spotify", "/snap/bin/spotify", "/var/lib/flatpak/exports/bin/com.spotify.Client"];
+    },
+  },
+  discord: {
+    label: "Discord",
+    uri: "discord://",
+    processes: { win32: ["Discord.exe"], darwin: ["Discord"], linux: ["Discord", "discord"] },
+    paths: () => {
+      if (process.platform === "win32") {
+        // Discord installs per-user under a versioned folder; Update.exe is the
+        // stable launcher that resolves whichever version is current.
+        return windowsPaths(["localAppData", "Discord", "Update.exe"]);
+      }
+      if (process.platform === "darwin") return ["/Applications/Discord.app"];
+      return ["/usr/bin/discord", "/snap/bin/discord", "/var/lib/flatpak/exports/bin/com.discordapp.Discord"];
+    },
+  },
+};
+
+export function isKnownApp(id: string): id is AppId {
+  return id in APPS;
+}
+
+export function appLabel(id: AppId): string {
+  return APPS[id].label;
+}
+
+/** Start an app from a known install location when its protocol is missing. */
+async function launchInstalled(app: DesktopApp): Promise<boolean> {
+  for (const candidate of app.paths()) {
     if (!fs.existsSync(candidate)) continue;
     try {
       if (process.platform === "darwin") {
         await run("open", ["-a", candidate]);
       } else {
-        // Detached so Spotify outlives the request that started it.
-        const child = execFile(candidate, [], { windowsHide: false });
+        // Discord's Update.exe needs telling which app to start.
+        const args = candidate.endsWith("Update.exe") ? ["--processStart", "Discord.exe"] : [];
+        // Detached, so the app outlives the request that started it.
+        const child = execFile(candidate, args, { windowsHide: false });
         child.unref();
       }
       return true;
@@ -104,6 +161,21 @@ async function launchInstalledSpotify(): Promise<boolean> {
     }
   }
   return false;
+}
+
+interface CommandResult {
+  ok: boolean;
+  output: string;
+}
+
+async function tryRun(file: string, args: string[]): Promise<CommandResult> {
+  try {
+    const { stdout, stderr } = await run(file, args);
+    return { ok: true, output: `${stdout}${stderr}` };
+  } catch (err) {
+    const e = err as { stdout?: string; stderr?: string; message?: string };
+    return { ok: false, output: `${e.stdout ?? ""}${e.stderr ?? ""}${e.message ?? ""}` };
+  }
 }
 
 // Sites worth knowing by name, so "search YouTube for X" lands on results
@@ -261,49 +333,116 @@ export async function openWebsite(params: OpenWebsiteParams): Promise<OpenWebsit
   };
 }
 
-export interface OpenSpotifyResult {
-  opened: boolean;
+export interface AppActionResult {
+  app: AppId;
   query?: string;
   note: string;
 }
 
-/**
- * Open the Spotify desktop app, optionally landing on a search. Playback isn't
- * started — the `spotify:` protocol can navigate the app but not press play,
- * which needs the Spotify Web API and an account authorization.
- */
-export async function openSpotify(query?: string): Promise<OpenSpotifyResult> {
+function requireDesktopControl(): void {
   if (!isDesktopControlEnabled()) {
     throw new Error(
-      "Opening desktop apps is switched off, sir — enable it in Settings if you'd like it back."
+      "Opening and closing apps is switched off, sir — enable it in Settings if you'd like it back."
     );
   }
+}
 
+/**
+ * Open one of the known apps, optionally landing on a search where it supports
+ * one. For Spotify that navigates but does not press play — the protocol can
+ * move around the app, and starting playback needs the Web API and an account
+ * authorization this doesn't use.
+ */
+export async function openApp(id: AppId, query?: string): Promise<AppActionResult> {
+  requireDesktopControl();
+
+  const app = APPS[id];
   const trimmed = query?.trim();
-  const uri = trimmed ? `spotify:search:${strictEncode(trimmed)}` : "spotify:";
+  const uri = trimmed && app.search ? app.search(trimmed) : app.uri;
 
   try {
     await openUri(uri);
   } catch {
-    // The protocol handler can be missing if Spotify was installed oddly.
-    const launched = await launchInstalledSpotify();
-    if (!launched) {
+    // The protocol handler can be missing if the app was installed oddly.
+    if (!(await launchInstalled(app))) {
       throw new Error(
-        "I couldn't find Spotify on this machine, sir — is the desktop app installed?"
+        `I couldn't find ${app.label} on this machine, sir — is the desktop app installed?`
       );
     }
     return {
-      opened: true,
+      app: id,
       query: trimmed,
-      note: "Opened Spotify. I couldn't jump to a search — the spotify: link handler isn't registered.",
+      note: `Opened ${app.label}.${
+        trimmed ? " I couldn't jump to a search — its link handler isn't registered." : ""
+      }`,
     };
   }
 
   return {
-    opened: true,
+    app: id,
     query: trimmed,
     note: trimmed
-      ? `Opened Spotify with a search for "${trimmed}". Press play on whichever result you want.`
-      : "Opened Spotify.",
+      ? `Opened ${app.label} with a search for "${trimmed}". Press play on whichever result you want.`
+      : `Opened ${app.label}.`,
   };
+}
+
+/**
+ * Quit one of the known apps. Only the executables named in the registry are
+ * ever targeted — nothing from a conversation reaches this as a process name.
+ *
+ * Asked politely first, then insisted upon: Spotify closes on request, but
+ * Discord treats a close as "minimise to tray" and only actually quits when
+ * forced.
+ */
+export async function closeApp(id: AppId): Promise<AppActionResult> {
+  requireDesktopControl();
+
+  const app = APPS[id];
+  const names = app.processes[process.platform] ?? [];
+  if (names.length === 0) {
+    throw new Error(`I don't know how to close ${app.label} on this system, sir.`);
+  }
+
+  let closed = false;
+  let wasRunning = false;
+
+  for (const name of names) {
+    if (process.platform === "win32") {
+      // /T takes the helper processes down with the main window.
+      const polite = await tryRun("taskkill.exe", ["/IM", name, "/T"]);
+      if (polite.ok) {
+        closed = true;
+        wasRunning = true;
+      } else if (!/not found|no tasks|not running/i.test(polite.output)) {
+        wasRunning = true;
+      }
+
+      const forced = await tryRun("taskkill.exe", ["/IM", name, "/T", "/F"]);
+      if (forced.ok) {
+        closed = true;
+        wasRunning = true;
+      }
+    } else if (process.platform === "darwin") {
+      const quit = await tryRun("osascript", ["-e", `quit app "${app.label}"`]);
+      if (quit.ok) {
+        closed = true;
+        wasRunning = true;
+      }
+    } else {
+      const killed = await tryRun("pkill", ["-x", name]);
+      if (killed.ok) {
+        closed = true;
+        wasRunning = true;
+      }
+    }
+  }
+
+  if (!closed && !wasRunning) {
+    return { app: id, note: `${app.label} wasn't running, sir.` };
+  }
+  if (!closed) {
+    throw new Error(`I couldn't close ${app.label}, sir — it refused to quit.`);
+  }
+  return { app: id, note: `Closed ${app.label}.` };
 }
