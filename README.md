@@ -262,16 +262,22 @@ turns "it feels slow" into a stage you can point at.
 What each stage responds to:
 
 Replies stream, so text appears as it's written and JARVIS starts speaking on
-the first finished sentence rather than after the last one. When he's about to
-do something he acknowledges first — "Right away, sir." — and you hear that
-while the action runs, not after it. When he runs an
+the first finished sentence rather than after the last one.
+
+He also talks on a clock of his own rather than the model's. Nothing can be
+spoken until the model produces its first token, and thinking produces none at
+all — so if half a second passes in silence he says something himself, and says
+something again if it drags on. And if a turn ends having done something but
+said nothing, he reports the action in his own words rather than leaving it
+silent. When he runs an
 action, it shows in the transcript the moment it happens — the wait you see
 after that is only the closing sentence being written.
 
-- **thought** — Gemini reasons before answering, which is wasted effort on
-  conversational replies. JARVIS asks for low effort by default; set
-  `GEMINI_REASONING_EFFORT` to `none` to remove it entirely, or `medium` /
-  `high` if you'd rather have the deliberation.
+- **thought** — Gemini reasons before answering, and all of it happens before a
+  single token appears, so it is silence you sit through. JARVIS asks for none
+  of it by default, since deciding to open Spotify needs no deliberation. Set
+  `GEMINI_REASONING_EFFORT` to `low`, `medium` or `high` if you'd rather have
+  considered answers than quick ones.
 - **spoke** — time until the first audio. ElevenLabs audio is streamed and
   played as it arrives rather than downloaded whole, and the default voice
   model is `eleven_flash_v2_5`. Set `ELEVENLABS_MODEL_ID=eleven_turbo_v2_5`

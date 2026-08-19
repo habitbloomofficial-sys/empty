@@ -14,6 +14,7 @@ import { useVoicePlayer } from "@/hooks/useVoicePlayer";
 import { useWakeWord } from "@/hooks/useWakeWord";
 import { nextGreeting } from "@/lib/greeting";
 import { SpeechChunker } from "@/lib/speechChunks";
+import { SmallTalk, describeActions } from "@/lib/smallTalk";
 import type { ChatMessage, IntegrationStatus, OrbState } from "@/lib/types";
 
 const Orb = dynamic(() => import("./Orb"), { ssr: false });
@@ -60,8 +61,16 @@ export default function JarvisApp() {
     setIsThinking(true);
 
     const chunker = new SpeechChunker();
+    const smallTalk = new SmallTalk();
     let spokenYet = false;
     let assistantStarted = false;
+    let finished = false;
+    const fillerTimers: ReturnType<typeof setTimeout>[] = [];
+    const stopFillers = () => {
+      finished = true;
+      fillerTimers.forEach(clearTimeout);
+      fillerTimers.length = 0;
+    };
 
     /** Speak a finished sentence, and record when the first sound arrived. */
     const speakChunk = (chunk: string) => {
@@ -76,27 +85,49 @@ export default function JarvisApp() {
         });
     };
 
+    // He talks on his own clock rather than the model's. Nothing has been
+    // spoken by now, so say something — the model may still be thinking, and
+    // thinking produces no tokens at all.
+    fillerTimers.push(
+      setTimeout(() => {
+        if (!finished && !spokenYet) speakChunk(smallTalk.opener());
+      }, 600)
+    );
+    // And again if it drags on, so a long job isn't a long silence.
+    for (const delay of [9000, 20000]) {
+      fillerTimers.push(
+        setTimeout(() => {
+          if (!finished && !voicePlayer.isSpeaking) speakChunk(smallTalk.stillWorking());
+        }, delay)
+      );
+    }
+
     /** Create the assistant bubble on first output, then keep appending. */
     const appendText = (delta: string) => {
       setIsThinking(false);
-      setMessages((prev) => {
-        if (!assistantStarted) {
-          assistantStarted = true;
-          return [
-            ...prev,
-            {
-              id: assistantId,
-              role: "assistant" as const,
-              content: delta,
-              createdAt: Date.now(),
-              timings: { transcribe: transcribeMs },
-            },
-          ];
-        }
-        return prev.map((m) =>
-          m.id === assistantId ? { ...m, content: m.content + delta } : m
-        );
-      });
+
+      // Flipped here rather than inside the updater below. React runs updaters
+      // when it renders, not when they're queued — and the last text event and
+      // the closing one usually arrive in the same network chunk, so a flag set
+      // in there is still false when the closing event reads it, and the reply
+      // gets spoken a second time.
+      const first = !assistantStarted;
+      assistantStarted = true;
+
+      setMessages((prev) =>
+        first
+          ? [
+              ...prev,
+              {
+                id: assistantId,
+                role: "assistant" as const,
+                content: delta,
+                createdAt: Date.now(),
+                timings: { transcribe: transcribeMs },
+              },
+            ]
+          : prev.map((m) => (m.id === assistantId ? { ...m, content: m.content + delta } : m))
+      );
     };
 
     try {
@@ -130,6 +161,8 @@ export default function JarvisApp() {
           const event = JSON.parse(line);
 
           if (event.type === "text") {
+            // Real words are on the way; the stand-ins have done their job.
+            stopFillers();
             appendText(event.delta);
             for (const chunk of chunker.push(event.delta)) speakChunk(chunk);
             // A flush marks text that shouldn't wait for a full sentence to
@@ -150,11 +183,12 @@ export default function JarvisApp() {
               )
             );
           } else if (event.type === "done") {
+            stopFillers();
             const tail = chunker.flush();
             if (tail) speakChunk(tail);
             setIsThinking(false);
             setMessages((prev) => {
-              const finished = prev.map((m) =>
+              const updated = prev.map((m) =>
                 m.id === assistantId
                   ? {
                       ...m,
@@ -171,9 +205,9 @@ export default function JarvisApp() {
               );
               // A reply with no text at all still deserves a bubble.
               return assistantStarted
-                ? finished
+                ? updated
                 : [
-                    ...finished,
+                    ...updated,
                     {
                       id: assistantId,
                       role: "assistant" as const,
@@ -188,15 +222,32 @@ export default function JarvisApp() {
                     },
                   ];
             });
-            if (!assistantStarted && event.reply) speakChunk(event.reply);
+            if (!assistantStarted && event.reply) {
+              speakChunk(event.reply);
+            } else if (!event.reply?.trim()) {
+              // Did something and said nothing about it. Report it in his own
+              // voice from what the tools actually reported back.
+              const summary = describeActions(
+                ((event.actions ?? []) as { summary?: string; ok?: boolean }[])
+                  .filter((a) => a.ok)
+                  .map((a) => a.summary ?? "")
+              );
+              if (summary) {
+                appendText(assistantStarted ? ` ${summary}` : summary);
+                speakChunk(summary);
+              }
+            }
           } else if (event.type === "error") {
             throw new Error(event.error);
           }
         }
       }
     } catch (err) {
+      stopFillers();
       setIsThinking(false);
       setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      stopFillers();
     }
   }
 

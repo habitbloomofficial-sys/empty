@@ -82,7 +82,11 @@ export function getReasoningEffort(): string | null {
   const configured = getSetting("GEMINI_REASONING_EFFORT")?.toLowerCase();
   const allowed = ["none", "minimal", "low", "medium", "high"];
   if (configured && allowed.includes(configured)) return configured;
-  return "low";
+  // None by default. Thinking happens before a single token is emitted, so
+  // every second of it is a second of silence — and deciding to open Spotify
+  // needs no deliberation. Raise it if you want considered answers over quick
+  // ones.
+  return "none";
 }
 
 /** True when an error looks like the endpoint rejecting reasoning_effort. */
