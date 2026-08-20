@@ -32,7 +32,7 @@ export interface ReplyTimings {
 
 export interface IntegrationStatus {
   brain: boolean;
-  brainProvider: "openai" | "gemini" | "openrouter" | "github" | null;
+  brainProvider: "openai" | "gemini" | "openrouter" | null;
   elevenlabs: boolean;
   /** Whether the server can transcribe recorded audio (mic works everywhere). */
   transcription: boolean;
@@ -42,6 +42,12 @@ export interface IntegrationStatus {
   /** The redirect URI that must be registered in the Google OAuth client. */
   gmailRedirectUri: string;
   whatsapp: boolean;
+  /** Whether JARVIS can place a call and connect you to it. */
+  phone: boolean;
+  /** Names you can ask him to call. */
+  phoneContacts: string[];
+  /** Whether the Google connection includes the calendar. */
+  calendar: boolean;
   /** Whether JARVIS may open or close apps on this machine. */
   desktopControl: boolean;
   /** Whether a YouTube key is available for channel statistics. */

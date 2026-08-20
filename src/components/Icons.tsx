@@ -219,3 +219,16 @@ export function SparkleIcon({ className }: IconProps) {
     </svg>
   );
 }
+
+export function PhoneIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className}>
+      <path
+        d="M6.2 3.8h3l1.4 3.5-2 1.4a11 11 0 0 0 4.7 4.7l1.4-2 3.5 1.4v3a1.8 1.8 0 0 1-2 1.8A14.6 14.6 0 0 1 4.4 5.8a1.8 1.8 0 0 1 1.8-2Z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}

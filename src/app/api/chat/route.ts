@@ -4,12 +4,12 @@ import {
   adoptAffordableLimit,
   getAI,
   getAIModel,
-  getAIProvider,
   getMaxTokens,
   getReasoningEffort,
   isPaymentRequired,
 } from "@/lib/ai";
 import { adoptGeminiReplacement, isModelNotFound } from "@/lib/geminiModel";
+import { describeModelFailure } from "@/lib/modelErrors";
 import { buildSystemPrompt } from "@/lib/systemPrompt";
 import { availableTools, executeTool, TOOL_NAMES } from "@/lib/tools";
 import { normalizeToolName } from "@/lib/toolCalls";
@@ -25,35 +25,6 @@ interface IncomingMessage {
 }
 
 const MAX_TOOL_ROUNDS = 5;
-
-/**
- * Model failures reach the user, so they have to say something. The SDK's own
- * wording for a rejected request is "400 status code (no body)", which tells
- * nobody anything.
- */
-function describeModelFailure(error: unknown): string {
-  const message = error instanceof Error ? error.message : String(error);
-  const status = (error as { status?: number })?.status;
-
-  if (status === 401 || status === 403 || /api[_ ]key/i.test(message)) {
-    return "The AI provider refused my key, sir — check it in Settings.";
-  }
-  if (status === 429 || /quota|rate.?limit|RateLimitReached/i.test(message)) {
-    return getAIProvider() === "github"
-      ? "GitHub is rate limiting me, sir — its free tier caps requests per minute and per day. A moment, or pick a smaller model in Settings."
-      : "The AI provider is rate limiting me, sir — a moment and try again.";
-  }
-  if (status === 400 && /no body/i.test(message)) {
-    return "The AI provider rejected the request, sir, without saying why. Worth a retry, or check the model name in Settings.";
-  }
-  if (status === 402 || /more credits|can only afford/i.test(message)) {
-    return "Your OpenRouter balance won't cover a reply, sir — add credit at openrouter.ai/settings/credits, or pick a cheaper model in Settings.";
-  }
-  if (status && status >= 500) {
-    return "The AI provider is having trouble at their end, sir — try again shortly.";
-  }
-  return message;
-}
 
 /** One accumulating tool call, reassembled from streamed fragments. */
 interface PartialToolCall {

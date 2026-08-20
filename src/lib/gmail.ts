@@ -7,11 +7,17 @@ import { getSetting } from "./settings";
 
 const TOKEN_PATH = path.join(process.cwd(), "data", "gmail-token.json");
 
-const SCOPES = [
+// One Google connection covers mail and calendar. Asking for both at the same
+// consent screen means one trip through Google's setup rather than two.
+const GMAIL_SCOPES = [
   "https://www.googleapis.com/auth/gmail.readonly",
   "https://www.googleapis.com/auth/gmail.send",
   "https://www.googleapis.com/auth/gmail.compose",
 ];
+
+export const CALENDAR_SCOPE = "https://www.googleapis.com/auth/calendar.events";
+
+const SCOPES = [...GMAIL_SCOPES, CALENDAR_SCOPE];
 
 export const DEFAULT_REDIRECT_URI = "http://localhost:3000/api/gmail/callback";
 
@@ -83,6 +89,27 @@ export async function saveTokenFromCode(code: string): Promise<void> {
     );
   }
   writeTokens(tokens);
+}
+
+/**
+ * The scopes the stored token was actually granted.
+ *
+ * A connection made before calendar was asked for still works perfectly for
+ * mail, and fails on calendar with a 403 that says nothing useful. Reading
+ * what was granted lets that be explained instead.
+ */
+export function grantedScopes(): string[] {
+  const tokens = readTokens();
+  return (tokens?.scope ?? "").split(/\s+/).filter(Boolean);
+}
+
+export function isCalendarConfigured(): boolean {
+  return isGmailConfigured() && grantedScopes().includes(CALENDAR_SCOPE);
+}
+
+/** The authorized client, for other Google APIs built on the same connection. */
+export async function googleClient(): Promise<OAuth2Client> {
+  return getAuthorizedClient();
 }
 
 export function disconnectGmail(): void {

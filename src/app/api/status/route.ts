@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
 import { isAIConfigured, getAIProvider } from "@/lib/ai";
 import { isElevenLabsConfigured } from "@/lib/elevenlabs";
-import { areGmailCredentialsConfigured, isGmailConfigured, redirectUri } from "@/lib/gmail";
+import {
+  areGmailCredentialsConfigured,
+  isCalendarConfigured,
+  isGmailConfigured,
+  redirectUri,
+} from "@/lib/gmail";
+import { isPhoneConfigured, savedContacts } from "@/lib/phone";
 import { isWhatsAppConfigured } from "@/lib/whatsapp";
 import { isTranscriptionConfigured } from "@/lib/transcription";
 import { isDesktopControlEnabled } from "@/lib/desktop";
@@ -24,6 +30,9 @@ export async function GET() {
     gmailCredentials: areGmailCredentialsConfigured(),
     gmailRedirectUri: redirectUri(),
     whatsapp: isWhatsAppConfigured(),
+    phone: isPhoneConfigured(),
+    phoneContacts: isPhoneConfigured() ? savedContacts().map((c) => c.name) : [],
+    calendar: isCalendarConfigured(),
     desktopControl: isDesktopControlEnabled(),
     youtube: isYouTubeConfigured(),
     youtubeChannel: configuredChannel() ?? null,

@@ -5,7 +5,7 @@ import { getSetting } from "./settings";
 // JARVIS's brain can run on either OpenAI or Google's Gemini — Gemini exposes
 // an OpenAI-compatible endpoint, so the same "openai" SDK and the same
 // chat-completions + tool-calling code in api/chat/route.ts work for both.
-export type AIProvider = "openai" | "gemini" | "openrouter" | "github";
+export type AIProvider = "openai" | "gemini" | "openrouter";
 
 const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/";
 
@@ -21,34 +21,20 @@ const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
  */
 export const OPENROUTER_FALLBACK_MODEL = "openai/gpt-4o";
 
-// GitHub Models: frontier models on your GitHub account, authenticated with an
-// ordinary personal access token and free within generous-but-real rate
-// limits. Also OpenAI-compatible, so it costs one entry in this table.
-//
-// The setting is GITHUB_MODELS_TOKEN rather than the obvious GITHUB_TOKEN,
-// because GITHUB_TOKEN already means something on a great many machines — the
-// gh CLI sets it, CI sets it, and picking it up automatically would silently
-// switch someone's assistant onto a provider they never chose.
-const GITHUB_BASE_URL = "https://models.github.ai/inference";
-
-/**
- * Model ids here are publisher-namespaced — "openai/gpt-4o", not "gpt-4o".
- * The Settings panel lists what the token can actually reach, so this is only
- * a starting point.
- */
-export const GITHUB_FALLBACK_MODEL = "openai/gpt-4o";
+// GitHub Models used to sit here. It was retired on 30 July 2026 — the whole
+// service, not just a model — and its endpoint now answers every request with
+// HTTP 410. A provider that cannot succeed is worse than a missing one, so it
+// is gone rather than left in the list looking like an option.
 
 function detectProvider(): AIProvider | null {
   const forced = getSetting("AI_PROVIDER")?.toLowerCase();
   if (forced === "gemini") return "gemini";
   if (forced === "openai") return "openai";
   if (forced === "openrouter") return "openrouter";
-  if (forced === "github") return "github";
 
   // Auto: whichever key exists. OpenRouter first — someone who configured it
   // did so to reach a better model than the one they already had.
   if (getSetting("OPENROUTER_API_KEY")) return "openrouter";
-  if (getSetting("GITHUB_MODELS_TOKEN")) return "github";
   if (getSetting("OPENAI_API_KEY")) return "openai";
   if (getSetting("GEMINI_API_KEY")) return "gemini";
   return null;
@@ -57,7 +43,6 @@ function detectProvider(): AIProvider | null {
 function keyFor(provider: AIProvider): string | undefined {
   if (provider === "gemini") return getSetting("GEMINI_API_KEY");
   if (provider === "openrouter") return getSetting("OPENROUTER_API_KEY");
-  if (provider === "github") return getSetting("GITHUB_MODELS_TOKEN");
   return getSetting("OPENAI_API_KEY");
 }
 
@@ -65,7 +50,6 @@ const PROVIDER_LABELS: Record<AIProvider, string> = {
   openai: "OpenAI",
   gemini: "Gemini",
   openrouter: "OpenRouter",
-  github: "GitHub Models",
 };
 
 export function isAIConfigured(): boolean {
@@ -91,7 +75,7 @@ export function getAI(): OpenAI {
     throw new Error(
       provider
         ? `The AI provider is set to "${provider}", but no ${PROVIDER_LABELS[provider]} API key has been saved yet — add one in Settings.`
-        : "No AI brain configured yet, sir — add a Gemini, OpenRouter, GitHub, or OpenAI key in Settings."
+        : "No AI brain configured yet, sir — add a Gemini, OpenRouter, or OpenAI API key in Settings."
     );
   }
 
@@ -106,9 +90,7 @@ export function getAI(): OpenAI {
 
   if (provider === "gemini") {
     cachedClient = new OpenAI({ apiKey, baseURL: GEMINI_BASE_URL });
-  } else if (provider === "github") {
-    cachedClient = new OpenAI({ apiKey, baseURL: GITHUB_BASE_URL });
-  } else if (provider === "openrouter") {
+    } else if (provider === "openrouter") {
     cachedClient = new OpenAI({
       apiKey,
       baseURL: OPENROUTER_BASE_URL,
@@ -203,9 +185,6 @@ export function getAIModel(): string {
   if (provider === "gemini") return geminiModel();
   if (provider === "openrouter") {
     return getSetting("OPENROUTER_MODEL") || OPENROUTER_FALLBACK_MODEL;
-  }
-  if (provider === "github") {
-    return getSetting("GITHUB_MODEL") || GITHUB_FALLBACK_MODEL;
   }
   return getSetting("OPENAI_MODEL") || "gpt-4o";
 }

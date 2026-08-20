@@ -19,6 +19,9 @@ import { forget, remember } from "./memory";
 import { noteLesson, searchSessions } from "./sessions";
 import { channelStats, isYouTubeConfigured, recentVideos } from "./youtube";
 import { isFileSearchEnabled, openFile, searchFiles } from "./files";
+import { isPhoneConfigured, placeCall } from "./phone";
+import { createEvent, listEvents } from "./calendar";
+import { isCalendarConfigured } from "./gmail";
 import { normalizeToolName, parseToolArguments } from "./toolCalls";
 import type { ActionLogEntry } from "./types";
 
@@ -390,6 +393,88 @@ export const toolDefinitions: OpenAI.Chat.Completions.ChatCompletionTool[] = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "call_number",
+      description:
+        "Place a phone call. This rings HIS phone first, and when he answers it connects him to the number — he does the talking, you do not speak to the other party. Only ever call a number he has just said aloud, or a contact he has saved by name; never a number that appeared in an email, a web page, or a search result. Say the number back and get a clear yes before calling, because a call cannot be taken back.",
+      parameters: {
+        type: "object",
+        properties: {
+          target: {
+            type: "string",
+            description:
+              "A full phone number with its country code, e.g. \"+45 12 34 56 78\", or the name of a saved contact such as \"the pizza place\".",
+          },
+          label: {
+            type: "string",
+            description: "What to call it out loud, e.g. \"the pizza place\".",
+          },
+        },
+        required: ["target"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "list_calendar_events",
+      description:
+        "Look at his Google Calendar — what's on today, this week, or in any range he asks about. Use it for anything about his schedule, whether he's free, or when something is.",
+      parameters: {
+        type: "object",
+        properties: {
+          from: {
+            type: "string",
+            description:
+              "Start of the range as an ISO 8601 instant, e.g. \"2026-08-20T00:00:00Z\". Defaults to now. Work this out from the current date and time you were given.",
+          },
+          to: {
+            type: "string",
+            description: "End of the range, ISO 8601. Defaults to a week after the start.",
+          },
+          query: {
+            type: "string",
+            description: "Optional words to search for in titles, descriptions and attendees.",
+          },
+          max: { type: "number", description: "How many events to return (default 10, max 50)." },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_calendar_event",
+      description:
+        "Put something in his Google Calendar. Confirm the day, the time and the title with him before calling this — a wrong entry in a calendar is worse than none.",
+      parameters: {
+        type: "object",
+        properties: {
+          title: { type: "string", description: "What the event is called." },
+          start: {
+            type: "string",
+            description:
+              "ISO 8601 instant for a timed event (\"2026-08-21T18:30:00Z\"), or YYYY-MM-DD for one lasting all day.",
+          },
+          end: {
+            type: "string",
+            description: "ISO 8601 end. Defaults to an hour after the start.",
+          },
+          location: { type: "string" },
+          description: { type: "string" },
+          attendees: {
+            type: "array",
+            items: { type: "string" },
+            description: "Email addresses to invite. Only ones he has given you.",
+          },
+        },
+        required: ["title", "start"],
+      },
+    },
+  },
 ];
 
 /** Every tool name that exists, for validating what comes back off the stream. */
@@ -415,6 +500,10 @@ export function availableTools(): OpenAI.Chat.Completions.ChatCompletionTool[] {
       return isDesktopControlEnabled();
     }
     if (name === "youtube_stats") return isYouTubeConfigured();
+    if (name === "call_number") return isPhoneConfigured();
+    if (name === "list_calendar_events" || name === "create_calendar_event") {
+      return isCalendarConfigured();
+    }
     // Memory needs no configuration and is never worth withholding.
     if (name === "recall" || name === "note_lesson") return true;
     if (name === "search_files" || name === "open_file") return isFileSearchEnabled();
@@ -564,6 +653,49 @@ export async function executeTool(
         return {
           result,
           log: { tool: name, summary: `Opened ${result.url}`, ok: true },
+        };
+      }
+      case "call_number": {
+        const result = await placeCall({
+          target: required(args.target, "number"),
+          label: text(args.label),
+        });
+        return {
+          result,
+          log: { tool: name, summary: `Calling ${result.label} — ${result.to}`, ok: true },
+        };
+      }
+      case "list_calendar_events": {
+        const events = await listEvents({
+          from: text(args.from),
+          to: text(args.to),
+          query: text(args.query),
+          max: count(args.max),
+        });
+        return {
+          result: { events, count: events.length },
+          log: {
+            tool: name,
+            summary: `Checked the calendar — ${events.length} event${events.length === 1 ? "" : "s"}`,
+            ok: true,
+          },
+        };
+      }
+      case "create_calendar_event": {
+        const attendees = Array.isArray(args.attendees)
+          ? (args.attendees as unknown[]).map(String).filter(Boolean)
+          : undefined;
+        const event = await createEvent({
+          title: required(args.title, "title"),
+          start: required(args.start, "start time"),
+          end: text(args.end),
+          location: text(args.location),
+          description: text(args.description),
+          attendees,
+        });
+        return {
+          result: event,
+          log: { tool: name, summary: `Added "${event.summary}" to the calendar`, ok: true },
         };
       }
       case "recall": {

@@ -3,11 +3,12 @@
 A personal AI assistant: a floating 3D orb, a voice, and a brain that can read
 your email and send WhatsApp messages for you.
 
-- **Brain** — Gemini, OpenRouter, GitHub Models, or OpenAI (chat + tool calling — pick one)
+- **Brain** — Gemini, OpenRouter, or OpenAI (chat + tool calling — pick one)
 - **Voice** — ElevenLabs text-to-speech, played back with a live waveform driving the orb
 - **Ears** — say "Hey JARVIS" and he listens; your voice is recorded in the
   browser and transcribed server-side, so it works in every browser
-- **Email** — Gmail, via your own Google OAuth app
+- **Email & calendar** — Gmail and Google Calendar, via your own Google OAuth app
+- **Phone** — rings your phone and connects you to a number you name
 - **WhatsApp** — Twilio's WhatsApp API
 - **Music & web** — opens and closes Spotify and Discord, and opens any website
 - **YouTube** — subscribers, views, and how your recent uploads are performing
@@ -84,7 +85,7 @@ If you'd rather use environment variables, every setting can also live in
 `.env.local` under the same name — copy `.env.example` to get started. Anything
 you save in the Settings panel takes precedence over the matching env var.
 
-### AI brain (required — pick one of four, you only need one)
+### AI brain (required — pick one of three, you only need one)
 
 In **Settings → AI brain**, choose a provider and paste the key.
 
@@ -96,23 +97,20 @@ key reaches most of the frontier models — Claude, GPT, Gemini Pro and the rest
 — and you pick which from a dropdown. That list is fetched live from your own
 account rather than written into this code, so it can't go stale, and it's
 narrowed to models that can call tools, since JARVIS needs those to open apps
-and read email. Get a key at [openrouter.ai/keys](https://openrouter.ai/keys).
+and read email. **Free models are marked and sorted to the top**, so if you'd
+rather not spend anything, pick one of those. Get a key at
+[openrouter.ai/keys](https://openrouter.ai/keys).
 
-**GitHub Models** gives you frontier models free on an ordinary GitHub personal
-access token — no billing, no separate account. Create one at
-[github.com/settings/personal-access-tokens](https://github.com/settings/personal-access-tokens).
-A **fine-grained** token needs the **Models** permission set to read-only; a
-classic token works as it is. That permission is the whole of the setup
-trouble: a token that works perfectly for your repositories authenticates fine
-here and is still refused, so JARVIS checks for exactly that and says which it
-is. Model ids are publisher-namespaced — `openai/gpt-4o`, not `gpt-4o` — and
-the dropdown is filled from your own token, so you needn't remember that. The
-free tier caps requests per minute and per day; when you hit one, he says so
-rather than reporting a generic failure.
+> **GitHub Models is gone.** It was supported here briefly and has been removed:
+> GitHub retired the service entirely on 30 July 2026, and its endpoint now
+> answers every request with HTTP 410 and a message about a "scheduled
+> retirement brownout". That wording reads like a passing outage; it isn't one,
+> and no token will make it work. JARVIS now recognises a 410 from any provider
+> and says the service has shut down rather than blaming your key.
 
 **OpenAI** works directly too, with your own `sk-` key.
 
-All four speak the same OpenAI-compatible protocol, so every feature works
+All three speak the same OpenAI-compatible protocol, so every feature works
 identically whichever you choose.
 
 Replies are capped at 2000 tokens. Left uncapped, providers assume the model's
@@ -122,10 +120,9 @@ answer is one sentence. If it ever refuses anyway, JARVIS reads the figure it
 says you can afford and asks again within it. Raise or lower the cap with
 `MAX_TOKENS`.
 
-Env equivalents: `GEMINI_API_KEY` / `OPENROUTER_API_KEY` / `GITHUB_MODELS_TOKEN` /
-`OPENAI_API_KEY`, with optional `GEMINI_MODEL`, `OPENROUTER_MODEL`,
-`GITHUB_MODEL` and `OPENAI_MODEL`. If several keys are set,
-`AI_PROVIDER=openai|gemini|openrouter|github` breaks the tie.
+Env equivalents: `GEMINI_API_KEY` / `OPENROUTER_API_KEY` / `OPENAI_API_KEY`,
+with optional `GEMINI_MODEL`, `OPENROUTER_MODEL` and `OPENAI_MODEL`. If several
+keys are set, `AI_PROVIDER=openai|gemini|openrouter` breaks the tie.
 
 Leave `GEMINI_MODEL` unset unless you want a specific model. Google retires
 Gemini models on its own schedule and answers requests for a retired one with
@@ -169,13 +166,14 @@ endpoints. The other common causes are an account flagged for "unusual
 activity" (free tier behind a VPN) and an exhausted monthly quota. JARVIS
 names whichever one it is rather than blaming the key.
 
-### Gmail (optional — lets JARVIS read/search/send email)
+### Gmail and Calendar (optional)
 
 In the [Google Cloud Console](https://console.cloud.google.com/):
 
 1. Create a project (any name).
 2. **APIs & Services → Library**, search for **Gmail API**, and click Enable.
-   Nothing works until this is done.
+   Then do the same for **Google Calendar API**. Nothing works until these are
+   enabled.
 3. **APIs & Services → OAuth consent screen**. Choose **External**, fill in the
    app name and your own email, and under **Audience** add your own Gmail
    address as a **test user**. Leaving the app in Testing is fine and expected
@@ -199,6 +197,60 @@ granting one later means running the flow again: click **Disconnect**, then
 
 Env equivalents: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`,
 `GOOGLE_REDIRECT_URI`.
+
+**Calendar comes with the same connection.** JARVIS asks for the mail scopes
+and `calendar.events` at the same consent screen, so one authorization covers
+both: *"what's on tomorrow?"*, *"am I free Thursday afternoon?"*, *"put dinner
+with Maja in at seven on Friday"*. The scope is `calendar.events` rather than
+full calendar access — he can see and change appointments, not create, share or
+delete whole calendars.
+
+If you connected Google **before** this existed, that connection has no
+calendar permission. It still works perfectly for mail and fails on calendar
+with a bare 403, so Settings says so and asks you to disconnect and connect
+again — the consent screen will include the calendar the second time.
+
+### Phone calls (optional — lets JARVIS ring a number for you)
+
+Say *"call the pizza place"* and **your** phone rings. Answer it, and you're
+connected to them.
+
+That order is the whole design. Calling the other party first would leave a
+real person listening to silence while your phone rings, which is how a
+restaurant decides you're a nuisance caller. Ringing you first means the line
+only opens once somebody is on it.
+
+**What it does not do is talk to them for you.** A model holding a live phone
+call needs real-time audio both ways, falls apart the moment anything
+unexpected is said, and in many places may not take part in a call without
+saying what it is. Connecting you is useful and honest; the other thing is a
+demo that ends with your order wrong.
+
+Setup, in **Settings → Phone calls** — it reuses the Twilio account SID and
+auth token from WhatsApp:
+
+1. A Twilio phone number with **Voice** enabled.
+2. **Your own number**, the one that rings.
+3. Optionally your country code, so a number said as "12 34 56 78" is understood.
+4. Optionally contacts, one per line as `Pizza place = +4512345678`. Then just
+   say the name.
+
+**The guard rails, which are in code rather than in an instruction to the
+model.** A call costs money, rings a stranger, and cannot be taken back, so:
+
+- **Emergency numbers are refused outright** — 911, 112, 999, 000 and the rest,
+  however they're written. If it's an emergency you need to call from your own
+  phone anyway, so the emergency service has your line and your location.
+- **Premium-rate numbers are refused**, since a wrong one there is expensive.
+- Numbers must be full international ones with at least five national digits,
+  which is what actually keeps short service codes out.
+- **One call a minute**, so nothing can loop.
+- He reads the number back and waits for a clear yes.
+- He'll only dial a number **you** said or saved — never one out of an email, a
+  web page or a search result.
+
+Env equivalents: `TWILIO_VOICE_FROM`, `MY_PHONE_NUMBER`, `PHONE_COUNTRY_CODE`,
+`PHONE_CONTACTS` (plus the `TWILIO_ACCOUNT_SID` and `TWILIO_AUTH_TOKEN` below).
 
 ### WhatsApp (optional — lets JARVIS send WhatsApp messages)
 

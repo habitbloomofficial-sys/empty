@@ -10,6 +10,7 @@ import {
   MailIcon,
   MemoryIcon,
   MusicIcon,
+  PhoneIcon,
   PlayIcon,
   SparkleIcon,
   WhatsAppIcon,
@@ -50,31 +51,28 @@ interface KeyCheck {
 
 type Views = Record<string, SettingView>;
 
-type Provider = "gemini" | "openrouter" | "github" | "openai";
+type Provider = "gemini" | "openrouter" | "openai";
 
 const PROVIDER_LABELS: Record<Provider, string> = {
   gemini: "Gemini",
   openrouter: "OpenRouter",
-  github: "GitHub",
   openai: "OpenAI",
 };
 
 const PROVIDER_KEYS: Record<Provider, string> = {
   gemini: "GEMINI_API_KEY",
   openrouter: "OPENROUTER_API_KEY",
-  github: "GITHUB_MODELS_TOKEN",
   openai: "OPENAI_API_KEY",
 };
 
 const KEY_PLACEHOLDERS: Record<Provider, string> = {
   gemini: "AIza…",
   openrouter: "sk-or-v1-…",
-  github: "github_pat_… or ghp_…",
   openai: "sk-…",
 };
 
 /** Providers whose model list is fetched from the account itself. */
-const LISTS_MODELS: Provider[] = ["openrouter", "github"];
+const LISTS_MODELS: Provider[] = ["openrouter"];
 
 async function fetchMemories(): Promise<MemoryEntry[]> {
   try {
@@ -123,6 +121,7 @@ function Field({
   onChange,
   placeholder,
   hint,
+  multiline,
 }: {
   label: string;
   view: SettingView | undefined;
@@ -130,6 +129,8 @@ function Field({
   onChange: (next: string) => void;
   placeholder?: string;
   hint?: React.ReactNode;
+  /** For values that are a list — one per line beats one long line. */
+  multiline?: boolean;
 }) {
   const [revealed, setRevealed] = useState(false);
   const secret = view?.secret ?? false;
@@ -151,15 +152,26 @@ function Field({
           </button>
         )}
       </span>
-      <input
-        type={secret && !revealed ? "password" : "text"}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder ?? (view?.set ? view.display : "")}
-        autoComplete="off"
-        spellCheck={false}
-        className="w-full rounded-lg border border-white/80 bg-white/70 px-3 py-2 font-mono text-xs text-ink-900 placeholder:font-sans placeholder:text-ink-700/35 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/30"
-      />
+      {multiline ? (
+        <textarea
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder ?? (view?.set ? view.display : "")}
+          rows={3}
+          spellCheck={false}
+          className="w-full resize-y rounded-lg border border-white/80 bg-white/70 px-3 py-2 font-mono text-xs leading-relaxed text-ink-900 placeholder:font-sans placeholder:text-ink-700/35 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/30"
+        />
+      ) : (
+        <input
+          type={secret && !revealed ? "password" : "text"}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder ?? (view?.set ? view.display : "")}
+          autoComplete="off"
+          spellCheck={false}
+          className="w-full rounded-lg border border-white/80 bg-white/70 px-3 py-2 font-mono text-xs text-ink-900 placeholder:font-sans placeholder:text-ink-700/35 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/30"
+        />
+      )}
       {(hint || savedHint) && (
         <span className="mt-1 block text-[10px] text-ink-700/50">
           {hint ?? savedHint}
@@ -226,7 +238,7 @@ export function SettingsModal({
   const [views, setViews] = useState<Views>({});
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [provider, setProvider] = useState<Provider>("gemini");
-  const [models, setModels] = useState<{ id: string; name: string }[]>([]);
+  const [models, setModels] = useState<{ id: string; name: string; free?: boolean }[]>([]);
   const [busySection, setBusySection] = useState<string | null>(null);
   const [savedSection, setSavedSection] = useState<string | null>(null);
   const [checks, setChecks] = useState<Record<string, KeyCheck[]>>({});
@@ -256,8 +268,6 @@ export function SettingsModal({
       setProvider(saved as Provider);
     } else if (next.OPENROUTER_API_KEY?.set) {
       setProvider("openrouter");
-    } else if (next.GITHUB_MODELS_TOKEN?.set) {
-      setProvider("github");
     } else if (next.OPENAI_API_KEY?.set && !next.GEMINI_API_KEY?.set) {
       setProvider("openai");
     } else if (next.GEMINI_API_KEY?.set) {
@@ -403,7 +413,8 @@ export function SettingsModal({
   }
 
   const brainKey = PROVIDER_KEYS[provider];
-  const modelKey = provider === "github" ? "GITHUB_MODEL" : "OPENROUTER_MODEL";
+  const freeCount = models.filter((model) => model.free).length;
+  const modelKey = "OPENROUTER_MODEL";
   const brainKeySet = views[brainKey]?.set ?? false;
 
   return (
@@ -440,7 +451,7 @@ export function SettingsModal({
                   key={p}
                   type="button"
                   onClick={() => setProvider(p)}
-                  className={`flex-1 rounded-full px-2 py-1.5 text-[11px] font-semibold transition ${
+                  className={`flex-1 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
                     provider === p
                       ? "bg-sky-500 text-white shadow-sm"
                       : "text-ink-700/70 hover:bg-sky-500/10"
@@ -452,7 +463,7 @@ export function SettingsModal({
             </div>
 
             <Field
-              label={provider === "github" ? "GitHub token" : `${PROVIDER_LABELS[provider]} API key`}
+              label={`${PROVIDER_LABELS[provider]} API key`}
               view={views[brainKey]}
               value={draft(brainKey)}
               onChange={(v) => setDraft(brainKey, v)}
@@ -466,27 +477,23 @@ export function SettingsModal({
                   list="account-models"
                   value={draft(modelKey)}
                   onChange={(e) => setDraft(modelKey, e.target.value)}
-                  placeholder={
-                    provider === "github"
-                      ? "openai/gpt-4o — start typing to search"
-                      : "anthropic/claude-… — start typing to search"
-                  }
+                  placeholder="anthropic/claude-… — start typing to search"
                   autoComplete="off"
                   spellCheck={false}
                   className="w-full rounded-lg border border-white/80 bg-white/70 px-3 py-2 font-mono text-xs text-ink-900 placeholder:font-sans placeholder:text-ink-700/35 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/30"
                 />
                 <span className="mt-1 block text-[10px] text-ink-700/50">
                   {models.length > 0
-                    ? `${models.length} models your ${
-                        provider === "github" ? "token" : "key"
-                      } can reach. Ids are namespaced, like openai/gpt-4o.`
+                    ? `${models.length} models on your key that can use tools${
+                        freeCount > 0 ? `, ${freeCount} of them free` : ""
+                      }.`
                     : "Save your key and reopen this panel to load the list of models."}
                 </span>
                 {/* Populated from your own account, so it is never out of date. */}
                 <datalist id="account-models">
                   {models.map((model) => (
                     <option key={model.id} value={model.id}>
-                      {model.name}
+                      {model.free ? `${model.name} — free` : model.name}
                     </option>
                   ))}
                 </datalist>
@@ -508,23 +515,6 @@ export function SettingsModal({
               </p>
             )}
 
-            {provider === "github" && (
-              <p>
-                Free frontier models on your GitHub account. Create a token at{" "}
-                <a
-                  href="https://github.com/settings/personal-access-tokens"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="font-medium text-sky-600 underline"
-                >
-                  github.com/settings
-                </a>{" "}
-                — a fine-grained token needs the <b>Models</b> permission set to
-                read-only, and a classic token works as it is. The free tier caps
-                requests per minute and per day.
-              </p>
-            )}
-
             {provider === "openrouter" && (
               <p>
                 One key for most of the frontier models — get one at{" "}
@@ -537,7 +527,8 @@ export function SettingsModal({
                   openrouter.ai/keys
                 </a>
                 . Only models that can call tools are listed, since JARVIS needs
-                them to open apps and read email.
+                them to open apps and read email — and the free ones are marked
+                and sorted to the top.
               </p>
             )}
 
@@ -662,17 +653,35 @@ export function SettingsModal({
 
           <Section
             icon={<MailIcon className="h-4 w-4" />}
-            title="Gmail"
+            title="Gmail & Calendar"
             ok={Boolean(status?.gmail)}
           >
             {status?.gmail ? (
-              <p className="rounded-lg bg-sky-500/10 px-2.5 py-1.5 text-sky-800">
-                ✓ Connected — JARVIS can search, read, draft, reply to, and send email.
-              </p>
+              <>
+                <p className="rounded-lg bg-sky-500/10 px-2.5 py-1.5 text-sky-800">
+                  ✓ Connected — JARVIS can search, read, draft, reply to, and send
+                  email.
+                </p>
+                {status.calendar ? (
+                  <p className="rounded-lg bg-sky-500/10 px-2.5 py-1.5 text-sky-800">
+                    ✓ Calendar too — he can see what&apos;s on and add to it.
+                  </p>
+                ) : (
+                  // A connection made before the calendar scope existed works
+                  // perfectly for mail and fails on calendar with a bare 403.
+                  // Better to say so here than to let him discover it.
+                  <p className="rounded-lg bg-amber-500/10 px-2.5 py-1.5 text-amber-800">
+                    Calendar isn&apos;t included in this connection — it was made
+                    before JARVIS could read it. Disconnect and connect again, and
+                    the consent screen will ask for your calendar this time.
+                  </p>
+                )}
+              </>
             ) : (
               <p>
                 Create an OAuth client (type: Web application) in the Google Cloud
-                Console, paste its ID and secret here, then click Connect Gmail.
+                Console, paste its ID and secret here, then click Connect. One
+                connection covers both your mail and your calendar.
               </p>
             )}
 
@@ -1015,6 +1024,82 @@ export function SettingsModal({
                 Forget everything
               </button>
             )}
+          </Section>
+
+          <Section
+            icon={<PhoneIcon className="h-4 w-4" />}
+            title="Phone calls"
+            ok={Boolean(status?.phone)}
+          >
+            <p>
+              Say <i>&quot;call the pizza place&quot;</i> and your phone rings — answer
+              it and you&apos;re connected. <b>You</b> do the talking; JARVIS places the
+              call and gets out of the way.
+            </p>
+            <Field
+              label="Twilio voice number"
+              view={views.TWILIO_VOICE_FROM}
+              value={draft("TWILIO_VOICE_FROM")}
+              onChange={(v) => setDraft("TWILIO_VOICE_FROM", v)}
+              placeholder="+15551234567"
+              hint="A Twilio number with Voice enabled. Uses the same account SID and auth token as WhatsApp, above."
+            />
+            <Field
+              label="Your own number"
+              view={views.MY_PHONE_NUMBER}
+              value={draft("MY_PHONE_NUMBER")}
+              onChange={(v) => setDraft("MY_PHONE_NUMBER", v)}
+              placeholder="+4512345678"
+              hint="The phone that rings. Nothing is dialled until you answer this."
+            />
+            <Field
+              label="Your country code (optional)"
+              view={views.PHONE_COUNTRY_CODE}
+              value={draft("PHONE_COUNTRY_CODE")}
+              onChange={(v) => setDraft("PHONE_COUNTRY_CODE", v)}
+              placeholder="45"
+              hint="So a number said without one — “12 34 56 78” — is understood as local."
+            />
+            <Field
+              label="Contacts"
+              view={views.PHONE_CONTACTS}
+              value={draft("PHONE_CONTACTS")}
+              onChange={(v) => setDraft("PHONE_CONTACTS", v)}
+              placeholder={"Pizza place = +4512345678\nMum = +4587654321"}
+              hint="One per line, name = number. Then just say the name."
+              multiline
+            />
+            {status?.phoneContacts && status.phoneContacts.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {status.phoneContacts.map((name) => (
+                  <span
+                    key={name}
+                    className="rounded-full bg-sky-500/10 px-2 py-0.5 text-[10px] font-medium text-sky-700"
+                  >
+                    {name}
+                  </span>
+                ))}
+              </div>
+            )}
+            <SaveButton
+              onClick={() =>
+                save("phone", {
+                  TWILIO_VOICE_FROM: draft("TWILIO_VOICE_FROM"),
+                  MY_PHONE_NUMBER: draft("MY_PHONE_NUMBER"),
+                  PHONE_COUNTRY_CODE: draft("PHONE_COUNTRY_CODE"),
+                  PHONE_CONTACTS: draft("PHONE_CONTACTS"),
+                })
+              }
+              busy={busySection === "phone"}
+              saved={savedSection === "phone"}
+              checks={checks.phone}
+            />
+            <p className="text-[10px] text-ink-700/50">
+              Calls cost whatever Twilio charges and ring a real person, so he reads
+              the number back and waits for a yes. Emergency numbers are refused
+              outright — call those yourself, so they have your line and location.
+              One call a minute, at most.
+            </p>
           </Section>
 
           <Section
