@@ -13,14 +13,18 @@
 export interface Catchphrase {
   /** What to listen for, already lowercase and free of punctuation. */
   triggers: string[];
-  /** Said back word for word. */
+  /**
+   * Said back word for word. `{title}` becomes whatever he's been told to call
+   * you, so the fixed reply still follows the Personality setting rather than
+   * being the one line in the app that ignores it.
+   */
   reply: string;
 }
 
 export const CATCHPHRASES: Catchphrase[] = [
   {
     triggers: ["daddys home", "daddy is home", "papas home", "papa is home"],
-    reply: "Welcome home.",
+    reply: "Welcome home, {title}.",
   },
 ];
 
@@ -40,7 +44,7 @@ export function normalisePhrase(text: string): string {
  * home" are the same phrase — and the trigger has to be the whole of what was
  * said, so mentioning it inside a longer sentence doesn't fire it.
  */
-export function catchphraseFor(spoken: string): string | null {
+export function catchphraseFor(spoken: string, title = "sir"): string | null {
   let text = normalisePhrase(spoken);
   if (!text) return null;
 
@@ -48,7 +52,9 @@ export function catchphraseFor(spoken: string): string | null {
   text = text.replace(/^(hey|hi|hello|ok|okay|yo)?\s*(jarvis|jervis|travis)\s*/, "").trim();
 
   for (const phrase of CATCHPHRASES) {
-    if (phrase.triggers.includes(text)) return phrase.reply;
+    if (phrase.triggers.includes(text)) {
+      return phrase.reply.replace(/\{title\}/g, title);
+    }
   }
   return null;
 }

@@ -1043,8 +1043,9 @@ export function SettingsModal({
               saved={savedSection === "personality"}
             />
             <p className="text-[10px] text-ink-700/50">
-              Some things stay fixed whatever you set here: say “Hey JARVIS,
-              daddy&apos;s home” and the answer is always, exactly, “Welcome home.”
+              Some things are fixed: say “Hey JARVIS, daddy&apos;s home” and the
+              answer is always, exactly, “Welcome home,{" "}
+              {draft("USER_TITLE") || status?.title || "sir"}.”
             </p>
           </Section>
 

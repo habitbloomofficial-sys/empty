@@ -77,7 +77,7 @@ export default function JarvisApp() {
     // exactly this" mostly obliges and occasionally embellishes, which is the
     // one thing a catchphrase can't survive — so it's answered here instead,
     // word for word and with no round trip at all.
-    const fixed = catchphraseFor(text);
+    const fixed = catchphraseFor(text, status?.title ?? "sir");
     if (fixed) {
       setMessages((prev) => [
         ...prev,

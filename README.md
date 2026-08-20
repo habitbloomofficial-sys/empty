@@ -225,8 +225,9 @@ as asked — and drops the act entirely when something actually matters.
 handled in code rather than by the model — a model told to "always reply with
 exactly this" mostly obliges and occasionally improvises, which is the one thing
 a catchphrase cannot survive. Say **"Hey JARVIS, daddy's home"** and the answer
-is always, exactly, **"Welcome home."** — instantly, with no request to the model
-at all. They're a table in `src/lib/catchphrases.ts` if you want to add more.
+is always, exactly, **"Welcome home, sir."** — instantly, with no request to the
+model at all. The *sir* follows the setting above, so it becomes "Welcome home,
+boss." if that's what you've told him to call you. They're a table in `src/lib/catchphrases.ts` if you want to add more.
 
 Env equivalents: `USER_TITLE`, `HUMOUR`.
 
