@@ -3,7 +3,7 @@
 A personal AI assistant: a floating 3D orb, a voice, and a brain that can read
 your email and send WhatsApp messages for you.
 
-- **Brain** — Gemini, OpenRouter, or OpenAI (chat + tool calling — pick one)
+- **Brain** — Gemini, OpenRouter, GitHub Models, or OpenAI (chat + tool calling — pick one)
 - **Voice** — ElevenLabs text-to-speech, played back with a live waveform driving the orb
 - **Ears** — say "Hey JARVIS" and he listens; your voice is recorded in the
   browser and transcribed server-side, so it works in every browser
@@ -84,7 +84,7 @@ If you'd rather use environment variables, every setting can also live in
 `.env.local` under the same name — copy `.env.example` to get started. Anything
 you save in the Settings panel takes precedence over the matching env var.
 
-### AI brain (required — pick one of three, you only need one)
+### AI brain (required — pick one of four, you only need one)
 
 In **Settings → AI brain**, choose a provider and paste the key.
 
@@ -98,9 +98,21 @@ account rather than written into this code, so it can't go stale, and it's
 narrowed to models that can call tools, since JARVIS needs those to open apps
 and read email. Get a key at [openrouter.ai/keys](https://openrouter.ai/keys).
 
+**GitHub Models** gives you frontier models free on an ordinary GitHub personal
+access token — no billing, no separate account. Create one at
+[github.com/settings/personal-access-tokens](https://github.com/settings/personal-access-tokens).
+A **fine-grained** token needs the **Models** permission set to read-only; a
+classic token works as it is. That permission is the whole of the setup
+trouble: a token that works perfectly for your repositories authenticates fine
+here and is still refused, so JARVIS checks for exactly that and says which it
+is. Model ids are publisher-namespaced — `openai/gpt-4o`, not `gpt-4o` — and
+the dropdown is filled from your own token, so you needn't remember that. The
+free tier caps requests per minute and per day; when you hit one, he says so
+rather than reporting a generic failure.
+
 **OpenAI** works directly too, with your own `sk-` key.
 
-All three speak the same OpenAI-compatible protocol, so every feature works
+All four speak the same OpenAI-compatible protocol, so every feature works
 identically whichever you choose.
 
 Replies are capped at 2000 tokens. Left uncapped, providers assume the model's
@@ -110,9 +122,10 @@ answer is one sentence. If it ever refuses anyway, JARVIS reads the figure it
 says you can afford and asks again within it. Raise or lower the cap with
 `MAX_TOKENS`.
 
-Env equivalents: `GEMINI_API_KEY` / `OPENROUTER_API_KEY` / `OPENAI_API_KEY`,
-with optional `GEMINI_MODEL`, `OPENROUTER_MODEL` and `OPENAI_MODEL`. If several
-keys are set, `AI_PROVIDER=openai|gemini|openrouter` breaks the tie.
+Env equivalents: `GEMINI_API_KEY` / `OPENROUTER_API_KEY` / `GITHUB_MODELS_TOKEN` /
+`OPENAI_API_KEY`, with optional `GEMINI_MODEL`, `OPENROUTER_MODEL`,
+`GITHUB_MODEL` and `OPENAI_MODEL`. If several keys are set,
+`AI_PROVIDER=openai|gemini|openrouter|github` breaks the tie.
 
 Leave `GEMINI_MODEL` unset unless you want a specific model. Google retires
 Gemini models on its own schedule and answers requests for a retired one with
@@ -348,6 +361,17 @@ JARVIS runs on your own machine, so he can open things on it:
 - *"open Discord"*, *"close Spotify"*, *"quit Discord"* — Spotify and Discord can
   both be opened and closed. Closing asks politely first and then insists, since
   Discord treats a close as "minimise to tray".
+- *"close Chrome"*, *"open Opera"*, *"quit Edge"* — Chrome, Edge, Firefox and
+  Opera (including Opera GX). Closing a browser closes **every** window of it,
+  and JARVIS is running in one: ask him to close the browser you're reading him
+  in and he'll say so before doing it.
+- *"open my folders"*, *"close File Explorer"* — File Explorer opens on This PC.
+  Closing it closes your folder windows and nothing else: `explorer.exe` is also
+  the taskbar, the desktop and the Start menu, so ending the process would take
+  the whole Windows shell down with it. He asks the shell to close its own
+  windows instead.
+- *"open the recycle bin"* — opens it. It's a folder rather than a program, so
+  it can't be closed the same way, and he'll tell you that rather than trying.
 - *"open YouTube"* / *"search YouTube for lo-fi beats"* — the site, or its search
   results.
 - *"open bbc.co.uk"* — any ordinary website by name or address. Sites open in a

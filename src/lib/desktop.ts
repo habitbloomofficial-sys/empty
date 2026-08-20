@@ -75,18 +75,34 @@ async function launch(target: string): Promise<void> {
 // special cases: adding one is a table entry, and nothing anywhere else can
 // name an executable or a process to kill.
 
-export type AppId = "spotify" | "discord";
+export type AppId =
+  | "spotify"
+  | "discord"
+  | "chrome"
+  | "edge"
+  | "firefox"
+  | "opera"
+  | "explorer"
+  | "recyclebin";
 
 interface DesktopApp {
   label: string;
-  /** Protocol URI registered by the installer. */
-  uri: string;
+  /** Protocol or shell URI, where one exists. Browsers have none. */
+  uri?: string;
   /** Some apps can be opened straight onto a search. */
   search?: (query: string) => string;
   /** Executables to terminate, per platform. Nothing else is ever named. */
   processes: Partial<Record<NodeJS.Platform, string[]>>;
   /** Where to look if the protocol handler isn't registered. */
   paths: () => string[];
+  /**
+   * Closing it needs something other than ending its process. File Explorer is
+   * the case that matters: explorer.exe is also the taskbar, the desktop and
+   * the Start menu, so killing it takes Windows' entire shell down with it.
+   */
+  closer?: () => Promise<boolean>;
+  /** A place rather than a program — there is nothing to close. */
+  openOnly?: boolean;
 }
 
 function windowsPaths(...segments: string[][]): string[] {
@@ -103,6 +119,32 @@ function windowsPaths(...segments: string[][]): string[] {
     .filter(Boolean);
 }
 
+/**
+ * Close the File Explorer windows, and only those.
+ *
+ * explorer.exe is not just the file browser: it is also the taskbar, the
+ * desktop and the Start menu. Ending the process closes your folders and takes
+ * the entire Windows shell with them. Asking the shell to close its own
+ * browser windows leaves everything else standing.
+ *
+ * The command is a constant. Nothing from a conversation reaches it.
+ */
+async function closeExplorerWindows(): Promise<boolean> {
+  if (process.platform !== "win32") return false;
+  const script =
+    "$shell = New-Object -ComObject Shell.Application; " +
+    "$windows = @($shell.Windows() | Where-Object { $_.FullName -like '*explorer.exe' }); " +
+    "$windows | ForEach-Object { $_.Quit() }; " +
+    "$windows.Count";
+  const result = await tryRun("powershell.exe", [
+    "-NoProfile",
+    "-NonInteractive",
+    "-Command",
+    script,
+  ]);
+  return result.ok;
+}
+
 const APPS: Record<AppId, DesktopApp> = {
   spotify: {
     label: "Spotify",
@@ -116,6 +158,73 @@ const APPS: Record<AppId, DesktopApp> = {
       if (process.platform === "darwin") return ["/Applications/Spotify.app"];
       return ["/usr/bin/spotify", "/snap/bin/spotify", "/var/lib/flatpak/exports/bin/com.spotify.Client"];
     },
+  },
+  chrome: {
+    label: "Google Chrome",
+    processes: { win32: ["chrome.exe"], darwin: ["Google Chrome"], linux: ["chrome", "google-chrome"] },
+    paths: () => {
+      if (process.platform === "win32") {
+        return windowsPaths(
+          ["programFiles", "Google", "Chrome", "Application", "chrome.exe"],
+          ["localAppData", "Google", "Chrome", "Application", "chrome.exe"]
+        );
+      }
+      if (process.platform === "darwin") return ["/Applications/Google Chrome.app"];
+      return ["/usr/bin/google-chrome", "/usr/bin/chromium", "/snap/bin/chromium"];
+    },
+  },
+  edge: {
+    label: "Microsoft Edge",
+    processes: { win32: ["msedge.exe"], darwin: ["Microsoft Edge"], linux: ["microsoft-edge"] },
+    paths: () => {
+      if (process.platform === "win32") {
+        return windowsPaths(["programFiles", "Microsoft", "Edge", "Application", "msedge.exe"]);
+      }
+      if (process.platform === "darwin") return ["/Applications/Microsoft Edge.app"];
+      return ["/usr/bin/microsoft-edge"];
+    },
+  },
+  firefox: {
+    label: "Firefox",
+    processes: { win32: ["firefox.exe"], darwin: ["firefox"], linux: ["firefox"] },
+    paths: () => {
+      if (process.platform === "win32") {
+        return windowsPaths(["programFiles", "Mozilla Firefox", "firefox.exe"]);
+      }
+      if (process.platform === "darwin") return ["/Applications/Firefox.app"];
+      return ["/usr/bin/firefox", "/snap/bin/firefox"];
+    },
+  },
+  opera: {
+    label: "Opera",
+    // Opera GX runs as opera.exe too, so one name covers both.
+    processes: { win32: ["opera.exe"], darwin: ["Opera"], linux: ["opera"] },
+    paths: () => {
+      if (process.platform === "win32") {
+        return windowsPaths(
+          ["localAppData", "Programs", "Opera", "opera.exe"],
+          ["localAppData", "Programs", "Opera GX", "opera.exe"],
+          ["programFiles", "Opera", "opera.exe"]
+        );
+      }
+      if (process.platform === "darwin") return ["/Applications/Opera.app"];
+      return ["/usr/bin/opera"];
+    },
+  },
+  explorer: {
+    label: "File Explorer",
+    // "This PC" — the same window the taskbar button opens.
+    uri: "shell:MyComputerFolder",
+    processes: {},
+    paths: () => [],
+    closer: closeExplorerWindows,
+  },
+  recyclebin: {
+    label: "the Recycle Bin",
+    uri: "shell:RecycleBinFolder",
+    processes: {},
+    paths: () => [],
+    openOnly: true,
   },
   discord: {
     label: "Discord",
@@ -425,6 +534,17 @@ export async function openApp(id: AppId, query?: string): Promise<AppActionResul
   const trimmed = query?.trim();
   const uri = trimmed && app.search ? app.search(trimmed) : app.uri;
 
+  // Browsers register no protocol of their own, so there is nothing to open
+  // but the executable.
+  if (!uri) {
+    if (!(await launchInstalled(app))) {
+      throw new Error(
+        `I couldn't find ${app.label} on this machine, sir — is it installed?`
+      );
+    }
+    return { app: id, note: `Opened ${app.label}.` };
+  }
+
   try {
     await openUri(uri);
   } catch {
@@ -464,6 +584,16 @@ export async function closeApp(id: AppId): Promise<AppActionResult> {
   requireDesktopControl();
 
   const app = APPS[id];
+
+  if (app.openOnly) {
+    throw new Error(`${app.label} is a folder, sir — close its window yourself.`);
+  }
+
+  if (app.closer) {
+    if (await app.closer()) return { app: id, note: `Closed ${app.label}.` };
+    throw new Error(`I couldn't close ${app.label}, sir.`);
+  }
+
   const names = app.processes[process.platform] ?? [];
   if (names.length === 0) {
     throw new Error(`I don't know how to close ${app.label} on this system, sir.`);

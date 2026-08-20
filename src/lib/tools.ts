@@ -141,14 +141,24 @@ export const toolDefinitions: OpenAI.Chat.Completions.ChatCompletionTool[] = [
     function: {
       name: "open_app",
       description:
-        "Open a desktop app on the user's computer. Spotify can also land on a search for an artist, album, song, or playlist — that shows results but does not press play, so say so.",
+        "Open something on the user's computer: an app, his file manager, or the Recycle Bin. Spotify can also land on a search for an artist, album, song, or playlist — that shows results but does not press play, so say so. \"explorer\" is File Explorer, which he may call his folders, his files, or This PC.",
       parameters: {
         type: "object",
         properties: {
           app: {
             type: "string",
-            enum: ["spotify", "discord"],
-            description: "Which app to open.",
+            enum: [
+              "spotify",
+              "discord",
+              "chrome",
+              "edge",
+              "firefox",
+              "opera",
+              "explorer",
+              "recyclebin",
+            ],
+            description:
+              "Which one to open. Use \"chrome\" when he says Google and means the browser.",
           },
           query: {
             type: "string",
@@ -171,8 +181,9 @@ export const toolDefinitions: OpenAI.Chat.Completions.ChatCompletionTool[] = [
         properties: {
           app: {
             type: "string",
-            enum: ["spotify", "discord"],
-            description: "Which app to close.",
+            enum: ["spotify", "discord", "chrome", "edge", "firefox", "opera", "explorer"],
+            description:
+              "Which one to close. \"explorer\" closes his open folder windows and nothing else. The Recycle Bin can't be closed this way — it's a folder, so say so rather than trying.",
           },
         },
         required: ["app"],

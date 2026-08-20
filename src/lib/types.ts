@@ -32,7 +32,7 @@ export interface ReplyTimings {
 
 export interface IntegrationStatus {
   brain: boolean;
-  brainProvider: "openai" | "gemini" | "openrouter" | null;
+  brainProvider: "openai" | "gemini" | "openrouter" | "github" | null;
   elevenlabs: boolean;
   /** Whether the server can transcribe recorded audio (mic works everywhere). */
   transcription: boolean;

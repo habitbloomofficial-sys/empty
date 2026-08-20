@@ -18,6 +18,7 @@ import { screenUtterance, withinFollowUp } from "@/lib/speechGate";
 import { nextGreeting } from "@/lib/greeting";
 import { SpeechChunker } from "@/lib/speechChunks";
 import { SmallTalk, describeActions } from "@/lib/smallTalk";
+import { banterFor } from "@/lib/banter";
 import type { ChatMessage, IntegrationStatus, OrbState } from "@/lib/types";
 
 const Orb = dynamic(() => import("./Orb"), { ssr: false });
@@ -122,7 +123,15 @@ export default function JarvisApp() {
     // thinking produces no tokens at all.
     fillerTimers.push(
       setTimeout(() => {
-        if (!finished && !spokenYet) speakChunk(smallTalk.opener());
+        if (finished || spokenYet) return;
+        // A line about what was actually asked for, where there is one — "One
+        // moment, sir" fills the silence but says nothing.
+        const line =
+          banterFor(text, {
+            title: status?.title ?? "sir",
+            playful: status?.humour === "playful",
+          }) ?? smallTalk.opener();
+        speakChunk(line);
       }, 600)
     );
     // And again if it drags on, so a long job isn't a long silence.

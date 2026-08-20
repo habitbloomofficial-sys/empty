@@ -4,6 +4,7 @@ import {
   adoptAffordableLimit,
   getAI,
   getAIModel,
+  getAIProvider,
   getMaxTokens,
   getReasoningEffort,
   isPaymentRequired,
@@ -37,8 +38,10 @@ function describeModelFailure(error: unknown): string {
   if (status === 401 || status === 403 || /api[_ ]key/i.test(message)) {
     return "The AI provider refused my key, sir — check it in Settings.";
   }
-  if (status === 429 || /quota|rate.?limit/i.test(message)) {
-    return "The AI provider is rate limiting me, sir — a moment and try again.";
+  if (status === 429 || /quota|rate.?limit|RateLimitReached/i.test(message)) {
+    return getAIProvider() === "github"
+      ? "GitHub is rate limiting me, sir — its free tier caps requests per minute and per day. A moment, or pick a smaller model in Settings."
+      : "The AI provider is rate limiting me, sir — a moment and try again.";
   }
   if (status === 400 && /no body/i.test(message)) {
     return "The AI provider rejected the request, sir, without saying why. Worth a retry, or check the model name in Settings.";

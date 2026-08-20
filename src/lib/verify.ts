@@ -39,6 +39,7 @@ const VERIFIABLE: Partial<Record<SettingKey, Verifier>> = {
   OPENAI_API_KEY: verifyOpenAI,
   GEMINI_API_KEY: verifyGemini,
   OPENROUTER_API_KEY: verifyOpenRouter,
+  GITHUB_MODELS_TOKEN: verifyGitHub,
   YOUTUBE_API_KEY: verifyYouTubeKey,
   YOUTUBE_CHANNEL: verifyYouTubeChannel,
 };
@@ -199,6 +200,49 @@ async function verifyYouTubeChannel(value: string): Promise<string> {
     ? "subscribers hidden"
     : `${stats.subscribers?.toLocaleString() ?? "?"} subscribers`;
   return `Found “${stats.title}” — ${subscribers}, ${stats.videos.toLocaleString()} videos.`;
+}
+
+/**
+ * A GitHub personal access token, checked against the model catalogue.
+ *
+ * The catalogue is the right probe because it is exactly what the token needs
+ * to be able to reach: a token that works for repositories but has no Models
+ * permission authenticates perfectly and is still useless here, and that
+ * distinction is the whole of the setup trouble.
+ */
+async function verifyGitHub(value: string): Promise<string> {
+  const res = await fetch("https://models.github.ai/catalog/models", {
+    headers: {
+      Authorization: `Bearer ${value}`,
+      Accept: "application/vnd.github+json",
+      "X-GitHub-Api-Version": "2022-11-28",
+    },
+    cache: "no-store",
+    ...timed(),
+  });
+
+  if (res.ok) {
+    const body = (await res.json().catch(() => null)) as unknown;
+    const count = Array.isArray(body) ? body.length : 0;
+    return count > 0
+      ? `GitHub token verified — ${count} models available.`
+      : "GitHub token verified.";
+  }
+
+  if (res.status === 401) {
+    throw new Error(
+      "GitHub says that token isn't valid. Tokens are shown once at creation — make a new one and copy it in full."
+    );
+  }
+  if (res.status === 403 || res.status === 404) {
+    throw new Error(
+      "The token is real, but it can't reach GitHub Models. If it's a fine-grained token, edit it and set the “Models” permission to read-only; a classic token works without that."
+    );
+  }
+  if (res.status === 429) {
+    return "Token accepted, but GitHub is rate limiting it just now — the free tier has per-minute and per-day caps.";
+  }
+  return `Saved, but GitHub wouldn't confirm it (HTTP ${res.status}).`;
 }
 
 async function verifyOpenAI(value: string): Promise<string> {

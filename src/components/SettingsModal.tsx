@@ -50,6 +50,32 @@ interface KeyCheck {
 
 type Views = Record<string, SettingView>;
 
+type Provider = "gemini" | "openrouter" | "github" | "openai";
+
+const PROVIDER_LABELS: Record<Provider, string> = {
+  gemini: "Gemini",
+  openrouter: "OpenRouter",
+  github: "GitHub",
+  openai: "OpenAI",
+};
+
+const PROVIDER_KEYS: Record<Provider, string> = {
+  gemini: "GEMINI_API_KEY",
+  openrouter: "OPENROUTER_API_KEY",
+  github: "GITHUB_MODELS_TOKEN",
+  openai: "OPENAI_API_KEY",
+};
+
+const KEY_PLACEHOLDERS: Record<Provider, string> = {
+  gemini: "AIza…",
+  openrouter: "sk-or-v1-…",
+  github: "github_pat_… or ghp_…",
+  openai: "sk-…",
+};
+
+/** Providers whose model list is fetched from the account itself. */
+const LISTS_MODELS: Provider[] = ["openrouter", "github"];
+
 async function fetchMemories(): Promise<MemoryEntry[]> {
   try {
     const res = await fetch("/api/memory", { cache: "no-store" });
@@ -199,7 +225,7 @@ export function SettingsModal({
 }) {
   const [views, setViews] = useState<Views>({});
   const [drafts, setDrafts] = useState<Record<string, string>>({});
-  const [provider, setProvider] = useState<"gemini" | "openrouter" | "openai">("gemini");
+  const [provider, setProvider] = useState<Provider>("gemini");
   const [models, setModels] = useState<{ id: string; name: string }[]>([]);
   const [busySection, setBusySection] = useState<string | null>(null);
   const [savedSection, setSavedSection] = useState<string | null>(null);
@@ -226,10 +252,12 @@ export function SettingsModal({
       return seeded;
     });
     const saved = next.AI_PROVIDER?.display?.toLowerCase();
-    if (saved === "openai" || saved === "gemini" || saved === "openrouter") {
-      setProvider(saved);
+    if (saved && saved in PROVIDER_LABELS) {
+      setProvider(saved as Provider);
     } else if (next.OPENROUTER_API_KEY?.set) {
       setProvider("openrouter");
+    } else if (next.GITHUB_MODELS_TOKEN?.set) {
+      setProvider("github");
     } else if (next.OPENAI_API_KEY?.set && !next.GEMINI_API_KEY?.set) {
       setProvider("openai");
     } else if (next.GEMINI_API_KEY?.set) {
@@ -271,7 +299,7 @@ export function SettingsModal({
   }, []);
 
   useEffect(() => {
-    if (provider !== "openrouter") return;
+    if (!LISTS_MODELS.includes(provider)) return;
     let cancelled = false;
     (async () => {
       try {
@@ -374,12 +402,8 @@ export function SettingsModal({
     }
   }
 
-  const brainKey =
-    provider === "gemini"
-      ? "GEMINI_API_KEY"
-      : provider === "openrouter"
-        ? "OPENROUTER_API_KEY"
-        : "OPENAI_API_KEY";
+  const brainKey = PROVIDER_KEYS[provider];
+  const modelKey = provider === "github" ? "GITHUB_MODEL" : "OPENROUTER_MODEL";
   const brainKeySet = views[brainKey]?.set ?? false;
 
   return (
@@ -411,59 +435,55 @@ export function SettingsModal({
             <p>Paste an API key below to give JARVIS a brain. You only need one.</p>
 
             <div className="flex gap-1.5 rounded-full bg-white/60 p-1">
-              {(["gemini", "openrouter", "openai"] as const).map((p) => (
+              {(Object.keys(PROVIDER_LABELS) as Provider[]).map((p) => (
                 <button
                   key={p}
                   type="button"
                   onClick={() => setProvider(p)}
-                  className={`flex-1 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                  className={`flex-1 rounded-full px-2 py-1.5 text-[11px] font-semibold transition ${
                     provider === p
                       ? "bg-sky-500 text-white shadow-sm"
                       : "text-ink-700/70 hover:bg-sky-500/10"
                   }`}
                 >
-                  {p === "gemini" ? "Gemini" : p === "openrouter" ? "OpenRouter" : "OpenAI"}
+                  {PROVIDER_LABELS[p]}
                 </button>
               ))}
             </div>
 
             <Field
-              label={`${
-                provider === "gemini" ? "Gemini" : provider === "openrouter" ? "OpenRouter" : "OpenAI"
-              } API key`}
+              label={provider === "github" ? "GitHub token" : `${PROVIDER_LABELS[provider]} API key`}
               view={views[brainKey]}
               value={draft(brainKey)}
               onChange={(v) => setDraft(brainKey, v)}
-              placeholder={
-                brainKeySet
-                  ? views[brainKey]?.display
-                  : provider === "gemini"
-                    ? "AIza…"
-                    : provider === "openrouter"
-                      ? "sk-or-v1-…"
-                      : "sk-…"
-              }
+              placeholder={brainKeySet ? views[brainKey]?.display : KEY_PLACEHOLDERS[provider]}
             />
 
-            {provider === "openrouter" && (
+            {LISTS_MODELS.includes(provider) && (
               <label className="block">
                 <span className="mb-1 block text-[11px] font-semibold text-ink-900">Model</span>
                 <input
-                  list="openrouter-models"
-                  value={draft("OPENROUTER_MODEL")}
-                  onChange={(e) => setDraft("OPENROUTER_MODEL", e.target.value)}
-                  placeholder="anthropic/claude-… — start typing to search"
+                  list="account-models"
+                  value={draft(modelKey)}
+                  onChange={(e) => setDraft(modelKey, e.target.value)}
+                  placeholder={
+                    provider === "github"
+                      ? "openai/gpt-4o — start typing to search"
+                      : "anthropic/claude-… — start typing to search"
+                  }
                   autoComplete="off"
                   spellCheck={false}
                   className="w-full rounded-lg border border-white/80 bg-white/70 px-3 py-2 font-mono text-xs text-ink-900 placeholder:font-sans placeholder:text-ink-700/35 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/30"
                 />
                 <span className="mt-1 block text-[10px] text-ink-700/50">
                   {models.length > 0
-                    ? `${models.length} models on your key that can use tools. Save the key first if the list is empty.`
+                    ? `${models.length} models your ${
+                        provider === "github" ? "token" : "key"
+                      } can reach. Ids are namespaced, like openai/gpt-4o.`
                     : "Save your key and reopen this panel to load the list of models."}
                 </span>
                 {/* Populated from your own account, so it is never out of date. */}
-                <datalist id="openrouter-models">
+                <datalist id="account-models">
                   {models.map((model) => (
                     <option key={model.id} value={model.id}>
                       {model.name}
@@ -488,6 +508,23 @@ export function SettingsModal({
               </p>
             )}
 
+            {provider === "github" && (
+              <p>
+                Free frontier models on your GitHub account. Create a token at{" "}
+                <a
+                  href="https://github.com/settings/personal-access-tokens"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-medium text-sky-600 underline"
+                >
+                  github.com/settings
+                </a>{" "}
+                — a fine-grained token needs the <b>Models</b> permission set to
+                read-only, and a classic token works as it is. The free tier caps
+                requests per minute and per day.
+              </p>
+            )}
+
             {provider === "openrouter" && (
               <p>
                 One key for most of the frontier models — get one at{" "}
@@ -509,9 +546,7 @@ export function SettingsModal({
                 save("brain", {
                   AI_PROVIDER: provider,
                   ...(draft(brainKey).trim() ? { [brainKey]: draft(brainKey) } : {}),
-                  ...(provider === "openrouter"
-                    ? { OPENROUTER_MODEL: draft("OPENROUTER_MODEL") }
-                    : {}),
+                  ...(LISTS_MODELS.includes(provider) ? { [modelKey]: draft(modelKey) } : {}),
                 })
               }
               busy={busySection === "brain"}
