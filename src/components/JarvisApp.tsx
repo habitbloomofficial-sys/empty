@@ -14,6 +14,7 @@ import { useVoicePlayer } from "@/hooks/useVoicePlayer";
 import { useWakeWord } from "@/hooks/useWakeWord";
 import { describeClientFetchError, fetchWithRetry, postJson } from "@/lib/clientFetch";
 import { catchphraseFor } from "@/lib/catchphrases";
+import { screenUtterance, withinFollowUp } from "@/lib/speechGate";
 import { nextGreeting } from "@/lib/greeting";
 import { SpeechChunker } from "@/lib/speechChunks";
 import { SmallTalk, describeActions } from "@/lib/smallTalk";
@@ -47,6 +48,9 @@ export default function JarvisApp() {
   const [handsFree, setHandsFree] = useState(false);
   // Bumped when a reply finishes, which is the cue to start listening again.
   const [lastReplyAt, setLastReplyAt] = useState(0);
+  // The last thing he decided wasn't for him, shown quietly so an unanswered
+  // request never looks like a broken microphone.
+  const [ignored, setIgnored] = useState<{ text: string; reason: string; at: number } | null>(null);
 
   const voicePlayer = useVoicePlayer();
 
@@ -291,7 +295,44 @@ export default function JarvisApp() {
     );
   }
 
-  const speech = useVoiceInput(handleSend, Boolean(status?.transcription));
+  /**
+   * Everything the microphone produces, screened before it becomes a turn.
+   *
+   * With the microphone held open, most of what it hears is not for him: a
+   * click, a cough, the television, you talking to someone else. Acting on any
+   * of it is worse than missing a request, because he interrupts whatever he
+   * was already saying to do it.
+   */
+  const handleHeard = async (text: string, transcribeMs?: number) => {
+    // A recording you started by pressing the button is unambiguously meant
+    // for him, whatever he happens to be doing. A microphone that simply never
+    // closed is not, so that one has to earn it:
+    //
+    //   - straight after his own reply, a follow-up needs no name, because
+    //     having to say "Jarvis" before every sentence isn't a conversation;
+    //   - but cutting into a reply already under way always takes his name,
+    //     since interrupting himself over a noise is the worst version of
+    //     getting this wrong.
+    const busy = voicePlayer.isSpeaking || isThinking;
+    const requireName =
+      handsFree && (busy || !withinFollowUp(lastReplyAt, Date.now()));
+
+    const verdict = screenUtterance(text, { requireName });
+
+    if (!verdict.act) {
+      // Silently. An assistant announcing everything it decided to ignore is
+      // just a different way of not leaving you alone.
+      const at = Date.now();
+      setIgnored({ text: text.trim(), reason: verdict.reason, at });
+      // Clears itself, so the last thing he overheard isn't left on screen.
+      setTimeout(() => setIgnored((current) => (current?.at === at ? null : current)), 6000);
+      return;
+    }
+    setIgnored(null);
+    await handleSend(verdict.text, transcribeMs);
+  };
+
+  const speech = useVoiceInput(handleHeard, Boolean(status?.transcription));
 
   // Wake word. Held off while he's speaking or already listening, so he never
   // hears his own name in his own voice and wakes himself up.
@@ -406,7 +447,7 @@ export default function JarvisApp() {
     }
     // A beat after he stops, so the tail of his own voice never lands in the
     // recording and get transcribed back as if you had said it.
-    const timer = setTimeout(() => void speech.start(), 400);
+    const timer = setTimeout(() => void speech.start({ continuous: true }), 400);
     return () => clearTimeout(timer);
     // lastReplyAt is the trigger: it changes when a turn ends.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -497,6 +538,16 @@ export default function JarvisApp() {
           </div>
         )}
 
+        {/* Heard, and deliberately not answered. Worth showing, briefly and
+            quietly: without it an ignored request is indistinguishable from a
+            microphone that has stopped working. */}
+        {ignored?.reason === "not-addressed" && (
+          <div className="glass mt-3 max-w-md rounded-xl px-4 py-2 text-center text-xs text-ink-700/60">
+            Heard “{ignored.text.slice(0, 60)}” — start with <b>“Hey JARVIS”</b> if that
+            was meant for me.
+          </div>
+        )}
+
         {greetingPending && (
           <div className="glass mt-3 max-w-md rounded-xl px-4 py-2 text-center text-xs text-ink-700/70">
             Click anywhere and I&apos;ll say hello, sir — your browser won&apos;t let me
@@ -552,7 +603,8 @@ export default function JarvisApp() {
               speech.stop();
             } else {
               setHandsFree(true);
-              void speech.start();
+              setIgnored(null);
+              void speech.start({ continuous: true });
             }
           }}
         />

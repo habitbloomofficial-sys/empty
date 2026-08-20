@@ -450,6 +450,8 @@ Env equivalent: `FILE_SEARCH_ROOTS=D:\Projects;E:\Archive`.
   presses. The button keeps a ring around it while the microphone is live, and
   pressing it again switches it off. If the microphone fails, it stands down
   rather than pretending to listen.
+- **With the microphone open, he only answers when he's spoken to** — see
+  below. He will not answer a click, a cough, or you talking to somebody else.
 - **Say "Hey JARVIS"** and he starts listening; no button needed. Say it with
   the request attached — *"Hey JARVIS, open YouTube"* — and he acts on it
   straight away rather than waiting for you to repeat yourself. The ear icon
@@ -466,6 +468,40 @@ Env equivalent: `FILE_SEARCH_ROOTS=D:\Projects;E:\Archive`.
   anything, unless you've already dictated the exact wording.
 - The Settings panel (gear icon, top right) shows what's connected and what
   still needs configuring.
+
+### What he answers, and what he ignores
+
+An open microphone hears everything in the room, and almost none of it is for
+him. Three things have to be true before anything becomes a request.
+
+**It has to be speech.** A click, a key press or a door clears the loudness
+threshold for a frame or two; a voice doesn't stop that fast. So what counts is
+how long the sound lasts, not how loud it was — under about a third of a second
+of continuous sound is a noise, and the recording is discarded without ever
+being sent for transcription.
+
+**It has to be words.** Handed silence, speech-to-text does not return nothing:
+it returns the likeliest thing a person *might* have said. That is why "you",
+"Thank you." and "Thanks for watching!" are the classic outputs of a model
+listening to an empty room. Those, and a long list like them, are recognised and
+dropped.
+
+**It has to be aimed at him.** With the microphone open continuously, he needs
+his name — *"Hey JARVIS, open Discord"*. Two exceptions, both deliberate:
+
+- **Straight after his own reply** (about 20 seconds) you can just keep talking.
+  Having to say "JARVIS" before every sentence isn't a conversation.
+- **Pressing the microphone button** is unambiguous, so a recording you started
+  yourself never needs his name.
+
+And one rule that doesn't bend: **interrupting a reply already in progress
+always takes his name.** Cutting himself off mid-sentence to answer a noise is
+the worst version of getting this wrong.
+
+When he hears something clearly meant for someone else, he shows it briefly and
+quietly — *Heard "…" — start with "Hey JARVIS" if that was meant for me* — and
+does nothing. Noise he drops in silence; announcing everything he decided to
+ignore would just be a different way of not leaving you alone.
 
 ### About the wake word
 

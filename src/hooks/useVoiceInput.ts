@@ -15,6 +15,10 @@ import { describeClientFetchError } from "@/lib/clientFetch";
 export type VoiceInputMode = "recording" | "speech-api";
 
 const SILENCE_HANG_MS = 1400; // quiet time after speech before we auto-submit
+// A click, a key press, a door — all of them clear the loudness threshold for
+// a frame or two. Speech doesn't stop that fast, so the thing that separates a
+// voice from a bang is how long it lasts, not how loud it is.
+const MIN_SPEECH_MS = 320;
 const NO_SPEECH_TIMEOUT_MS = 9000; // give up if nothing is said at all
 const MAX_RECORDING_MS = 60000;
 const SPEECH_LEVEL = 0.055; // RMS above this counts as "you're talking"
@@ -124,6 +128,10 @@ export function useVoiceInput(
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const modeRef = useRef<VoiceInputMode | null>(null);
   const cancelledRef = useRef(false);
+  /** Whether this recording contained sustained speech rather than a noise. */
+  const speechDetectedRef = useRef(false);
+  /** True when the microphone is open continuously rather than for one turn. */
+  const continuousRef = useRef(false);
 
   useEffect(() => {
     onFinalRef.current = onFinalTranscript;
@@ -184,8 +192,18 @@ export function useVoiceInput(
         chunksRef.current = [];
 
         if (wasCancelled) return;
-        if (blob.size < MIN_AUDIO_BYTES) {
-          setError("I didn't catch anything, sir — try again a little closer to the mic.");
+
+        // Nothing that sounded like a voice: don't transcribe it. Asked to
+        // transcribe silence, these services don't return nothing — they
+        // return the likeliest thing a person might have said, which is how an
+        // empty room ends up saying "thank you" and getting an answer.
+        if (!speechDetectedRef.current || blob.size < MIN_AUDIO_BYTES) {
+          // With the microphone open all day this happens constantly and is
+          // entirely normal, so it is only worth mentioning when the recording
+          // was something he deliberately started.
+          if (!continuousRef.current) {
+            setError("I didn't catch anything, sir — try again a little closer to the mic.");
+          }
           return;
         }
 
@@ -242,8 +260,12 @@ export function useVoiceInput(
 
       const buffer = new Float32Array(analyser.fftSize);
       const startedAt = performance.now();
-      let hasSpoken = false;
+      // Time spent above the speech threshold, not merely whether it was ever
+      // crossed. See MIN_SPEECH_MS.
+      let speechMs = 0;
+      let lastTick = startedAt;
       let quietSince: number | null = null;
+      speechDetectedRef.current = false;
 
       const tick = () => {
         if (recorderRef.current?.state !== "recording") return;
@@ -254,12 +276,18 @@ export function useVoiceInput(
         setMicLevel(Math.min(1, rms * 8));
 
         const now = performance.now();
+        const elapsed = Math.min(now - lastTick, 100);
+        lastTick = now;
+
         if (rms > SPEECH_LEVEL) {
-          hasSpoken = true;
+          speechMs += elapsed;
           quietSince = null;
         } else if (rms < SILENCE_LEVEL) {
           quietSince ??= now;
         }
+
+        const hasSpoken = speechMs >= MIN_SPEECH_MS;
+        speechDetectedRef.current = hasSpoken;
 
         const silentLongEnough =
           hasSpoken && quietSince !== null && now - quietSince > SILENCE_HANG_MS;
@@ -329,8 +357,11 @@ export function useVoiceInput(
     recognition.start();
   }, []);
 
-  const start = useCallback(async () => {
+  const start = useCallback(async (options: { continuous?: boolean } = {}) => {
     if (isListening || isTranscribing) return;
+    // A recording the microphone started by itself reports nothing when it
+    // hears nothing; one you asked for says so.
+    continuousRef.current = options.continuous === true;
     setError(null);
     setInterimTranscript("");
 
