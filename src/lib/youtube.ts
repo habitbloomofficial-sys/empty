@@ -5,6 +5,7 @@ import {
   parseChannelInput,
   type ChannelRef,
 } from "./youtubeChannel";
+import { parseVideoInput, watchUrl } from "./youtubeVideo";
 
 // Channel statistics, straight from the YouTube Data API. One API key, no
 // OAuth, no browser round trip — which matters because JARVIS is asked for
@@ -321,3 +322,186 @@ export async function recentVideos(input?: string, limit = 10): Promise<RecentVi
 }
 
 export { isChannelId };
+
+
+// ---------------------------------------------------------------------------
+// Finding one particular thing, so it can be opened rather than searched for.
+//
+// "Pull up that video" means a video, not a page of results. Search costs 100
+// quota units against a daily 10,000 — about a hundred lookups a day — so a
+// link or an id he already has is used directly rather than looked up, and a
+// found id is what gets opened.
+// ---------------------------------------------------------------------------
+
+export interface FoundVideo {
+  id: string;
+  title: string;
+  channel: string;
+  url: string;
+  publishedAt: string | null;
+  /** Present only when it came back from a search rather than a link. */
+  description?: string;
+}
+
+interface SearchItem {
+  id?: { videoId?: string; channelId?: string };
+  snippet?: {
+    title?: string;
+    channelTitle?: string;
+    description?: string;
+    publishedAt?: string;
+  };
+}
+
+/** Strip everything that differs between a spoken title and a written one. */
+function comparable(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * How well a result matches what he asked for. An exact title beats a title
+ * that merely contains the words, which beats YouTube's own ranking — search
+ * puts popular things first, and "that exact video" is a different question
+ * from "the most popular video about this".
+ */
+export function rankMatch(title: string, query: string): number {
+  const a = comparable(title);
+  const b = comparable(query);
+  if (!a || !b) return 0;
+  if (a === b) return 100;
+  if (a.startsWith(b) || b.startsWith(a)) return 80;
+  if (a.includes(b)) return 60;
+
+  const words = b.split(" ").filter((word) => word.length > 2);
+  if (words.length === 0) return 0;
+  const hits = words.filter((word) => a.includes(word)).length;
+  return Math.round((hits / words.length) * 50);
+}
+
+/**
+ * Videos matching a title, best match first.
+ *
+ * A link or a bare id short-circuits the search entirely: it already names one
+ * video, and searching could only find a different one.
+ */
+export async function findVideos(query: string, limit = 5): Promise<FoundVideo[]> {
+  const known = parseVideoInput(query);
+  if (known) {
+    const details = await call<{
+      items?: { id: string; snippet?: { title?: string; channelTitle?: string; publishedAt?: string } }[];
+    }>("videos", { part: "snippet", id: known });
+
+    const item = details.items?.[0];
+    return [
+      {
+        id: known,
+        title: item?.snippet?.title ?? "that video",
+        channel: item?.snippet?.channelTitle ?? "",
+        url: watchUrl(known),
+        publishedAt: item?.snippet?.publishedAt ?? null,
+      },
+    ];
+  }
+
+  const trimmed = query.trim();
+  if (!trimmed) throw new Error("Which video, sir?");
+
+  const found = await call<{ items?: SearchItem[] }>("search", {
+    part: "snippet",
+    type: "video",
+    maxResults: String(Math.max(1, Math.min(limit, 10))),
+    q: trimmed,
+  });
+
+  return (found.items ?? [])
+    .map((item) => ({
+      id: item.id?.videoId ?? "",
+      title: item.snippet?.title ?? "",
+      channel: item.snippet?.channelTitle ?? "",
+      url: item.id?.videoId ? watchUrl(item.id.videoId) : "",
+      publishedAt: item.snippet?.publishedAt ?? null,
+      description: item.snippet?.description ?? "",
+    }))
+    .filter((video) => video.id)
+    .sort((a, b) => rankMatch(b.title, trimmed) - rankMatch(a.title, trimmed));
+}
+
+export interface FoundChannel {
+  id: string;
+  title: string;
+  handle: string | null;
+  url: string;
+  subscribers: number | null;
+  videos: number;
+}
+
+/**
+ * Channels matching a name. A handle, id or URL resolves directly through the
+ * same path the statistics use, so "open my channel" and "how's my channel
+ * doing" can never disagree about which channel that is.
+ */
+export async function findChannels(query: string, limit = 5): Promise<FoundChannel[]> {
+  const trimmed = query.trim();
+  if (!trimmed) throw new Error("Which channel, sir?");
+
+  const ref = parseChannelInput(trimmed);
+  if (ref && ref.kind !== "search") {
+    const stats = await channelStats(trimmed);
+    return [
+      {
+        id: stats.id,
+        title: stats.title,
+        handle: stats.handle,
+        url: stats.handle ? `https://www.youtube.com/${stats.handle}` : stats.url,
+        subscribers: stats.subscribers,
+        videos: stats.videos,
+      },
+    ];
+  }
+
+  const found = await call<{ items?: SearchItem[] }>("search", {
+    part: "snippet",
+    type: "channel",
+    maxResults: String(Math.max(1, Math.min(limit, 10))),
+    q: trimmed,
+  });
+
+  const ids = (found.items ?? [])
+    .map((item) => item.id?.channelId)
+    .filter((id): id is string => Boolean(id));
+  if (ids.length === 0) return [];
+
+  // Search results carry no statistics of their own, and the subscriber count
+  // is how you tell the real channel from the impersonations beneath it.
+  const details = await call<{ items?: ChannelResource[] }>("channels", {
+    part: CHANNEL_PARTS,
+    id: ids.join(","),
+  });
+
+  return (details.items ?? [])
+    .map((channel) => {
+      const handle = channel.snippet?.customUrl?.replace(/^@?/, "@") ?? null;
+      return {
+        id: channel.id,
+        title: channel.snippet?.title ?? "Unknown channel",
+        handle,
+        url: handle
+          ? `https://www.youtube.com/${handle}`
+          : `https://www.youtube.com/channel/${channel.id}`,
+        subscribers: channel.statistics?.hiddenSubscriberCount
+          ? null
+          : toNumber(channel.statistics?.subscriberCount),
+        videos: toNumber(channel.statistics?.videoCount),
+      };
+    })
+    .sort((a, b) => {
+      const byName = rankMatch(b.title, trimmed) - rankMatch(a.title, trimmed);
+      // Between two equally good name matches, the bigger channel is the one
+      // he means — impersonators are always the smaller one.
+      return byName !== 0 ? byName : (b.subscribers ?? 0) - (a.subscribers ?? 0);
+    });
+}

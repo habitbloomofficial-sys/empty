@@ -17,7 +17,13 @@ import {
 } from "./desktop";
 import { forget, remember } from "./memory";
 import { noteLesson, searchSessions } from "./sessions";
-import { channelStats, isYouTubeConfigured, recentVideos } from "./youtube";
+import {
+  channelStats,
+  findChannels,
+  findVideos,
+  isYouTubeConfigured,
+  recentVideos,
+} from "./youtube";
 import { isFileSearchEnabled, openFile, searchFiles } from "./files";
 import { isPhoneConfigured, placeCall } from "./phone";
 import { createEvent, listEvents } from "./calendar";
@@ -475,6 +481,35 @@ export const toolDefinitions: OpenAI.Chat.Completions.ChatCompletionTool[] = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "open_youtube",
+      description:
+        "Find one particular video or channel on YouTube and open it — the video itself, not a page of search results. Use this whenever he names something specific: \"pull up <title> on YouTube\", \"open <channel>'s channel\", or when he gives a link. Use open_website with a query instead only when he wants to browse results rather than watch one thing.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: {
+            type: "string",
+            description:
+              "The title, channel name, @handle, or a YouTube link. Give the title as he said it — the closest title wins over the most popular result.",
+          },
+          kind: {
+            type: "string",
+            enum: ["video", "channel"],
+            description: "Whether he's after a video or a channel. Defaults to video.",
+          },
+          open: {
+            type: "boolean",
+            description:
+              "Open the best match straight away. Defaults to true. Pass false to look first and read him the options — do that when what he said is vague.",
+          },
+        },
+        required: ["query"],
+      },
+    },
+  },
 ];
 
 /** Every tool name that exists, for validating what comes back off the stream. */
@@ -499,7 +534,7 @@ export function availableTools(): OpenAI.Chat.Completions.ChatCompletionTool[] {
     if (name === "open_app" || name === "close_app" || name === "open_website") {
       return isDesktopControlEnabled();
     }
-    if (name === "youtube_stats") return isYouTubeConfigured();
+    if (name === "youtube_stats" || name === "open_youtube") return isYouTubeConfigured();
     if (name === "call_number") return isPhoneConfigured();
     if (name === "list_calendar_events" || name === "create_calendar_event") {
       return isCalendarConfigured();
@@ -653,6 +688,47 @@ export async function executeTool(
         return {
           result,
           log: { tool: name, summary: `Opened ${result.url}`, ok: true },
+        };
+      }
+      case "open_youtube": {
+        const query = required(args.query, "title");
+        const wantsChannel = text(args.kind)?.toLowerCase() === "channel";
+        const shouldOpen = args.open !== false;
+
+        const matches = wantsChannel ? await findChannels(query) : await findVideos(query);
+        if (matches.length === 0) {
+          throw new Error(
+            `YouTube has nothing matching "${query}", sir. Different words might find it.`
+          );
+        }
+
+        const best = matches[0];
+        // Alternatives travel with the result so he can offer a correction
+        // without spending another search on it.
+        const alternatives = matches.slice(1, 4).map((match) => ({
+          title: match.title,
+          url: match.url,
+        }));
+
+        if (!shouldOpen) {
+          return {
+            result: { found: matches.slice(0, 5), opened: false },
+            log: {
+              tool: name,
+              summary: `Found ${matches.length} ${wantsChannel ? "channels" : "videos"} for "${query}"`,
+              ok: true,
+            },
+          };
+        }
+
+        const opened = await openWebsite({ url: best.url, newWindow: args.new_window !== false });
+        const describedAs = wantsChannel
+          ? best.title
+          : `"${best.title}"${"channel" in best && best.channel ? ` by ${best.channel}` : ""}`;
+
+        return {
+          result: { opened: true, match: best, alternatives, url: opened.url },
+          log: { tool: name, summary: `Opened ${describedAs}`, ok: true },
         };
       }
       case "call_number": {

@@ -426,6 +426,12 @@ JARVIS runs on your own machine, so he can open things on it:
   it can't be closed the same way, and he'll tell you that rather than trying.
 - *"open YouTube"* / *"search YouTube for lo-fi beats"* — the site, or its search
   results.
+- *"pull up Never Gonna Give You Up on YouTube"* — **the video itself**, not a
+  results page. Say a title and he finds it, opens it, and tells you which one
+  he opened so you can correct him. Paste or say a link and he skips the search
+  entirely. *"Open MrBeast's channel"* works the same way, and he reads back
+  the subscriber count — impersonators sit directly under the real channel in
+  any search, and the count is how you tell them apart.
 - *"open bbc.co.uk"* — any ordinary website by name or address. Sites open in a
   browser window of their own rather than as another tab in whatever you had
   open; ask for a tab and you'll get one.
@@ -476,6 +482,13 @@ best upload this month?"* and he'll go and look.
 Already have a Gemini key? Leave the YouTube key blank and he'll try it. It
 works if YouTube Data API v3 is enabled on the same Google project, and he says
 so plainly if it isn't.
+
+The same key powers **finding and opening videos and channels** (see *Apps and
+websites* below). A search costs 100 of the 10,000 daily quota units — about a
+hundred lookups a day — so a link or a video id you give him is used directly
+rather than searched for, and results are ranked by how closely the title
+matches what you said rather than by popularity. "That exact video" and "the
+most popular video about this" are different questions.
 
 **What he can see:** subscribers, total views, video count, and per-video views,
 likes and comments for recent uploads — the public numbers, the same ones on
