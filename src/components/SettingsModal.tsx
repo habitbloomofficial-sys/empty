@@ -53,21 +53,24 @@ interface KeyCheck {
 
 type Views = Record<string, SettingView>;
 
-type Provider = "gemini" | "openrouter" | "openai";
+type Provider = "anthropic" | "gemini" | "openrouter" | "openai";
 
 const PROVIDER_LABELS: Record<Provider, string> = {
+  anthropic: "Claude",
   gemini: "Gemini",
   openrouter: "OpenRouter",
   openai: "OpenAI",
 };
 
 const PROVIDER_KEYS: Record<Provider, string> = {
+  anthropic: "ANTHROPIC_API_KEY",
   gemini: "GEMINI_API_KEY",
   openrouter: "OPENROUTER_API_KEY",
   openai: "OPENAI_API_KEY",
 };
 
 const KEY_PLACEHOLDERS: Record<Provider, string> = {
+  anthropic: "sk-ant-…",
   gemini: "AIza…",
   openrouter: "sk-or-v1-…",
   openai: "sk-…",
@@ -288,6 +291,8 @@ export function SettingsModal({
     const saved = next.AI_PROVIDER?.display?.toLowerCase();
     if (saved && saved in PROVIDER_LABELS) {
       setProvider(saved as Provider);
+    } else if (next.ANTHROPIC_API_KEY?.set) {
+      setProvider("anthropic");
     } else if (next.OPENROUTER_API_KEY?.set) {
       setProvider("openrouter");
     } else if (next.OPENAI_API_KEY?.set && !next.GEMINI_API_KEY?.set) {
@@ -523,6 +528,44 @@ export function SettingsModal({
               </label>
             )}
 
+            {provider === "anthropic" && (
+              <>
+                <label className="block">
+                  <span className="mb-1 block text-[11px] font-semibold text-cream">
+                    Model
+                  </span>
+                  <input
+                    type="text"
+                    value={draft("ANTHROPIC_MODEL")}
+                    onChange={(e) => setDraft("ANTHROPIC_MODEL", e.target.value)}
+                    placeholder="claude-opus-5"
+                    autoComplete="off"
+                    spellCheck={false}
+                    className="w-full rounded-none border border-amber-500/20 bg-black/40 px-3 py-2 font-mono text-xs text-cream placeholder:font-sans placeholder:text-sand-700 focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-400/30"
+                  />
+                  <span className="mt-1 block text-[10px] text-sand-600">
+                    Leave it empty for Claude Opus 5, the strongest. Claude Haiku
+                    4.5 (<code>claude-haiku-4-5</code>) costs about a fifth as
+                    much and is quicker, if most of what you ask him is simple.
+                  </span>
+                </label>
+                <p>
+                  Get a key at{" "}
+                  <a
+                    href="https://console.anthropic.com/settings/keys"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-medium text-amber-400 underline"
+                  >
+                    console.anthropic.com
+                  </a>
+                  . This one is paid per use rather than free — you buy credit up
+                  front and each conversation draws it down. He also searches the
+                  web with this key, so it covers both.
+                </p>
+              </>
+            )}
+
             {provider === "gemini" && (
               <p>
                 Get a free key at{" "}
@@ -561,6 +604,9 @@ export function SettingsModal({
                   AI_PROVIDER: provider,
                   ...(draft(brainKey).trim() ? { [brainKey]: draft(brainKey) } : {}),
                   ...(LISTS_MODELS.includes(provider) ? { [modelKey]: draft(modelKey) } : {}),
+                  ...(provider === "anthropic"
+                    ? { ANTHROPIC_MODEL: draft("ANTHROPIC_MODEL") }
+                    : {}),
                 })
               }
               busy={busySection === "brain"}
@@ -1112,6 +1158,8 @@ export function SettingsModal({
               part that lets him <b>find</b> one.
             </p>
             <p className="rounded-none bg-amber-500/10 px-2.5 py-1.5 text-amber-300">
+              {status?.webSearch === "anthropic" &&
+                "✓ Searching with Claude, using the same key that runs his brain. Web searches draw on the same Anthropic credit."}
               {status?.webSearch === "openrouter" &&
                 "✓ Searching with OpenRouter, using the key that already runs his brain. Each search spends a little OpenRouter credit."}
               {status?.webSearch === "gemini" &&

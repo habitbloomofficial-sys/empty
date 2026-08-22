@@ -5,7 +5,7 @@ import { getSetting } from "./settings";
 // Axis's brain can run on either OpenAI or Google's Gemini — Gemini exposes
 // an OpenAI-compatible endpoint, so the same "openai" SDK and the same
 // chat-completions + tool-calling code in api/chat/route.ts work for both.
-export type AIProvider = "openai" | "gemini" | "openrouter";
+export type AIProvider = "openai" | "gemini" | "openrouter" | "anthropic";
 
 const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/";
 
@@ -13,6 +13,30 @@ const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai
 // endpoint and one key, which is the point of using it: pick a stronger brain
 // without changing any of this code.
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
+
+// Anthropic is the one provider that does NOT come through the OpenAI SDK.
+// Its Messages API has its own shape, and it gets its own client in
+// anthropicBrain.ts rather than an OpenAI-compatible shim — see the note there.
+const ANTHROPIC_FALLBACK_MODEL = "claude-opus-5";
+
+export function anthropicModel(): string {
+  return getSetting("ANTHROPIC_MODEL") || ANTHROPIC_FALLBACK_MODEL;
+}
+
+/**
+ * How hard Claude thinks before answering.
+ *
+ * Low by default, and deliberately: thinking happens before a single token is
+ * emitted, so all of it is silence with the orb spinning. Deciding to open
+ * Spotify does not need deliberation. Raise it if you would rather have
+ * considered answers than quick ones.
+ */
+export function anthropicEffort(): "low" | "medium" | "high" | "xhigh" | "max" {
+  const configured = getSetting("ANTHROPIC_EFFORT")?.toLowerCase();
+  const allowed = ["low", "medium", "high", "xhigh", "max"] as const;
+  const match = allowed.find((level) => level === configured);
+  return match ?? "low";
+}
 
 /**
  * Used only if no model has been chosen. The Settings panel fetches the live
@@ -31,9 +55,11 @@ function detectProvider(): AIProvider | null {
   if (forced === "gemini") return "gemini";
   if (forced === "openai") return "openai";
   if (forced === "openrouter") return "openrouter";
+  if (forced === "anthropic") return "anthropic";
 
-  // Auto: whichever key exists. OpenRouter first — someone who configured it
-  // did so to reach a better model than the one they already had.
+  // Auto: whichever key exists. Anthropic first — an Anthropic key is bought
+  // deliberately and for one reason, and it is the strongest brain on the list.
+  if (getSetting("ANTHROPIC_API_KEY")) return "anthropic";
   if (getSetting("OPENROUTER_API_KEY")) return "openrouter";
   if (getSetting("OPENAI_API_KEY")) return "openai";
   if (getSetting("GEMINI_API_KEY")) return "gemini";
@@ -41,12 +67,14 @@ function detectProvider(): AIProvider | null {
 }
 
 function keyFor(provider: AIProvider): string | undefined {
+  if (provider === "anthropic") return getSetting("ANTHROPIC_API_KEY");
   if (provider === "gemini") return getSetting("GEMINI_API_KEY");
   if (provider === "openrouter") return getSetting("OPENROUTER_API_KEY");
   return getSetting("OPENAI_API_KEY");
 }
 
 const PROVIDER_LABELS: Record<AIProvider, string> = {
+  anthropic: "Anthropic",
   openai: "OpenAI",
   gemini: "Gemini",
   openrouter: "OpenRouter",
@@ -182,6 +210,7 @@ export function isPaymentRequired(error: unknown): boolean {
 
 export function getAIModel(): string {
   const provider = detectProvider();
+  if (provider === "anthropic") return anthropicModel();
   if (provider === "gemini") return geminiModel();
   if (provider === "openrouter") {
     return getSetting("OPENROUTER_MODEL") || OPENROUTER_FALLBACK_MODEL;

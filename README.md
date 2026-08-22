@@ -9,7 +9,7 @@ genuinely knows — there are no invented CPU or temperature gauges, because a
 dial showing a number nobody computed teaches you to distrust the ones that are
 real.
 
-- **Brain** — Gemini, OpenRouter, or OpenAI (chat + tool calling — pick one)
+- **Brain** — Claude, Gemini, OpenRouter, or OpenAI (chat + tool calling — pick one)
 - **Voice** — ElevenLabs text-to-speech, played back with a live waveform driving the orb
 - **Ears** — say "Hey Axis" and he listens; your voice is recorded in the
   browser and transcribed server-side, so it works in every browser
@@ -106,13 +106,15 @@ on the computer at home, rather than letting you wonder where it went.
 
 ### Axis is yours, and doesn't need anything to stay running
 
-Nothing here calls Anthropic, and nothing here needs Claude, Claude Code, or
-any subscription to them. Claude Code was the tool used to *write* this; it has
-no part in *running* it. The whole thing is an ordinary Node.js app in a folder
-on your computer, and it keeps working whether or not that tool is ever opened
-again — check `package.json` if you want to see for yourself: the dependencies
-are Next.js, React, three.js, the OpenAI SDK, googleapis, and Twilio. No
-Anthropic anything.
+Nothing here needs **Claude Code**, or a subscription to it. Claude Code was the
+tool used to *write* this; it has no part in *running* it. The whole thing is an
+ordinary Node.js app in a folder on your computer, and it keeps working whether
+or not that tool is ever opened again.
+
+Axis can now *optionally* use a Claude API key as his brain, which is a
+different thing from needing Claude Code: it's an API key you buy, like the
+Gemini or OpenRouter ones, and he runs perfectly well on any of the four. If you
+never add one, nothing in the app ever calls Anthropic.
 
 What Axis does need is:
 
@@ -122,7 +124,7 @@ What Axis does need is:
 - **Your own API keys**, which you already have. They live in `data/settings.json`
   inside this folder, on your computer only. That file is never committed to git
   and never leaves the machine.
-- **An internet connection**, because Gemini, OpenRouter, ElevenLabs and Gmail
+- **An internet connection**, because the AI providers, ElevenLabs and Gmail
   are online services. Those are your accounts, billed to you, unrelated to any
   subscription used to build this.
 
@@ -150,9 +152,36 @@ If you'd rather use environment variables, every setting can also live in
 `.env.local` under the same name — copy `.env.example` to get started. Anything
 you save in the Settings panel takes precedence over the matching env var.
 
-### AI brain (required — pick one of three, you only need one)
+### AI brain (required — pick one of four, you only need one)
 
 In **Settings → AI brain**, choose a provider and paste the key.
+
+**Claude** is the strongest, and the one to pick if you want Axis at his best.
+Get a key at
+[console.anthropic.com](https://console.anthropic.com/settings/keys). Unlike
+Gemini's free tier this one is **paid per use** — you buy credit up front and
+each conversation draws it down — so it is a deliberate choice rather than the
+cheap default. He runs on **Claude Opus 5** unless you name another model;
+`claude-haiku-4-5` costs about a fifth as much and is quicker, if most of what
+you ask him is simple. The same key also searches the web, so it covers both.
+
+Claude is the one provider that does **not** come through the OpenAI-compatible
+path. Anthropic's Messages API has its own shape — tools declared differently,
+tool calls arriving as content blocks rather than streamed fragments, tool
+results going back as a user turn — so Axis talks to it through Anthropic's own
+SDK. The tool loop that opens things on your computer is written once, above
+both, and each brain implements it natively. Bending Claude through a
+compatibility shim would have worked right until it didn't, in the one place
+worth protecting.
+
+He thinks lightly by default (`effort: low`) rather than not at all. Thinking
+happens before a single token appears, so all of it is silence with the orb
+spinning, and deciding to open Spotify does not warrant deliberation — but
+turning thinking *off* on Opus 5 has a specific failure mode where the model
+writes a tool call into its visible text instead of making it, which here would
+mean being told Spotify is open when nothing happened. Raise it with
+`ANTHROPIC_EFFORT=medium|high|xhigh|max` if you would rather have considered
+answers than quick ones.
 
 **Gemini** is the easy option — a free key from
 [Google AI Studio](https://aistudio.google.com/apikey).
@@ -175,8 +204,8 @@ rather not spend anything, pick one of those. Get a key at
 
 **OpenAI** works directly too, with your own `sk-` key.
 
-All three speak the same OpenAI-compatible protocol, so every feature works
-identically whichever you choose.
+Gemini, OpenRouter and OpenAI all speak the same OpenAI-compatible protocol;
+Claude speaks its own. Every feature works identically whichever you choose.
 
 Replies are capped at 2000 tokens. Left uncapped, providers assume the model's
 own maximum — 16k on many OpenRouter models — and OpenRouter refuses a request
@@ -185,9 +214,12 @@ answer is one sentence. If it ever refuses anyway, Axis reads the figure it
 says you can afford and asks again within it. Raise or lower the cap with
 `MAX_TOKENS`.
 
-Env equivalents: `GEMINI_API_KEY` / `OPENROUTER_API_KEY` / `OPENAI_API_KEY`,
-with optional `GEMINI_MODEL`, `OPENROUTER_MODEL` and `OPENAI_MODEL`. If several
-keys are set, `AI_PROVIDER=openai|gemini|openrouter` breaks the tie.
+Env equivalents: `ANTHROPIC_API_KEY` / `GEMINI_API_KEY` / `OPENROUTER_API_KEY` /
+`OPENAI_API_KEY`, with optional `ANTHROPIC_MODEL`, `GEMINI_MODEL`,
+`OPENROUTER_MODEL` and `OPENAI_MODEL`. If several keys are set,
+`AI_PROVIDER=anthropic|openai|gemini|openrouter` breaks the tie — and a value
+saved in the Settings panel beats one in `.env.local`, so picking a provider in
+the panel is always the last word.
 
 Leave `GEMINI_MODEL` unset unless you want a specific model. Google retires
 Gemini models on its own schedule and answers requests for a retired one with
@@ -288,13 +320,16 @@ does this say?"* with a link, and he reads it.
 
 **Searching** runs through the brain you're already using, wherever it can:
 
+- **On Claude** — the same key searches, using Anthropic's own server-side
+  search tool: it runs the searches during the request and answers with its
+  sources attached. Draws on the same Anthropic credit as everything else.
 - **On OpenRouter** — the same key searches. OpenRouter runs the search itself
   and hands back an answer with its sources. It spends a little OpenRouter
   credit per search, unlike the others; that's the trade for needing nothing new.
 - **On Gemini** — the same key searches, through Google's search grounding, on
   the free tier. Nothing to set up.
-- **On OpenAI** — OpenAI's key can't search here, so he'll use a Gemini key if
-  you have one saved, or your own Google engine below.
+- **On OpenAI** — OpenAI's key can't search here, so he'll use an Anthropic or
+  Gemini key if you have one saved, or your own Google engine below.
 - **Your own Google search engine**, if you'd rather, and it takes precedence
   when configured. Make one at
   [programmablesearchengine.google.com](https://programmablesearchengine.google.com),
@@ -310,7 +345,7 @@ key is refused mid-search he strikes it off, tries the next way in, and tells
 you *which* key and what it's for, rather than naming a provider you'd forgotten
 you ever signed up to.
 
-The rail on the right says which he's using: `WEB — OPENROUTER`, `WEB — GEMINI`,
+The rail on the right says which he's using: `WEB — CLAUDE`, `WEB — OPENROUTER`, `WEB — GEMINI`,
 `WEB — GOOGLE`, or `WEB — READ ONLY` when he can read but not search.
 
 #### What he reads is information, never instruction
@@ -896,7 +931,7 @@ after that is only the closing sentence being written.
 src/
   app/
     api/
-      chat/            AI chat + tool-calling loop (OpenAI or Gemini)
+      chat/            AI chat + tool-calling loop, one loop over every brain
       tts/             ElevenLabs text-to-speech
       transcribe/      speech-to-text for recorded mic audio
       voices/          list available ElevenLabs voices

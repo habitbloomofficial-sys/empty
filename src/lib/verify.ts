@@ -39,6 +39,7 @@ const VERIFIABLE: Partial<Record<SettingKey, Verifier>> = {
   OPENAI_API_KEY: verifyOpenAI,
   GEMINI_API_KEY: verifyGemini,
   OPENROUTER_API_KEY: verifyOpenRouter,
+  ANTHROPIC_API_KEY: verifyAnthropic,
   YOUTUBE_API_KEY: verifyYouTubeKey,
   YOUTUBE_CHANNEL: verifyYouTubeChannel,
 };
@@ -237,6 +238,46 @@ async function verifyGemini(value: string): Promise<string> {
     return "Key accepted, but the Generative Language API isn't enabled on that Google project yet.";
   }
   return `Saved, but Google wouldn't confirm it (HTTP ${res.status}).`;
+}
+
+/**
+ * Anthropic has no "describe this key" endpoint, so the probe is the smallest
+ * real request there is: one token to the cheapest model. It costs a fraction
+ * of a cent and it proves the thing that matters — that the key exists, is
+ * active, and has credit behind it.
+ */
+async function verifyAnthropic(value: string): Promise<string> {
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-api-key": value,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify({
+      model: "claude-haiku-4-5",
+      max_tokens: 1,
+      messages: [{ role: "user", content: "hi" }],
+    }),
+    cache: "no-store",
+    ...timed(),
+  });
+
+  if (res.ok) return "Anthropic key verified.";
+
+  const body = await res.text();
+  if (res.status === 401 || res.status === 403) {
+    throw new Error(
+      "Anthropic rejected that key. Keys start with sk-ant- — check it was copied in full and hasn't been revoked."
+    );
+  }
+  if (res.status === 400 && /credit balance|billing/i.test(body)) {
+    return "Key verified, but the account has no credit — buy some at console.anthropic.com before he can think.";
+  }
+  if (res.status === 429) {
+    return "Key verified, but the account is rate limited right now.";
+  }
+  return `Saved, but Anthropic wouldn't confirm it (HTTP ${res.status}).`;
 }
 
 async function verifyOpenRouter(value: string): Promise<string> {

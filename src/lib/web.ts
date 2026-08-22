@@ -1,5 +1,7 @@
+import Anthropic from "@anthropic-ai/sdk";
 import { getSetting } from "./settings";
-import { getAIModel, getAIProvider } from "./ai";
+import { anthropicModel, getAIModel, getAIProvider } from "./ai";
+import { anthropicClient } from "./anthropicBrain";
 import { geminiModel } from "./geminiModel";
 import { extractReadable, type ExtractedPage } from "./htmlText";
 import { isPrivateHost, normalizeWebUrl } from "./webUrl";
@@ -26,7 +28,7 @@ import { isPrivateHost, normalizeWebUrl } from "./webUrl";
 //    the web. Every hop of every redirect is checked, not just the address you
 //    started with.
 
-export type SearchProvider = "google" | "gemini" | "openrouter";
+export type SearchProvider = "google" | "gemini" | "openrouter" | "anthropic";
 
 const SEARCH_TIMEOUT_MS = 20_000;
 const PAGE_TIMEOUT_MS = 15_000;
@@ -55,6 +57,7 @@ const refused = new Set<SearchProvider>();
 function providerReady(provider: SearchProvider): boolean {
   if (provider === "google") return Boolean(getSetting("GOOGLE_SEARCH_CX") && googleSearchKey());
   if (provider === "openrouter") return Boolean(getSetting("OPENROUTER_API_KEY"));
+  if (provider === "anthropic") return Boolean(getSetting("ANTHROPIC_API_KEY"));
   return Boolean(getSetting("GEMINI_API_KEY"));
 }
 
@@ -74,8 +77,13 @@ function providerReady(provider: SearchProvider): boolean {
 export function searchProviders(): SearchProvider[] {
   const brain = getAIProvider();
   const order: SearchProvider[] = ["google"];
-  if (brain === "openrouter") order.push("openrouter", "gemini");
-  else order.push("gemini", "openrouter");
+  // The running brain first, then the others as spares. OpenAI is absent on
+  // purpose: its key cannot search from here, so an OpenAI brain falls through
+  // to whichever other key is saved.
+  const canSearch: SearchProvider[] = ["anthropic", "gemini", "openrouter"];
+  const running = canSearch.find((provider) => provider === brain);
+  if (running) order.push(running);
+  order.push(...canSearch.filter((provider) => provider !== running));
 
   return order.filter((provider) => providerReady(provider) && !refused.has(provider));
 }
@@ -91,6 +99,7 @@ export function isWebSearchConfigured(): boolean {
 
 /** Whose key it is, in the words used in Settings. */
 const KEY_NAMES: Record<SearchProvider, string> = {
+  anthropic: "Anthropic key",
   google: "Google search key",
   gemini: "Gemini key",
   openrouter: "OpenRouter key",
@@ -189,6 +198,26 @@ async function failure(res: Response, provider: SearchProvider): Promise<SearchE
   return new SearchError(provider, res.status, detail, message);
 }
 
+/** The SDK throws rather than handing back a response, so unpack it here. */
+function anthropicFailure(err: unknown): Error {
+  if (err instanceof Anthropic.APIError) {
+    const status = err.status ?? 0;
+    const detail = (err.message ?? "").trim().replace(/[.\s]+$/, "");
+    return new SearchError(
+      "anthropic",
+      status,
+      detail,
+      isKeyRefusal(status, detail)
+        ? `Your Anthropic key isn't valid, sir${detail ? ` — ${detail}` : ""}`
+        : `Claude refused that search (HTTP ${status})${detail ? ` — ${detail}` : ""}`
+    );
+  }
+  if (err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError")) {
+    return new Error("That search took too long to come back, sir.");
+  }
+  return err instanceof Error ? err : new Error(String(err));
+}
+
 async function withTimeout<T>(ms: number, run: (signal: AbortSignal) => Promise<T>): Promise<T> {
   try {
     return await run(AbortSignal.timeout(ms));
@@ -266,13 +295,7 @@ async function searchViaGemini(query: string): Promise<SearchOutcome> {
         contents: [
           {
             role: "user",
-            parts: [
-              {
-                text:
-                  `Search the web and answer this factually and concisely, in plain prose: ${query}\n\n` +
-                  "Include dates and figures where they matter, and say so if the sources disagree.",
-              },
-            ],
+            parts: [{ text: searchPrompt(query) }],
           },
         ],
         tools: [{ google_search: {} }],
@@ -339,14 +362,7 @@ async function searchViaOpenRouter(query: string): Promise<SearchOutcome> {
   const key = getSetting("OPENROUTER_API_KEY");
   if (!key) throw noSearchConfigured();
 
-  const messages = [
-    {
-      role: "user",
-      content:
-        `Search the web and answer this factually and concisely, in plain prose: ${query}\n\n` +
-        "Include dates and figures where they matter, and say so if the sources disagree.",
-    },
-  ];
+  const messages = [{ role: "user", content: searchPrompt(query) }];
 
   const send = (extra: Record<string, unknown>) =>
     withTimeout(SEARCH_TIMEOUT_MS, (signal) =>
@@ -417,9 +433,105 @@ async function searchViaOpenRouter(query: string): Promise<SearchOutcome> {
   };
 }
 
+/** The prompt every searching brain is given. One wording, one behaviour. */
+function searchPrompt(query: string): string {
+  return (
+    `Search the web and answer this factually and concisely, in plain prose: ${query}\n\n` +
+    "Include dates and figures where they matter, and say so if the sources disagree."
+  );
+}
+
+/**
+ * Claude, searching with Anthropic's own server-side tool.
+ *
+ * Anthropic runs the searches on its own infrastructure during the single
+ * request: the results arrive as content blocks in the same reply, already read
+ * and used. So there is no tool loop here — one call in, an answer and its
+ * sources out.
+ *
+ * Two things about this shape are easy to get wrong, and both are handled
+ * below. A server-tool failure is not an exception: it comes back as a normal
+ * 200 whose result block holds an error object rather than the usual list. And
+ * a long search can pause mid-turn — `stop_reason: "pause_turn"` — which is not
+ * an ending but a request to continue, so the turn is handed straight back.
+ */
+async function searchViaAnthropic(query: string, limit: number): Promise<SearchOutcome> {
+  const client = anthropicClient();
+  const messages: Anthropic.MessageParam[] = [{ role: "user", content: searchPrompt(query) }];
+
+  let answer = "";
+  const seen = new Set<string>();
+  const results: SearchHit[] = [];
+  let searchError = "";
+
+  // Bounded: each pass either finishes the turn or resumes a paused one.
+  for (let pass = 0; pass < 3; pass++) {
+    let message: Anthropic.Message;
+    try {
+      message = await client.messages.create(
+        {
+          model: anthropicModel(),
+          max_tokens: 2048,
+          messages,
+          tools: [
+            {
+              type: "web_search_20260209",
+              name: "web_search",
+              max_uses: Math.min(Math.max(limit, 1), 10),
+            },
+          ],
+        },
+        { signal: AbortSignal.timeout(SEARCH_TIMEOUT_MS) }
+      );
+    } catch (err) {
+      throw anthropicFailure(err);
+    }
+
+    for (const block of message.content) {
+      if (block.type === "text") answer += block.text;
+      if (block.type !== "web_search_tool_result") continue;
+
+      // Success is a list of results; failure is a single error object.
+      if (!Array.isArray(block.content)) {
+        searchError = block.content.error_code;
+        continue;
+      }
+      for (const result of block.content) {
+        if (seen.has(result.url)) continue;
+        seen.add(result.url);
+        results.push({ title: result.title || result.url, url: result.url });
+      }
+    }
+
+    if (message.stop_reason !== "pause_turn") break;
+    // Hand the paused turn straight back, exactly as it was written.
+    messages.push({ role: "assistant", content: message.content });
+  }
+
+  if (!answer.trim() && results.length === 0) {
+    throw new SearchError(
+      "anthropic",
+      200,
+      searchError,
+      searchError
+        ? `Claude's web search came back with nothing, sir — it reported "${searchError}".`
+        : "Claude came back with nothing for that, sir."
+    );
+  }
+
+  return {
+    provider: "anthropic",
+    query,
+    answer: answer.trim() || undefined,
+    results,
+    note: `Answered from live web sources. ${UNTRUSTED_NOTE}`,
+  };
+}
+
 function runSearch(provider: SearchProvider, query: string, limit: number): Promise<SearchOutcome> {
   if (provider === "google") return searchViaGoogle(query, limit);
   if (provider === "openrouter") return searchViaOpenRouter(query);
+  if (provider === "anthropic") return searchViaAnthropic(query, limit);
   return searchViaGemini(query);
 }
 

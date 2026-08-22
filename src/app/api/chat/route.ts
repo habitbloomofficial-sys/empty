@@ -1,21 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import OpenAI from "openai";
-import {
-  adoptAffordableLimit,
-  getAI,
-  getAIModel,
-  getMaxTokens,
-  getReasoningEffort,
-  isPaymentRequired,
-} from "@/lib/ai";
-import { adoptGeminiReplacement, isModelNotFound } from "@/lib/geminiModel";
+import { getAIProvider } from "@/lib/ai";
+import { AnthropicBrain } from "@/lib/anthropicBrain";
+import { OpenAIBrain } from "@/lib/openAiBrain";
 import { describeModelFailure } from "@/lib/modelErrors";
 import { buildSystemPrompt } from "@/lib/systemPrompt";
-import { availableTools, executeTool, TOOL_NAMES } from "@/lib/tools";
-import { normalizeToolName } from "@/lib/toolCalls";
+import { availableTools, executeTool } from "@/lib/tools";
 import { logRecap } from "@/lib/sessions";
 import { describeDevice } from "@/lib/device";
 import { recapLine } from "@/lib/sessionFormat";
+import type { Brain } from "@/lib/brain";
 import type { ActionLogEntry } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -26,13 +19,6 @@ interface IncomingMessage {
 }
 
 const MAX_TOOL_ROUNDS = 5;
-
-/** One accumulating tool call, reassembled from streamed fragments. */
-interface PartialToolCall {
-  id: string;
-  name: string;
-  args: string;
-}
 
 export async function POST(req: NextRequest) {
   let body: { messages?: IncomingMessage[] };
@@ -47,14 +33,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "messages is required" }, { status: 400 });
   }
 
-  let ai: OpenAI;
-  try {
-    ai = getAI();
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ error: message }, { status: 503 });
-  }
-
   // Which machine he is reading this on — desktop actions land on the computer
   // Axis runs on, which is not always the one in his hand.
   const deviceLabel = describeDevice(
@@ -62,15 +40,21 @@ export async function POST(req: NextRequest) {
     !req.headers.get("x-forwarded-for")
   ).label;
 
-  const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
-    { role: "system", content: buildSystemPrompt(new Date(), deviceLabel) },
-    ...incoming.map(
-      (m) =>
-        ({ role: m.role, content: m.content }) as OpenAI.Chat.Completions.ChatCompletionMessageParam
-    ),
-  ];
-
-  const tools = availableTools();
+  // Whichever brain is configured, spoken to in its own language. Everything
+  // below this line is the same for all of them.
+  let brain: Brain;
+  try {
+    const input = {
+      system: buildSystemPrompt(new Date(), deviceLabel),
+      messages: incoming.map((m) => ({ role: m.role, content: m.content })),
+      tools: availableTools(),
+    };
+    brain =
+      getAIProvider() === "anthropic" ? new AnthropicBrain(input) : new OpenAIBrain(input);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ error: message }, { status: 503 });
+  }
 
   // What he asked for this turn, kept for the session log below.
   const askedFor = [...incoming].reverse().find((m) => m.role === "user")?.content ?? "";
@@ -87,73 +71,6 @@ export async function POST(req: NextRequest) {
     } catch {
       // A memory that can't be written must never cost him his reply.
     }
-  }
-
-  /**
-   * Optional request fields, in the order they're worth trying. Providers
-   * disagree about which of these they accept, and the disagreement arrives as
-   * a bare 400 — so rather than predicting it, ask for what's wanted first and
-   * step down until something is accepted.
-   */
-  function optionalFieldVariants(): Record<string, unknown>[] {
-    const effort = getReasoningEffort();
-    const variants: Record<string, unknown>[] = [];
-    if (effort) {
-      variants.push({ reasoning_effort: effort });
-      // "low" is understood everywhere reasoning_effort exists at all.
-      if (effort !== "low") variants.push({ reasoning_effort: "low" });
-    }
-    // Nothing optional whatsoever: the request every implementation accepts.
-    variants.push({});
-    return variants;
-  }
-
-  const variants = optionalFieldVariants();
-  let variantIndex = 0;
-
-  function request(): OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming {
-    return {
-      model: getAIModel(),
-      messages,
-      stream: true,
-      // Always capped. Left unset, providers assume the model's own maximum
-      // and OpenRouter refuses the request if the balance couldn't cover a
-      // reply that long — even when the real answer is one sentence.
-      max_tokens: getMaxTokens(),
-      ...(tools.length > 0 ? { tools } : {}),
-      ...variants[variantIndex],
-    } as OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming;
-  }
-
-  /** A rejected request, as opposed to a network or server failure. */
-  function isBadRequest(error: unknown): boolean {
-    return (error as { status?: number })?.status === 400;
-  }
-
-  // The SDK awaits response headers before returning the stream, so a retired
-  // model or a refused field surfaces here rather than mid-stream.
-  async function openStream() {
-    // Bounded: each pass either advances the variant or adopts a new model,
-    // and both run out.
-    for (let attempt = 0; attempt < variants.length + 2; attempt++) {
-      try {
-        return await ai.chat.completions.create(request());
-      } catch (err) {
-        if (isModelNotFound(err) && adoptGeminiReplacement(err)) continue;
-        // Refused on cost: the provider says what the balance can afford, so
-        // take that number and ask again rather than failing the turn.
-        if (isPaymentRequired(err) && adoptAffordableLimit(err)) continue;
-        // Gemini returns streaming errors as a JSON array, which the SDK can't
-        // read — so the reason is often literally "400 status code (no body)".
-        // Matching on the message is therefore hopeless; step down on any 400.
-        if (isBadRequest(err) && variantIndex < variants.length - 1) {
-          variantIndex++;
-          continue;
-        }
-        throw err;
-      }
-    }
-    throw new Error("I couldn't get a reply from the model, sir — every request shape was refused.");
   }
 
   const encoder = new TextEncoder();
@@ -173,73 +90,37 @@ export async function POST(req: NextRequest) {
       try {
         for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
           const modelStart = Date.now();
-          const completion = await openStream();
-
-          let content = "";
-          const partials = new Map<number, PartialToolCall>();
-
-          for await (const chunk of completion) {
-            const delta = chunk.choices[0]?.delta;
-            if (!delta) continue;
-
-            if (delta.content) {
-              content += delta.content;
-              send({ type: "text", delta: delta.content });
-            }
-
-            for (const call of delta.tool_calls ?? []) {
-              const partial = partials.get(call.index) ?? { id: "", name: "", args: "" };
-              if (call.id) partial.id = call.id;
-              if (call.function?.name) partial.name += call.function.name;
-              if (call.function?.arguments) partial.args += call.function.arguments;
-              partials.set(call.index, partial);
-            }
-          }
+          const reply = await brain.turn((delta) => send({ type: "text", delta }));
           modelMs += Date.now() - modelStart;
 
-          // Providers that resend a whole tool call rather than streaming it
-          // in pieces leave the name doubled up; collapse it before use.
-          const calls = [...partials.values()]
-            .map((call) => ({ ...call, name: normalizeToolName(call.name, TOOL_NAMES) }))
-            .filter((call) => call.name);
-          if (calls.length === 0) {
+          if (reply.calls.length === 0) {
             recordTurn(actions);
             send({
               type: "done",
-              reply: content,
+              reply: reply.content,
               actions,
               timings: { model: modelMs, tools: toolMs, total: Date.now() - startedAt },
             });
             return;
           }
 
-          messages.push({
-            role: "assistant",
-            content: content || null,
-            tool_calls: calls.map((call) => ({
-              id: call.id,
-              type: "function" as const,
-              function: { name: call.name, arguments: call.args },
-            })),
-          });
-
           const toolStart = Date.now();
           const outcomes = await Promise.all(
-            calls.map((call) => executeTool(call.name, call.args))
+            reply.calls.map((call) => executeTool(call.name, call.args))
           );
           toolMs += Date.now() - toolStart;
 
-          calls.forEach((call, i) => {
-            actions.push(outcomes[i].log);
+          for (const outcome of outcomes) {
+            actions.push(outcome.log);
             // Sent as it happens: the action is already done on the user's
             // machine, so the UI shouldn't wait for the closing sentence.
-            send({ type: "action", log: outcomes[i].log });
-            messages.push({
-              role: "tool",
-              tool_call_id: call.id,
-              content: JSON.stringify(outcomes[i].result),
-            });
-          });
+            send({ type: "action", log: outcome.log });
+          }
+
+          brain.record(
+            reply,
+            outcomes.map((outcome) => JSON.stringify(outcome.result))
+          );
         }
 
         recordTurn(actions);

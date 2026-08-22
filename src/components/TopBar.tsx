@@ -5,6 +5,7 @@ import { StatusChip } from "./StatusChip";
 import type { IntegrationStatus } from "@/lib/types";
 
 const PROVIDER_LABEL: Record<string, string> = {
+  anthropic: "Claude",
   gemini: "Gemini",
   openrouter: "OpenRouter",
   openai: "OpenAI",

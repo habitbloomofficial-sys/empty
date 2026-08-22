@@ -40,6 +40,7 @@ function Reading({
 }
 
 const PROVIDER: Record<string, string> = {
+  anthropic: "CLAUDE",
   gemini: "GEMINI",
   openrouter: "OPENROUTER",
   openai: "OPENAI",
@@ -47,7 +48,8 @@ const PROVIDER: Record<string, string> = {
 
 // He can always read a page; searching is the part that needs a key. "READ
 // ONLY" says that in two words rather than implying he is cut off.
-const SEARCH: Record<"google" | "gemini" | "openrouter", string> = {
+const SEARCH: Record<"google" | "gemini" | "openrouter" | "anthropic", string> = {
+  anthropic: "CLAUDE",
   google: "GOOGLE",
   gemini: "GEMINI",
   openrouter: "OPENROUTER",

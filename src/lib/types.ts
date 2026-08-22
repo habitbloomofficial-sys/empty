@@ -32,7 +32,7 @@ export interface ReplyTimings {
 
 export interface IntegrationStatus {
   brain: boolean;
-  brainProvider: "openai" | "gemini" | "openrouter" | null;
+  brainProvider: "openai" | "gemini" | "openrouter" | "anthropic" | null;
   elevenlabs: boolean;
   /** Whether the server can transcribe recorded audio (mic works everywhere). */
   transcription: boolean;
@@ -53,7 +53,7 @@ export interface IntegrationStatus {
   /** Whether Axis may open or close apps on this machine. */
   desktopControl: boolean;
   /** How he searches the web, if he can — usually through the brain he runs on. */
-  webSearch: "google" | "gemini" | "openrouter" | null;
+  webSearch: "google" | "gemini" | "openrouter" | "anthropic" | null;
   /** How many things he has learned and kept. */
   learned: number;
   /** Whether a YouTube key is available for channel statistics. */

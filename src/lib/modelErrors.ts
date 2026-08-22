@@ -30,6 +30,11 @@ export function describeModelFailure(error: unknown): string {
   if (status === 400 && /no body/i.test(message)) {
     return "The AI provider rejected the request, sir, without saying why. Worth a retry, or check the model name in Settings.";
   }
+  // Anthropic's out-of-credit answer is a 400, not a 402, and its message is
+  // the only thing distinguishing it from a malformed request.
+  if (/credit balance is too low|billing|purchase credits/i.test(message)) {
+    return "Your Anthropic account is out of credit, sir — top it up at console.anthropic.com and I'll pick straight back up.";
+  }
   if (status === 402 || /more credits|can only afford/i.test(message)) {
     return "Your OpenRouter balance won't cover a reply, sir — add credit at openrouter.ai/settings/credits, or pick a cheaper model in Settings.";
   }
