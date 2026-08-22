@@ -4,8 +4,8 @@ title Axis
 cd /d "%~dp0"
 
 echo.
-echo   Axis
-echo   ------
+echo   A X I S
+echo   -------
 echo.
 
 rem Node is the only thing Axis needs that Windows doesn't ship with.
@@ -19,24 +19,10 @@ if errorlevel 1 (
   exit /b 1
 )
 
-if not exist "node_modules\" (
-  echo   First run - installing what Axis needs. This takes a minute or two.
-  echo.
-  call npm install
-  if errorlevel 1 goto failed
-)
-
-if not exist ".next\BUILD_ID" (
-  echo   Preparing Axis. This happens once, not every time.
-  echo.
-  call npm run build
-  if errorlevel 1 goto failed
-)
-
-rem If Axis is already running, use that one. Starting a second copy just
-rem fails to take the port, and then you have a browser window pointed at a
-rem server that never came up - which looks exactly like Axis being broken.
-powershell -NoProfile -Command "try{$null=Invoke-WebRequest -UseBasicParsing 'http://127.0.0.1:3000' -TimeoutSec 2; exit 0}catch{exit 1}" >nul 2>nul
+rem If Axis is already running, use that one. Starting a second copy just fails
+rem to take the port, and then you have a browser window pointed at a server
+rem that never came up - which looks exactly like Axis being broken.
+powershell -NoProfile -ExecutionPolicy Bypass -Command "try{$null=Invoke-WebRequest -UseBasicParsing 'http://127.0.0.1:3000' -TimeoutSec 2; exit 0}catch{exit 1}" >nul 2>nul
 if not errorlevel 1 (
   echo   Axis is already running - opening it.
   echo.
@@ -44,10 +30,44 @@ if not errorlevel 1 (
   exit /b 0
 )
 
+if not exist "data" mkdir "data"
+
+rem --------------------------------------------------------------------------
+rem Install, but only when the dependency list has actually changed.
+rem
+rem Checking whether node_modules merely *exists* is not enough, and that
+rem mistake is what produced "Can't resolve 'docx'": after an update adds a
+rem library, the folder is there but the library isn't, so the install gets
+rem skipped and the build fails on something you never touched. The lock file's
+rem fingerprint is the honest question - if it differs from the last successful
+rem install, there is work to do.
+rem --------------------------------------------------------------------------
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$h=(Get-FileHash 'package-lock.json' -Algorithm SHA256).Hash; $s='data\.deps-stamp'; if((Test-Path 'node_modules') -and (Test-Path $s) -and ((Get-Content $s -Raw).Trim() -eq $h)){exit 0} else {exit 1}"
+if errorlevel 1 (
+  echo   Getting what Axis needs. This takes a minute the first time.
+  echo.
+  call npm install
+  if errorlevel 1 goto failed
+  powershell -NoProfile -ExecutionPolicy Bypass -Command "(Get-FileHash 'package-lock.json' -Algorithm SHA256).Hash | Set-Content 'data\.deps-stamp'"
+  rem New code always needs a new build.
+  if exist ".next\BUILD_ID" del /q ".next\BUILD_ID" >nul 2>nul
+)
+
+rem --------------------------------------------------------------------------
+rem Build, but only when something has actually changed since the last one.
+rem --------------------------------------------------------------------------
+powershell -NoProfile -ExecutionPolicy Bypass -Command "if(-not (Test-Path '.next\BUILD_ID')){exit 1}; $b=(Get-Item '.next\BUILD_ID').LastWriteTimeUtc; $n=(Get-ChildItem -Recurse -File -Path 'src','public','package.json','next.config.ts' -ErrorAction SilentlyContinue | Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1).LastWriteTimeUtc; if($n -gt $b){exit 1} else {exit 0}"
+if errorlevel 1 (
+  echo   Preparing Axis. This happens after an update, not every time.
+  echo.
+  call npm run build
+  if errorlevel 1 goto failed
+)
+
 rem Open the browser only once the server actually answers, so the first thing
 rem seen is Axis rather than a connection error. Runs alongside the server
 rem below, which holds this window.
-start "" powershell -NoProfile -WindowStyle Hidden -Command "for($i=0;$i -lt 120;$i++){try{$null=Invoke-WebRequest -UseBasicParsing 'http://127.0.0.1:3000' -TimeoutSec 2;Start-Process 'http://127.0.0.1:3000';break}catch{Start-Sleep -Milliseconds 500}}"
+start "" powershell -NoProfile -ExecutionPolicy Bypass -Command "for($i=0;$i -lt 120;$i++){try{$null=Invoke-WebRequest -UseBasicParsing 'http://127.0.0.1:3000' -TimeoutSec 2;Start-Process 'http://127.0.0.1:3000';break}catch{Start-Sleep -Milliseconds 500}}"
 
 echo   Starting. Your browser will open on its own.
 echo   Closing this window shuts Axis down.
@@ -66,6 +86,9 @@ exit /b 0
 :failed
 echo.
 echo   That didn't work. The error is above.
+echo.
+echo   Most of the time this is fixed by running REBUILD-AXIS.bat once,
+echo   which reinstalls everything from scratch.
 echo.
 pause
 exit /b 1

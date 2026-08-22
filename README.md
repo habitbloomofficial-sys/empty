@@ -26,24 +26,36 @@ real.
   you left off, and survives a crash
 - **Interface** — Next.js + Tailwind + react-three-fiber, light-blue glass theme
 
-## 1. Install and run
+## 1. Opening Axis
 
-Double-click **START-Axis.bat** (Windows) or run **./start-axis.sh** (macOS
-and Linux). The first run installs what's needed and prepares the app; after
-that it starts in a couple of seconds and opens your browser on its own.
-Closing the window shuts Axis down.
+**Double-click `START-AXIS.bat`.** That is the whole thing.
 
-Or, from a terminal:
+A black window appears, and your browser opens on its own a moment later. Leave
+the black window alone while you use Axis — it *is* Axis. Closing it shuts him
+down.
+
+The first time, it will take a minute or two: it has to fetch what it needs and
+prepare itself. After that it starts in seconds.
+
+**After an update** (`git pull`), still just double-click `START-AXIS.bat`. It
+notices that things have changed, installs anything new, and rebuilds before
+starting. You don't have to think about it.
+
+### If something goes wrong
+
+Double-click **`REBUILD-AXIS.bat`** once. It reinstalls everything and rebuilds
+from scratch, then tells you to start Axis again. Your settings, memories and
+session history live in the `data` folder and are never touched by it.
+
+### From a terminal, if you prefer
 
 ```bash
 npm install
 npm run fast
 ```
 
-Open http://localhost:3000.
-
-`npm run fast` builds once and then serves — use it for everyday use. `npm run
-dev` exists for editing code: it recompiles each page and route the first time
+Then open http://localhost:3000. `npm run fast` builds once and then serves.
+`npm run dev` exists for editing code: it recompiles each page the first time
 you hit it, which on Windows can add tens of seconds to your first request and
 makes Axis feel far slower than he is.
 
@@ -688,6 +700,17 @@ It's matched forgivingly on purpose. Across a room "hey Axis" comes back as
 but only near the start of a sentence, so mentioning him mid-conversation
 doesn't set him off. He also stops listening for his name while he's speaking,
 so he can't wake himself.
+
+### If a build says `Can't resolve 'docx'` (or another module)
+
+An update added a library your copy doesn't have yet. Double-click
+**`REBUILD-AXIS.bat`** once and it's fixed.
+
+This should no longer happen: `START-AXIS.bat` now compares `package-lock.json`
+against the last successful install and fetches anything new before building.
+The older version only installed when the `node_modules` folder was missing
+entirely — so after an update the folder was there, the new library wasn't, and
+the build failed on a file you had never touched.
 
 ### If you see "Failed to fetch"
 
