@@ -205,7 +205,7 @@ export const toolDefinitions: OpenAI.Chat.Completions.ChatCompletionTool[] = [
     function: {
       name: "open_hologram",
       description:
-        "Open Hologram v3, the holographic projector built into JARVIS. It's a window where the user drops in a picture and sees it projected as a rotating 3D hologram. Use it whenever he mentions the hologram, Hologram v3, or projecting a picture. Once it's open he loads the picture himself.",
+        "Open Hologram v3, the holographic projector built into Axis. It's a window where the user drops in a picture and sees it projected as a rotating 3D hologram. Use it whenever he mentions the hologram, Hologram v3, or projecting a picture. Once it's open he loads the picture himself.",
       parameters: { type: "object", properties: {}, required: [] },
     },
   },

@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Which machine he is reading this on — desktop actions land on the computer
-  // JARVIS runs on, which is not always the one in his hand.
+  // Axis runs on, which is not always the one in his hand.
   const deviceLabel = describeDevice(
     req.headers.get("user-agent"),
     !req.headers.get("x-forwarded-for")

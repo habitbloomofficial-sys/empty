@@ -1,5 +1,13 @@
 import type { ReactNode } from "react";
 
+/**
+ * One integration, and whether it is actually connected.
+ *
+ * Deliberately reads as instrumentation rather than decoration: a square lamp
+ * that is lit or dark, and a mono label. Nothing here is ever shown as
+ * connected when it isn't — the panel is only worth having if it tells the
+ * truth about what he can currently do.
+ */
 export function StatusChip({
   ok,
   icon,
@@ -11,18 +19,20 @@ export function StatusChip({
 }) {
   return (
     <div
-      className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
+      className={`flex items-center gap-1.5 border px-2 py-1 transition-colors ${
         ok
-          ? "bg-sky-500/10 text-sky-700"
-          : "bg-slate-400/10 text-slate-400"
+          ? "border-amber-500/35 bg-amber-500/[0.07] text-amber-400"
+          : "border-white/[0.06] text-sand-700"
       }`}
       title={ok ? `${label} connected` : `${label} not connected`}
     >
-      <span className={ok ? "text-sky-500" : "text-slate-400"}>{icon}</span>
-      <span className="hidden sm:inline">{label}</span>
+      <span className={ok ? "text-amber-400" : "text-sand-700"}>{icon}</span>
+      <span className="ax-label hidden sm:inline" style={{ color: "inherit" }}>
+        {label}
+      </span>
       <span
-        className={`h-1.5 w-1.5 rounded-full ${
-          ok ? "bg-sky-500 shadow-[0_0_6px_2px_rgba(14,165,233,0.5)]" : "bg-slate-300"
+        className={`h-1.5 w-1.5 ${
+          ok ? "bg-amber-300 shadow-[0_0_8px_rgba(255,122,0,0.9)]" : "bg-sand-700/50"
         }`}
       />
     </div>

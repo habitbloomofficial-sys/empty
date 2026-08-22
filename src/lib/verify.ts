@@ -169,7 +169,7 @@ async function verifyYouTubeKey(value: string): Promise<string> {
   }
   if (/ipRefererBlocked|API_KEY_HTTP_REFERRER_BLOCKED|referer/i.test(body)) {
     throw new Error(
-      "That key is restricted to particular websites. JARVIS calls YouTube from your computer rather than a web page, so set the key's Application restrictions to “None”."
+      "That key is restricted to particular websites. Axis calls YouTube from your computer rather than a web page, so set the key's Application restrictions to “None”."
     );
   }
   if (/API_KEY_INVALID|API key not valid/i.test(body)) {

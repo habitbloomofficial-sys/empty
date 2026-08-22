@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { writeFileAtomic } from "./atomicWrite";
 
-// What JARVIS knows about you between sessions.
+// What Axis knows about you between sessions.
 //
 // Everything lives in `data/memory/` as Markdown, in layers, because a memory
 // you cannot read is a memory you cannot trust:
@@ -41,7 +41,7 @@ export interface Memory {
   updatedAt: number;
 }
 
-const MEMORY_HEADER = `# What JARVIS knows
+const MEMORY_HEADER = `# What Axis knows
 
 One fact per line. Edit or delete any of them — he reads this file as it is.
 `;
@@ -247,7 +247,7 @@ export function forgetAll(): number {
 /**
  * The facts, formatted for the system prompt. Most recently touched first,
  * trimmed to a budget so a long history can never crowd out the instructions
- * that make JARVIS himself.
+ * that make Axis himself.
  */
 export function memoriesForPrompt(budget = MAX_PROMPT_CHARS): string {
   const memories = listMemories();

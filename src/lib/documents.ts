@@ -6,11 +6,11 @@ import { getSetting } from "./settings";
 // Making a real file rather than talking about one.
 //
 // "Write me an essay" should end with a document you can open, print and hand
-// in — not three screens of chat you then have to copy somewhere. So JARVIS
+// in — not three screens of chat you then have to copy somewhere. So Axis
 // writes the content and this renders it: Word for prose, PowerPoint for
 // slides, Excel for tables, Markdown for notes.
 //
-// Everything lands in Documents/JARVIS, which is already inside the folders he
+// Everything lands in Documents/Axis, which is already inside the folders he
 // can search, so "open the essay you wrote" works straight afterwards with no
 // extra plumbing.
 
@@ -53,7 +53,7 @@ export interface WrittenDocument {
 export function outputFolder(): string {
   const configured = getSetting("DOCUMENTS_FOLDER")?.trim();
   if (configured) return configured;
-  return path.join(os.homedir(), "Documents", "JARVIS");
+  return path.join(os.homedir(), "Documents", "Axis");
 }
 
 /**

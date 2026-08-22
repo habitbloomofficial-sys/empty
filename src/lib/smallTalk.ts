@@ -1,4 +1,4 @@
-// Lines JARVIS says on his own initiative, so a silence is never just silence.
+// Lines Axis says on his own initiative, so a silence is never just silence.
 //
 // The reason these exist: nothing can be spoken until the model produces its
 // first token, and that can be seconds away — thinking happens before any

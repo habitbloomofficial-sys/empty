@@ -42,19 +42,19 @@ export interface IntegrationStatus {
   /** The redirect URI that must be registered in the Google OAuth client. */
   gmailRedirectUri: string;
   whatsapp: boolean;
-  /** Whether JARVIS can place a call and connect you to it. */
+  /** Whether Axis can place a call and connect you to it. */
   phone: boolean;
   /** Names you can ask him to call. */
   phoneContacts: string[];
   /** Whether the Google connection includes the calendar. */
   calendar: boolean;
-  /** Whether JARVIS may open or close apps on this machine. */
+  /** Whether Axis may open or close apps on this machine. */
   desktopControl: boolean;
   /** Whether a YouTube key is available for channel statistics. */
   youtube: boolean;
   /** The channel reported on by default, if one is set. */
   youtubeChannel: string | null;
-  /** The folders JARVIS is allowed to search, by label. */
+  /** The folders Axis is allowed to search, by label. */
   fileRoots: string[];
   /** Which of your machines you're reading this on. */
   device: { kind: "phone" | "tablet" | "computer"; label: string; remote: boolean };

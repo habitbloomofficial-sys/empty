@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { writeFileAtomic } from "./atomicWrite";
 
-// Runtime settings layered on top of .env.local. Everything JARVIS needs can
+// Runtime settings layered on top of .env.local. Everything Axis needs can
 // be typed into the Settings panel instead of hand-editing an env file, which
 // is the difference between "works" and "doesn't" for most people. Values live
 // in data/settings.json (gitignored, same place as the Gmail token) and take

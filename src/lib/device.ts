@@ -2,7 +2,7 @@
 //
 // It matters for more than a label. On a phone he is probably not at his desk,
 // so opening Spotify or a folder on the computer is either useless or actively
-// confusing — those things happen on the machine JARVIS is running on, not on
+// confusing — those things happen on the machine Axis is running on, not on
 // the one he is holding. And "we were on the computer this morning" is the
 // kind of detail that makes a memory feel like a memory.
 //
@@ -14,7 +14,7 @@ export interface Device {
   kind: DeviceKind;
   /** Said out loud: "your phone", "this computer". */
   label: string;
-  /** True when JARVIS is being used from somewhere other than the machine he runs on. */
+  /** True when Axis is being used from somewhere other than the machine he runs on. */
   remote: boolean;
 }
 
@@ -52,7 +52,7 @@ export function describeDevice(userAgent: string | null | undefined, isLocal = f
 }
 
 /**
- * Whether the request came from the machine JARVIS is running on.
+ * Whether the request came from the machine Axis is running on.
  *
  * Anything arriving over the network is a second device by definition, and
  * loopback is the only address that is not.

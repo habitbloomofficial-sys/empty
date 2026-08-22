@@ -1,18 +1,36 @@
-// "Hey JARVIS" is never what the recogniser actually hears. Across a room, on
+// "Hey Axis" is never what the recogniser actually hears. Across a room, on
 // a laptop microphone, it comes back as "hey Travis", "hi Jarvis", "a service",
 // "jarvis." with a full stop. Matching the literal string would mean the wake
 // word almost never works; matching too loosely would mean he wakes up during
 // a phone call. This sits in between: the name has to be there, spelled close
-// enough, as a word of its own.
+// enough, as a word of its own, and near the start of what was said.
 
-const WAKE_NAME = "jarvis";
+/**
+ * He answers to Axis, and still to Jarvis.
+ *
+ * Keeping the old name costs nothing and saves the weeks of saying it out of
+ * habit. Axis is the harder of the two for a microphone: it is short, and its
+ * commonest mishearing — "access" — is an ordinary English word, so it is
+ * accepted only as an alias in the leading position, where "access my email"
+ * cannot reach it.
+ */
+const WAKE_NAMES = ["axis", "jarvis"];
 
 /** Mishearings common enough to accept outright. */
 const ALIASES = new Set([
+  // Axis
+  "axis",
+  "axes",
+  "access",
+  "aksis",
+  "axus",
+  "acksis",
+  "axiss",
+  // Jarvis, kept
+  "jarvis",
   "travis",
   "jervis",
   "javis",
-  "jarvis",
   "garvis",
   "charvis",
   "jarviss",
@@ -52,8 +70,10 @@ function words(text: string): string[] {
 function isName(word: string): boolean {
   if (ALIASES.has(word)) return true;
   // One character out covers most of what a microphone gets wrong; two would
-  // start matching ordinary words like "service".
-  return Math.abs(word.length - WAKE_NAME.length) <= 1 && editDistance(word, WAKE_NAME) <= 1;
+  // start matching ordinary words like "service" or "basis".
+  return WAKE_NAMES.some(
+    (name) => Math.abs(word.length - name.length) <= 1 && editDistance(word, name) <= 1
+  );
 }
 
 export interface WakeMatch {

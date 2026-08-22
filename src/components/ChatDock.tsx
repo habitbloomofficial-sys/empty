@@ -57,7 +57,7 @@ export function ChatDock({
   return (
     <form
       onSubmit={handleSubmit}
-      className="glass-strong mx-auto flex w-full max-w-2xl items-center gap-2 rounded-full px-3 py-2 sm:px-4"
+      className="ax-brackets mx-auto flex w-full max-w-2xl items-center gap-2 border border-amber-500/25 bg-[rgba(6,6,6,0.92)] px-3 py-2 backdrop-blur-md sm:px-4"
     >
       <button
         type="button"
@@ -65,10 +65,10 @@ export function ChatDock({
         disabled={!micSupported || isTranscribing}
         className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors disabled:opacity-30 ${
           isListening
-            ? "bg-sky-500 text-white"
+            ? "bg-amber-500 text-white"
             : handsFree
-              ? "bg-sky-500/25 text-sky-700 ring-2 ring-sky-400/60"
-              : "bg-sky-500/10 text-sky-600 hover:bg-sky-500/20"
+              ? "bg-amber-500/25 text-amber-400 ring-2 ring-amber-400/60"
+              : "bg-amber-500/10 text-amber-400 hover:bg-amber-500/20"
         }`}
         aria-label={handsFree || isListening ? "Turn the microphone off" : "Turn the microphone on"}
         title={
@@ -81,10 +81,10 @@ export function ChatDock({
       >
         {isListening && (
           <>
-            <span className="absolute inset-0 rounded-full border-2 border-sky-400 animate-pulse-ring" />
+            <span className="absolute inset-0 rounded-full border-2 border-amber-400 animate-pulse-ring" />
             {/* Scales with your actual voice, so a dead mic is obvious at a glance. */}
             <span
-              className="pointer-events-none absolute inset-0 rounded-full bg-sky-300/50 transition-transform duration-75"
+              className="pointer-events-none absolute inset-0 rounded-full bg-amber-300/40 transition-transform duration-75"
               style={{ transform: `scale(${1 + Math.min(micLevel, 1) * 0.6})` }}
             />
           </>
@@ -98,19 +98,19 @@ export function ChatDock({
           onClick={onToggleWake}
           className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors ${
             wakeEnabled
-              ? "bg-sky-500/10 text-sky-600 hover:bg-sky-500/20"
-              : "text-ink-700/30 hover:bg-slate-500/10"
+              ? "bg-amber-500/10 text-amber-400 hover:bg-amber-500/20"
+              : "text-sand-700 hover:bg-white/[0.06]"
           }`}
           aria-label={wakeEnabled ? "Stop listening for my name" : "Listen for my name"}
           title={
             wakeEnabled
-              ? 'Listening for "Hey JARVIS" — click to switch off'
-              : 'Click to listen for "Hey JARVIS"'
+              ? 'Listening for "Hey Axis" — click to switch off'
+              : 'Click to listen for "Hey Axis"'
           }
         >
           {/* A quiet pulse while the listener is actually running. */}
           {wakeEnabled && wakeListening && (
-            <span className="absolute inset-1 rounded-full bg-sky-400/20 animate-pulse" />
+            <span className="absolute inset-1 rounded-full bg-amber-400/20 animate-pulse" />
           )}
           <EarIcon className="relative h-[18px] w-[18px]" />
         </button>
@@ -120,17 +120,20 @@ export function ChatDock({
         value={inputValue}
         onChange={(e) => setValue(e.target.value)}
         disabled={isListening || isTranscribing}
-        placeholder="Ask JARVIS anything…"
-        className="min-w-0 flex-1 bg-transparent text-sm text-ink-900 placeholder:text-ink-700/40 focus:outline-none disabled:italic"
+        placeholder="Ask Axis anything…"
+        className="min-w-0 flex-1 bg-transparent font-mono text-[13px] text-cream placeholder:text-sand-700 focus:outline-none disabled:italic"
       />
 
       <button
         type="submit"
         disabled={disabled || !value.trim()}
-        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-sky-500 text-white transition hover:bg-sky-600 disabled:opacity-30"
+        className="flex h-9 shrink-0 items-center gap-2 border border-amber-500/40 px-3 text-amber-400 transition hover:border-amber-400 hover:bg-amber-500/10 disabled:border-white/[0.06] disabled:text-sand-700"
         aria-label="Send"
       >
-        <SendIcon className="h-4 w-4" />
+        <span className="ax-label hidden sm:inline" style={{ color: "inherit" }}>
+          SEND
+        </span>
+        <SendIcon className="h-3.5 w-3.5" />
       </button>
     </form>
   );

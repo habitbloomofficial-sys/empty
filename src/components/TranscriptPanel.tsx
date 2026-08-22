@@ -6,7 +6,7 @@ import type { ChatMessage, ReplyTimings } from "@/lib/types";
 const seconds = (ms: number) => `${(ms / 1000).toFixed(1)}s`;
 
 /**
- * Where the wait actually went. Cheap to show, and it turns "JARVIS feels
+ * Where the wait actually went. Cheap to show, and it turns "Axis feels
  * slow" into a specific stage worth looking at.
  */
 function Timings({ timings }: { timings: ReplyTimings }) {
@@ -18,7 +18,7 @@ function Timings({ timings }: { timings: ReplyTimings }) {
   if (parts.length === 0) return null;
 
   return (
-    <p className="mt-1.5 text-[10px] text-ink-700/40">
+    <p className="mt-1.5 text-[10px] text-sand-700">
       {parts.join(" · ")}
       {timings.total ? ` · ${seconds(timings.total)} total` : ""}
     </p>
@@ -34,7 +34,7 @@ export function TranscriptPanel({ messages }: { messages: ChatMessage[] }) {
 
   if (messages.length === 0) {
     return (
-      <div className="flex flex-1 items-center justify-center px-6 text-center text-sm text-ink-700/60">
+      <div className="flex flex-1 items-center justify-center px-6 text-center text-sm text-sand-500">
         Speak or type below to begin, sir.
       </div>
     );
@@ -45,15 +45,15 @@ export function TranscriptPanel({ messages }: { messages: ChatMessage[] }) {
       {messages.map((m) => (
         <div key={m.id} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
           <div
-            className={`max-w-[82%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-sm ${
+            className={`max-w-[82%] rounded-none px-4 py-2.5 text-sm leading-relaxed shadow-sm ${
               m.role === "user"
-                ? "rounded-br-sm bg-sky-500 text-white"
-                : "glass rounded-bl-sm text-ink-900"
+                ? "rounded-br-sm bg-amber-500 text-white"
+                : "glass rounded-bl-sm text-cream"
             }`}
           >
             {m.role === "assistant" && (
-              <div className="mb-1 text-[10px] font-semibold tracking-[0.16em] text-sky-600">
-                JARVIS
+              <div className="mb-1 text-[10px] font-semibold tracking-[0.16em] text-amber-400">
+                Axis
               </div>
             )}
             <p className="whitespace-pre-wrap">{m.content}</p>
@@ -65,8 +65,8 @@ export function TranscriptPanel({ messages }: { messages: ChatMessage[] }) {
                     key={i}
                     className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
                       a.ok
-                        ? "bg-sky-500/10 text-sky-700"
-                        : "bg-rose-500/10 text-rose-600"
+                        ? "bg-amber-500/10 text-amber-400"
+                        : "bg-rose-500/10 text-rose-400"
                     }`}
                   >
                     {a.ok ? "✓" : "✕"} {a.summary}

@@ -1,13 +1,13 @@
 @echo off
 setlocal
-title JARVIS - phone access
+title Axis - phone access
 cd /d "%~dp0"
 
 echo.
-echo   JARVIS on your phone
+echo   Axis on your phone
 echo   --------------------
 echo.
-echo   This serves JARVIS to your own Wi-Fi so your phone can reach it.
+echo   This serves Axis to your own Wi-Fi so your phone can reach it.
 echo   Leave this window open while you use it.
 echo.
 
@@ -20,7 +20,7 @@ if errorlevel 1 (
 )
 
 if not exist "node_modules\" (
-  echo   First run - installing what JARVIS needs.
+  echo   First run - installing what Axis needs.
   call npm install
   if errorlevel 1 goto failed
 )
@@ -29,7 +29,7 @@ call npm run phone
 if errorlevel 1 goto failed
 
 echo.
-echo   JARVIS has stopped.
+echo   Axis has stopped.
 pause
 exit /b 0
 

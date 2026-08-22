@@ -27,7 +27,7 @@ function isFree(model: OpenRouterModel): boolean {
 
 /**
  * The models available on the configured key, narrowed where possible to those
- * that can actually call tools — JARVIS without tools can talk but can't open
+ * that can actually call tools — Axis without tools can talk but can't open
  * Spotify or read your email, so offering the rest would be offering a trap.
  *
  * Fetched live rather than listed in code: these catalogues turn over

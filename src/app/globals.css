@@ -1,31 +1,62 @@
 @import "tailwindcss";
 
-:root {
-  --sky-50: #f0f9ff;
-  --sky-100: #e0f2fe;
-  --sky-200: #bae6fd;
-  --sky-300: #7dd3fc;
-  --sky-400: #38bdf8;
-  --sky-500: #0ea5e9;
-  --sky-600: #0284c7;
-  --ink-900: #0c2334;
-  --ink-700: #1c4058;
+/*
+ * Axis — the command-centre theme.
+ *
+ * Near-black, amber, and cream, with thin hairline rules and small mono labels
+ * in wide letter-spacing. The rule that keeps it coherent: orange is for
+ * things that are live or that you can act on, cream is for what he says, and
+ * everything structural is a one-pixel line at low opacity. Nothing here is
+ * filled in solid — the panels are drawn, not painted.
+ */
 
-  --background: var(--sky-50);
-  --foreground: var(--ink-900);
-  --glass-bg: rgba(255, 255, 255, 0.55);
-  --glass-border: rgba(255, 255, 255, 0.75);
-  --glass-shadow: 0 8px 32px rgba(14, 165, 233, 0.14);
+:root {
+  /* Amber, from dim to hot. */
+  --amber-500: #ff7a00;
+  --amber-400: #ff9d00;
+  --amber-300: #ffc400;
+  --amber-200: #ffe600;
+
+  --void: #020202;
+  --panel: #080808;
+  --cream: #ede6dc;
+  --cream-dim: #f0e5d6;
+  /* Muted golds, for text that is present but not speaking. */
+  --sand-500: #8a6a3a;
+  --sand-600: #7e6034;
+  --sand-700: #6b5228;
+
+  --line: rgba(255, 122, 0, 0.13);
+  --line-strong: rgba(255, 122, 0, 0.35);
+  --wash: rgba(255, 122, 0, 0.1);
+
+  --background: var(--void);
+  --foreground: var(--cream);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --color-ink-900: var(--ink-900);
-  --color-ink-700: var(--ink-700);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-display: var(--font-space-grotesk);
+
+  --color-void: var(--void);
+  --color-panel: var(--panel);
+  --color-cream: var(--cream);
+  --color-cream-dim: var(--cream-dim);
+  --color-amber-500: var(--amber-500);
+  --color-amber-400: var(--amber-400);
+  --color-amber-300: var(--amber-300);
+  --color-amber-200: var(--amber-200);
+  --color-sand-500: var(--sand-500);
+  --color-sand-600: var(--sand-600);
+  --color-sand-700: var(--sand-700);
+
+  /* Kept so existing markup keeps rendering while it is restyled. */
+  --color-ink-900: var(--cream);
+  --color-ink-700: var(--sand-500);
+
+  --font-sans: var(--font-plex-sans);
+  --font-mono: var(--font-plex-mono);
+  --font-display: var(--font-plex-sans);
 }
 
 * {
@@ -38,39 +69,128 @@ body {
 }
 
 body {
-  background:
-    radial-gradient(60% 50% at 18% 8%, rgba(186, 230, 253, 0.9), transparent 60%),
-    radial-gradient(55% 45% at 85% 12%, rgba(125, 211, 252, 0.55), transparent 60%),
-    radial-gradient(70% 60% at 50% 100%, rgba(224, 242, 254, 0.9), transparent 60%),
-    linear-gradient(180deg, #f5fbff 0%, #eaf6ff 45%, #dcf0fe 100%);
+  background: var(--void);
   color: var(--foreground);
-  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), system-ui, sans-serif;
   overflow-x: hidden;
 }
 
 .font-display {
-  font-family: var(--font-display), var(--font-sans), sans-serif;
+  font-family: var(--font-sans), system-ui, sans-serif;
 }
 
-.glass {
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  box-shadow: var(--glass-shadow);
-  backdrop-filter: blur(20px) saturate(160%);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
+/* ---------------------------------------------------------------------------
+ * The room the interface sits in: a low amber glow from the centre, and a
+ * grid that drifts slowly enough that you notice it only if you look.
+ * ------------------------------------------------------------------------ */
+
+.ax-room::before,
+.ax-room::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
 }
 
-.glass-strong {
-  background: rgba(255, 255, 255, 0.72);
-  border: 1px solid rgba(255, 255, 255, 0.85);
-  box-shadow: 0 12px 40px rgba(14, 165, 233, 0.18);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
+.ax-room::before {
+  background:
+    radial-gradient(60% 55% at 50% 46%, rgba(255, 122, 0, 0.055), rgba(2, 2, 2, 0) 70%),
+    radial-gradient(120% 90% at 50% 120%, rgba(122, 67, 0, 0.1), rgba(2, 2, 2, 0) 60%);
+}
+
+.ax-room::after {
+  inset: -60px;
+  opacity: 0.5;
+  background-image:
+    linear-gradient(rgba(255, 122, 0, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 122, 0, 0.045) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: radial-gradient(70% 60% at 50% 50%, #000 20%, transparent 75%);
+  -webkit-mask-image: radial-gradient(70% 60% at 50% 50%, #000 20%, transparent 75%);
+  animation: ax-drift 90s linear infinite alternate;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ax-room::after {
+    animation: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Panels. Drawn with a hairline rather than filled, over a near-black wash.
+ * ------------------------------------------------------------------------ */
+
+.glass,
+.ax-panel {
+  background: linear-gradient(180deg, rgba(10, 10, 10, 0.92), rgba(2, 2, 2, 0.72));
+  border: 1px solid var(--line);
+  box-shadow: 0 0 24px rgba(255, 122, 0, 0.04) inset;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.glass-strong,
+.ax-panel-strong {
+  background: linear-gradient(180deg, rgba(12, 12, 12, 0.97), rgba(4, 4, 4, 0.92));
+  border: 1px solid var(--line-strong);
+  box-shadow:
+    0 0 40px rgba(0, 0, 0, 0.6),
+    0 0 30px rgba(255, 122, 0, 0.05) inset;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+/** Small uppercase mono, the label style the whole interface is built on. */
+.ax-label {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--sand-500);
+}
+
+.ax-label-amber {
+  color: var(--amber-400);
+}
+
+/** Corner brackets, as on the main frame of the design. */
+.ax-brackets {
+  position: relative;
+}
+
+.ax-brackets::before,
+.ax-brackets::after {
+  content: "";
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-color: var(--line-strong);
+  border-style: solid;
+  pointer-events: none;
+}
+
+.ax-brackets::before {
+  top: -1px;
+  left: -1px;
+  border-width: 1px 0 0 1px;
+}
+
+.ax-brackets::after {
+  bottom: -1px;
+  right: -1px;
+  border-width: 0 1px 1px 0;
+}
+
+::selection {
+  background: rgba(255, 122, 0, 0.28);
+  color: var(--cream);
 }
 
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 4px;
+  height: 4px;
 }
 
 ::-webkit-scrollbar-track {
@@ -78,12 +198,53 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(14, 165, 233, 0.28);
-  border-radius: 999px;
+  background: rgba(255, 122, 0, 0.22);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(14, 165, 233, 0.45);
+  background: rgba(255, 122, 0, 0.4);
+}
+
+/* ---------------------------------------------------------------------------
+ * Motion
+ * ------------------------------------------------------------------------ */
+
+@keyframes ax-drift {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(-40px, -24px, 0);
+  }
+}
+
+@keyframes ax-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.15;
+  }
+}
+
+.animate-blink {
+  animation: ax-blink 3.4s ease-in-out infinite;
+}
+
+@keyframes ax-in {
+  0% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-in-up {
+  animation: ax-in 0.28s ease-out both;
 }
 
 @keyframes float-y {

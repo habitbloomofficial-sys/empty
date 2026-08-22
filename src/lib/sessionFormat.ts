@@ -120,7 +120,7 @@ export function parseSession(markdown: string, fallbackDate: string): SessionLog
   return { date, status, opened, recap };
 }
 
-/** What opening JARVIS means, given what the last session left behind. */
+/** What opening Axis means, given what the last session left behind. */
 export type StartCase =
   /** No session for today: a fresh day. */
   | "new-day"
@@ -143,7 +143,7 @@ export function minutesSince(entryTime: string, now: Date): number | null {
  * recovering from an interruption rather than simply coming back.
  *
  * Without this, every page refresh looks like a crash: the session is still
- * marked open because nothing had a chance to mark it otherwise, and JARVIS
+ * marked open because nothing had a chance to mark it otherwise, and Axis
  * announces an interruption that never happened. Silence is the evidence, not
  * the missing marker on its own.
  */

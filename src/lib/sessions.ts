@@ -17,7 +17,7 @@ import {
 
 // The part of memory that answers "where were we?".
 //
-// Facts say what JARVIS knows; a session says what happened. One Markdown file
+// Facts say what Axis knows; a session says what happened. One Markdown file
 // per day, each line stamped with the time, and a status marker saying how the
 // day ended — paused, closed, or nothing at all, which means it stopped
 // without warning. That last case is the one worth designing for: a browser
@@ -40,7 +40,7 @@ const PREVIOUS_BUDGET = 300;
 
 // Guidance to the reader is written as a blockquote, and blockquotes are
 // stripped before this reaches the prompt — so the instructions in the file
-// never get read back to JARVIS as though they were something he knows.
+// never get read back to Axis as though they were something he knows.
 const USER_TEMPLATE = `# About me
 
 > Read at the start of every conversation. Keep it short — who you are, how you
@@ -69,7 +69,7 @@ function budgeted(text: string, budget: number): string {
   const meaningful = text
     .split(/\r?\n/)
     // Headings and blockquoted guidance are for whoever opens the file, not
-    // for the prompt — carrying them would have JARVIS reading his own
+    // for the prompt — carrying them would have Axis reading his own
     // instructions back as facts about you.
     .filter((line) => {
       const trimmed = line.trim();
@@ -156,7 +156,7 @@ export function previousSession(date: string): SessionLog | null {
 }
 
 /**
- * Add a line to today's RECAP. Every action JARVIS takes goes through here, so
+ * Add a line to today's RECAP. Every action Axis takes goes through here, so
  * that a session read back later is a record of what actually happened rather
  * than of what was meant to.
  */
@@ -195,7 +195,7 @@ export function markSession(status: SessionStatus, now: Date = new Date()): Sess
 export interface SessionBriefing {
   case: StartCase;
   date: string;
-  /** One or two sentences, in JARVIS's voice, for him to say out loud. */
+  /** One or two sentences, in Axis's voice, for him to say out loud. */
   briefing: string;
   today: SessionLog;
   previous: { date: string; summary: string } | null;

@@ -27,7 +27,7 @@ export async function GET() {
  *
  * "open" is called when the interface loads: it works out whether this is a
  * new day, a session being picked up, or one that stopped without saying so,
- * and returns a line for JARVIS to say. "pause" is sent when the page is
+ * and returns a line for Axis to say. "pause" is sent when the page is
  * closed — best-effort, via sendBeacon — and "close" is signing off for the
  * day. A session with no marker at all is how an interruption is recognised.
  */

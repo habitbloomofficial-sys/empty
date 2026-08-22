@@ -8,7 +8,7 @@ import {
 import { parseVideoInput, watchUrl } from "./youtubeVideo";
 
 // Channel statistics, straight from the YouTube Data API. One API key, no
-// OAuth, no browser round trip — which matters because JARVIS is asked for
+// OAuth, no browser round trip — which matters because Axis is asked for
 // these mid-sentence and a consent screen would end the conversation.
 //
 // What this can and cannot see is worth being straight about: these are the
@@ -68,7 +68,7 @@ function googleError(status: number, body: string): Error {
   }
   if (/ipRefererBlocked|API_KEY_HTTP_REFERRER_BLOCKED|referer/i.test(haystack)) {
     return new Error(
-      "Google is refusing that key because it's restricted to particular websites. JARVIS calls YouTube from your own computer, not from a web page, so in the key's settings set Application restrictions to “None” (or to IP addresses)."
+      "Google is refusing that key because it's restricted to particular websites. Axis calls YouTube from your own computer, not from a web page, so in the key's settings set Application restrictions to “None” (or to IP addresses)."
     );
   }
   if (/API key not valid|keyInvalid|API_KEY_INVALID/i.test(haystack)) {

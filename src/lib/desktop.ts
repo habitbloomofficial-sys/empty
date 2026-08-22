@@ -4,7 +4,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { getSetting } from "./settings";
 
-// JARVIS runs on your own machine, so he can open desktop apps on it. That is
+// Axis runs on your own machine, so he can open desktop apps on it. That is
 // also why this file is deliberately narrow: the model can ask for exactly the
 // actions enumerated here and nothing else. There is no "run this command"
 // path, no shell, and no way for text from a conversation to become an
@@ -71,7 +71,7 @@ async function launch(target: string): Promise<void> {
   }
 }
 
-// The apps JARVIS may open and close. A registry rather than a pile of
+// The apps Axis may open and close. A registry rather than a pile of
 // special cases: adding one is a table entry, and nothing anywhere else can
 // name an executable or a process to kill.
 

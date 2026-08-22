@@ -146,7 +146,7 @@ export function HologramPanel({ onClose }: { onClose: () => void }) {
         animate={{ scale: 1, y: 0 }}
         exit={{ scale: 0.97, y: 8 }}
         transition={{ type: "spring", damping: 26, stiffness: 240 }}
-        className="flex h-full w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-cyan-400/25 bg-slate-950/85 shadow-[0_0_80px_-12px_rgba(34,211,238,0.45)]"
+        className="flex h-full w-full max-w-6xl flex-col overflow-hidden rounded-none border border-cyan-400/25 bg-slate-950/85 shadow-[0_0_80px_-12px_rgba(34,211,238,0.45)]"
       >
         <div className="flex items-center gap-3 border-b border-cyan-400/20 px-5 py-3">
           <span className="h-2 w-2 rounded-full bg-cyan-300 shadow-[0_0_10px_3px_rgba(34,211,238,0.6)]" />
@@ -235,7 +235,7 @@ export function HologramPanel({ onClose }: { onClose: () => void }) {
             )}
 
             {dragging && (
-              <div className="pointer-events-none absolute inset-3 rounded-xl border-2 border-dashed border-cyan-300/70" />
+              <div className="pointer-events-none absolute inset-3 rounded-none border-2 border-dashed border-cyan-300/70" />
             )}
           </div>
 
@@ -254,13 +254,13 @@ export function HologramPanel({ onClose }: { onClose: () => void }) {
             />
             <button
               onClick={() => inputRef.current?.click()}
-              className="w-full rounded-lg border border-cyan-400/40 bg-cyan-400/10 px-3 py-2 text-xs font-semibold tracking-wide text-cyan-100 transition hover:bg-cyan-400/20"
+              className="w-full rounded-none border border-cyan-400/40 bg-cyan-400/10 px-3 py-2 text-xs font-semibold tracking-wide text-cyan-100 transition hover:bg-cyan-400/20"
             >
               {source ? "Load another picture" : "Choose a picture"}
             </button>
 
             {error && (
-              <p className="rounded-lg bg-rose-500/15 px-3 py-2 text-[11px] text-rose-200">
+              <p className="rounded-none bg-rose-500/15 px-3 py-2 text-[11px] text-rose-200">
                 {error}
               </p>
             )}
@@ -269,7 +269,7 @@ export function HologramPanel({ onClose }: { onClose: () => void }) {
               <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-cyan-100/60">
                 Projection
               </span>
-              <div className="grid grid-cols-3 gap-1 rounded-lg bg-cyan-400/10 p-1">
+              <div className="grid grid-cols-3 gap-1 rounded-none bg-cyan-400/10 p-1">
                 {MODES.map((mode) => (
                   <button
                     key={mode.id}

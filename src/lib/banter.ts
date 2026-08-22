@@ -1,4 +1,4 @@
-// What JARVIS says while he's doing something, chosen from what you asked for.
+// What Axis says while he's doing something, chosen from what you asked for.
 //
 // The generic openers ("One moment, sir") fill a silence but say nothing. A
 // line about the actual request is the difference between a progress bar and

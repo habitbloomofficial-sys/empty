@@ -1,6 +1,6 @@
 import { getSetting } from "./settings";
 
-// What JARVIS calls you, and how funny he is allowed to be.
+// What Axis calls you, and how funny he is allowed to be.
 //
 // Both are settings rather than hard-coded, for the same reason: an assistant
 // you talk to every day should sound the way you want it to, and that is not a

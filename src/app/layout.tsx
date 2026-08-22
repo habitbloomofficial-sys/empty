@@ -1,30 +1,28 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono, Space_Grotesk } from "next/font/google";
+import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
 import "./globals.css";
 import { ServiceWorker } from "@/components/ServiceWorker";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+// IBM Plex, as the design uses: the sans for anything he says, the mono for
+// every label, reading and number.
+const plexSans = IBM_Plex_Sans({
+  variable: "--font-plex-sans",
   subsets: ["latin"],
+  weight: ["200", "300", "400", "500", "600"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const plexMono = IBM_Plex_Mono({
+  variable: "--font-plex-mono",
   subsets: ["latin"],
-});
-
-const spaceGrotesk = Space_Grotesk({
-  variable: "--font-space-grotesk",
-  subsets: ["latin"],
-  weight: ["500", "600", "700"],
+  weight: ["300", "400", "500", "600"],
 });
 
 export const metadata: Metadata = {
-  title: "JARVIS",
+  title: "Axis",
   description: "Your personal AI assistant.",
   manifest: "/manifest.webmanifest",
   // So an installed window and an iPhone home-screen icon both look right.
-  appleWebApp: { capable: true, title: "JARVIS", statusBarStyle: "black-translucent" },
+  appleWebApp: { capable: true, title: "Axis", statusBarStyle: "black-translucent" },
   other: {
     // Next emits the modern `mobile-web-app-capable`. iOS before 15.4 only
     // understands the Apple-prefixed one, and without it a home-screen icon
@@ -41,7 +39,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#7cc4f5",
+  themeColor: "#ff7a00",
   // Installed as an app, the page should fill the screen and stay put rather
   // than bouncing and zooming like a web page.
   width: "device-width",
@@ -54,9 +52,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} ${spaceGrotesk.variable} h-full antialiased`}
+      className={`${plexSans.variable} ${plexMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">
+      <body className="ax-room min-h-full flex flex-col">
         {children}
         <ServiceWorker />
       </body>

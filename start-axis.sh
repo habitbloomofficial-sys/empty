@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The macOS and Linux equivalent of START-JARVIS.bat.
+# The macOS and Linux equivalent of START-Axis.bat.
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -13,7 +13,7 @@ command -v node >/dev/null || {
 
 # Already running? Use that one rather than failing to take the port.
 if curl -sf -o /dev/null http://127.0.0.1:3000; then
-  echo "JARVIS is already running - opening it."
+  echo "Axis is already running - opening it."
   (xdg-open http://127.0.0.1:3000 2>/dev/null || open http://127.0.0.1:3000 2>/dev/null) &
   exit 0
 fi
@@ -29,5 +29,5 @@ fi
   done
 ) &
 
-echo "Starting JARVIS. Ctrl-C here shuts it down."
+echo "Starting Axis. Ctrl-C here shuts it down."
 exec npm run start

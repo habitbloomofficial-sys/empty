@@ -9,7 +9,7 @@ import { getSetting } from "./settings";
 //
 // Three services can do the job, and any one of them is enough — whichever
 // keys are present get tried in turn, so a bad or expired key on one doesn't
-// leave JARVIS deaf.
+// leave Axis deaf.
 
 const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta";
 

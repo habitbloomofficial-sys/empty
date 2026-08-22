@@ -4,7 +4,7 @@ import { CALENDAR_SCOPE, googleClient, grantedScopes, isGmailConfigured } from "
 // Your calendar, on the same Google connection as your mail.
 //
 // Read and write events only — the scope asked for is calendar.events, not
-// full calendar access, so JARVIS can see and change appointments but cannot
+// full calendar access, so Axis can see and change appointments but cannot
 // create, share or delete whole calendars.
 
 function requireCalendar(): void {

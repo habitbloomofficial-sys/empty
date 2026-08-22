@@ -20,10 +20,12 @@ interface OrbSceneProps {
 }
 
 const STATE_COLOR: Record<OrbState, string> = {
-  idle: "#38bdf8",
-  listening: "#22d3ee",
-  thinking: "#818cf8",
-  speaking: "#7dd3fc",
+  // Amber throughout, shifted by state: hotter when he is listening to you,
+  // deeper while he thinks, brightest while he speaks.
+  idle: "#ff7a00",
+  listening: "#ffc400",
+  thinking: "#c2410c",
+  speaking: "#ff9d00",
 };
 
 function OrbMesh({ state, audioLevel }: OrbSceneProps) {
@@ -117,7 +119,7 @@ function OrbMesh({ state, audioLevel }: OrbSceneProps) {
       <mesh ref={shellRef}>
         <icosahedronGeometry args={[1.55, 1]} />
         <meshBasicMaterial
-          color="#7dd3fc"
+          color="#ff9d00"
           wireframe
           transparent
           opacity={0.12}
@@ -126,7 +128,7 @@ function OrbMesh({ state, audioLevel }: OrbSceneProps) {
       <mesh ref={glowInnerRef} scale={1.22}>
         <sphereGeometry args={[1, 48, 48]} />
         <meshBasicMaterial
-          color="#7dd3fc"
+          color="#ff9d00"
           transparent
           opacity={0.4}
           blending={THREE.AdditiveBlending}
@@ -137,7 +139,7 @@ function OrbMesh({ state, audioLevel }: OrbSceneProps) {
       <mesh ref={glowOuterRef} scale={1.6}>
         <sphereGeometry args={[1, 32, 32]} />
         <meshBasicMaterial
-          color="#7dd3fc"
+          color="#ff9d00"
           transparent
           opacity={0.18}
           blending={THREE.AdditiveBlending}
@@ -157,7 +159,7 @@ export default function Orb({ state, audioLevel }: OrbSceneProps) {
       dpr={[1, 2]}
     >
       <ambientLight intensity={0.6} />
-      <pointLight position={[3, 3, 3]} intensity={40} color="#bae6fd" />
+      <pointLight position={[3, 3, 3]} intensity={40} color="#ffc400" />
       <OrbMesh state={state} audioLevel={audioLevel} />
       <Sparkles
         count={60}
@@ -165,7 +167,7 @@ export default function Orb({ state, audioLevel }: OrbSceneProps) {
         size={2}
         speed={0.25}
         opacity={0.35}
-        color="#7dd3fc"
+        color="#ff9d00"
       />
     </Canvas>
   );

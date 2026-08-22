@@ -1,11 +1,11 @@
-// JARVIS on your phone, over your own Wi-Fi.
+// Axis on your phone, over your own Wi-Fi.
 //
 // Two things have to be true for this to work, and the second is the one that
 // catches people out.
 //
 // The server has to listen on the network rather than only on localhost — that
 // part is easy. But browsers refuse the microphone on an insecure origin, and
-// localhost is the *only* exception. Reach JARVIS from your phone over plain
+// localhost is the *only* exception. Reach Axis from your phone over plain
 // http and you get a mute assistant with no explanation. So this serves HTTPS
 // with a certificate generated on your own machine.
 //
@@ -57,7 +57,7 @@ async function ensureCertificate(addresses) {
   }
 
   console.log("  Making a certificate for this computer...");
-  const attributes = [{ name: "commonName", value: "JARVIS" }];
+  const attributes = [{ name: "commonName", value: "Axis" }];
   // selfsigned v5 returns a promise; v4 and earlier returned the object
   // directly. Awaiting handles both, and getting this wrong fails at the point
   // where the private key is written rather than where it is generated.
@@ -107,7 +107,7 @@ async function main() {
   });
 
   console.log("");
-  console.log("  JARVIS is on your network. On your phone, open:");
+  console.log("  Axis is on your network. On your phone, open:");
   console.log("");
   for (const entry of addresses) {
     console.log(`      https://${entry.address}:${PORT}      (${entry.name})`);
@@ -118,7 +118,7 @@ async function main() {
   console.log("  yourself, on this computer, a moment ago.");
   console.log("");
   console.log("  Then use your browser's Share or menu button and choose");
-  console.log('  "Add to Home Screen" to install JARVIS as an app.');
+  console.log('  "Add to Home Screen" to install Axis as an app.');
   console.log("");
   console.log("  Both devices have to be on the same Wi-Fi. Ctrl-C stops him.");
   console.log("");

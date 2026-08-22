@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { describeClientFetchError, postJson } from "@/lib/clientFetch";
 
-// The readable half of JARVIS's memory: what happened, and the two files you
+// The readable half of Axis's memory: what happened, and the two files you
 // can edit yourself. Facts have their own list above this; sessions are shown
 // but never edited here — a history you can rewrite is not a history.
 
@@ -45,25 +45,25 @@ function Editor({
   return (
     <div>
       <div className="mb-1 flex items-center gap-2">
-        <span className="text-[11px] font-semibold text-ink-900">{label}</span>
+        <span className="text-[11px] font-semibold text-cream">{label}</span>
         <button
           type="button"
           onClick={onSave}
           disabled={busy}
-          className="ml-auto rounded-full bg-sky-500 px-2.5 py-1 text-[10px] font-semibold text-white transition hover:bg-sky-600 disabled:opacity-40"
+          className="ml-auto rounded-full bg-amber-500 px-2.5 py-1 text-[10px] font-semibold text-white transition hover:bg-amber-400 disabled:opacity-40"
         >
           {busy ? "Saving…" : "Save"}
         </button>
-        {saved && <span className="text-[10px] font-medium text-sky-700">Saved ✓</span>}
+        {saved && <span className="text-[10px] font-medium text-amber-400">Saved ✓</span>}
       </div>
       <textarea
         value={value}
         onChange={(e) => onChange(e.target.value)}
         rows={6}
         spellCheck={false}
-        className="w-full resize-y rounded-lg border border-white/80 bg-white/70 px-3 py-2 font-mono text-[11px] leading-relaxed text-ink-900 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/30"
+        className="w-full resize-y rounded-none border border-amber-500/20 bg-black/40 px-3 py-2 font-mono text-[11px] leading-relaxed text-cream focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-400/30"
       />
-      <span className="mt-1 block text-[10px] text-ink-700/50">{hint}</span>
+      <span className="mt-1 block text-[10px] text-sand-600">{hint}</span>
     </div>
   );
 }
@@ -156,11 +156,11 @@ export function MemoryPanel({ onChanged }: { onChanged: () => void }) {
   return (
     <div className="space-y-3">
       {error && (
-        <p className="rounded-lg bg-rose-500/10 px-2.5 py-1.5 text-[11px] text-rose-700">{error}</p>
+        <p className="rounded-none bg-rose-500/10 px-2.5 py-1.5 text-[11px] text-rose-400">{error}</p>
       )}
 
       <p>
-        A dated record of what you and JARVIS actually did, written as it happens.
+        A dated record of what you and Axis actually did, written as it happens.
         He reads the last of it when you open him, so he can pick up where you
         left off — and he can search all of it when you ask what happened when.
       </p>
@@ -174,8 +174,8 @@ export function MemoryPanel({ onChanged }: { onChanged: () => void }) {
               onClick={() => setSelected(date)}
               className={`rounded-full px-2 py-0.5 text-[10px] font-medium transition ${
                 selected === date
-                  ? "bg-sky-500 text-white"
-                  : "bg-white/60 text-ink-700/70 hover:bg-sky-500/10"
+                  ? "bg-amber-500 text-white"
+                  : "bg-black/30 text-sand-500 hover:bg-amber-500/10"
               }`}
             >
               {date}
@@ -185,22 +185,22 @@ export function MemoryPanel({ onChanged }: { onChanged: () => void }) {
       )}
 
       {session ? (
-        <div className="rounded-lg bg-white/50 p-2.5">
-          <div className="mb-1.5 flex items-center gap-2 text-[10px] font-semibold text-ink-700/60">
+        <div className="rounded-none bg-black/30 p-2.5">
+          <div className="mb-1.5 flex items-center gap-2 text-[10px] font-semibold text-sand-500">
             <span>
               {session.date} · opened {session.opened}
             </span>
-            <span className="ml-auto rounded-full bg-sky-500/10 px-2 py-0.5 text-sky-700">
+            <span className="ml-auto rounded-full bg-amber-500/10 px-2 py-0.5 text-amber-400">
               {STATUS_LABEL[session.status]}
             </span>
           </div>
           {session.recap.length === 0 ? (
-            <p className="text-[11px] text-ink-700/50">Nothing recorded yet.</p>
+            <p className="text-[11px] text-sand-600">Nothing recorded yet.</p>
           ) : (
             <ul className="max-h-40 space-y-0.5 overflow-y-auto">
               {session.recap.map((entry, i) => (
-                <li key={`${entry.time}-${i}`} className="text-[11px] leading-relaxed text-ink-900">
-                  <span className="mr-1.5 font-mono text-[10px] text-ink-700/45">{entry.time}</span>
+                <li key={`${entry.time}-${i}`} className="text-[11px] leading-relaxed text-cream">
+                  <span className="mr-1.5 font-mono text-[10px] text-sand-700">{entry.time}</span>
                   {entry.text}
                 </li>
               ))}
@@ -208,14 +208,14 @@ export function MemoryPanel({ onChanged }: { onChanged: () => void }) {
           )}
         </div>
       ) : (
-        <p className="text-[11px] text-ink-700/50">No session recorded for that day.</p>
+        <p className="text-[11px] text-sand-600">No session recorded for that day.</p>
       )}
 
       <button
         type="button"
         onClick={closeToday}
         disabled={busy === "close"}
-        className="rounded-full px-3 py-1.5 text-xs font-semibold text-ink-700/60 hover:bg-slate-500/10 disabled:opacity-40"
+        className="rounded-full px-3 py-1.5 text-xs font-semibold text-sand-500 hover:bg-white/[0.06] disabled:opacity-40"
       >
         {busy === "close" ? "Closing…" : "Close today's session"}
       </button>
@@ -240,7 +240,7 @@ export function MemoryPanel({ onChanged }: { onChanged: () => void }) {
         saved={saved === "notes"}
       />
 
-      <p className="text-[10px] text-ink-700/50">
+      <p className="text-[10px] text-sand-600">
         All of this lives in <code>data/memory/</code> as plain Markdown — open the
         folder and edit it in Notepad if you prefer. Nothing is sent anywhere; it
         never leaves this computer.

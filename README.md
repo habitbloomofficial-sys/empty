@@ -1,11 +1,17 @@
-# JARVIS
+# Axis
 
-A personal AI assistant: a floating 3D orb, a voice, and a brain that can read
-your email and send WhatsApp messages for you.
+A personal AI assistant: an amber core in a dark command centre, a voice, and a
+brain that can read your email, run your desktop and write your documents.
+
+The interface is black and amber, built from hairline rules and small mono
+labels. Every reading on the right-hand instrument rail is something Axis
+genuinely knows — there are no invented CPU or temperature gauges, because a
+dial showing a number nobody computed teaches you to distrust the ones that are
+real.
 
 - **Brain** — Gemini, OpenRouter, or OpenAI (chat + tool calling — pick one)
 - **Voice** — ElevenLabs text-to-speech, played back with a live waveform driving the orb
-- **Ears** — say "Hey JARVIS" and he listens; your voice is recorded in the
+- **Ears** — say "Hey Axis" and he listens; your voice is recorded in the
   browser and transcribed server-side, so it works in every browser
 - **Email & calendar** — Gmail and Google Calendar, via your own Google OAuth app
 - **Phone** — rings your phone and connects you to a number you name
@@ -22,10 +28,10 @@ your email and send WhatsApp messages for you.
 
 ## 1. Install and run
 
-Double-click **START-JARVIS.bat** (Windows) or run **./start-jarvis.sh** (macOS
+Double-click **START-Axis.bat** (Windows) or run **./start-axis.sh** (macOS
 and Linux). The first run installs what's needed and prepares the app; after
 that it starts in a couple of seconds and opens your browser on its own.
-Closing the window shuts JARVIS down.
+Closing the window shuts Axis down.
 
 Or, from a terminal:
 
@@ -39,32 +45,32 @@ Open http://localhost:3000.
 `npm run fast` builds once and then serves — use it for everyday use. `npm run
 dev` exists for editing code: it recompiles each page and route the first time
 you hit it, which on Windows can add tens of seconds to your first request and
-makes JARVIS feel far slower than he is.
+makes Axis feel far slower than he is.
 
 ### Install him as an app
 
-JARVIS is a Progressive Web App, so both Chrome and Edge will offer to install
+Axis is a Progressive Web App, so both Chrome and Edge will offer to install
 him. Start him as usual, then click the **install icon** in the address bar (or
 **⋯ → Apps → Install this site as an app**).
 
-You get a JARVIS icon in your Start menu and on your desktop, and he opens in
+You get a Axis icon in your Start menu and on your desktop, and he opens in
 his own window with no address bar, tabs or browser buttons — indistinguishable
 from any other installed program. Pin it to the taskbar and that's the whole
 launch: one click.
 
 The window still needs the server running behind it. Keep using
-`START-JARVIS.bat`, or put a shortcut to it in `shell:startup` so it's always
+`START-Axis.bat`, or put a shortcut to it in `shell:startup` so it's always
 there (see below).
 
 ### On your phone
 
-Double-click **START-JARVIS-PHONE.bat**. It prints an address like
+Double-click **START-Axis-PHONE.bat**. It prints an address like
 `https://192.168.1.42:3443` — open that on your phone, then use **Share → Add to
 Home Screen** (iPhone) or **⋮ → Install app** (Android). You get the same
-JARVIS icon and the same full-screen app.
+Axis icon and the same full-screen app.
 
 Both devices have to be on the same Wi-Fi, and the computer has to stay on —
-your phone is a window onto the JARVIS running there, which is what lets it
+your phone is a window onto the Axis running there, which is what lets it
 reach your files, your apps and the same memory.
 
 **Your phone will warn you about the certificate the first time.** That warning
@@ -73,8 +79,8 @@ yourself, on your own computer, seconds earlier. Tap **Advanced → Continue**.
 
 The reason for the certificate at all is the microphone: browsers refuse it on
 an insecure connection, with `localhost` as the only exception. Served over
-plain `http`, JARVIS on your phone would be mute with no explanation, so
-`START-JARVIS-PHONE.bat` generates a certificate covering your computer's
+plain `http`, Axis on your phone would be mute with no explanation, so
+`START-Axis-PHONE.bat` generates a certificate covering your computer's
 network addresses and serves HTTPS. If Windows Firewall asks whether to allow
 Node.js, say yes for **Private networks** — decline it and your phone can't get
 through.
@@ -84,7 +90,7 @@ the computer this morning"* is something he actually knows. It also changes what
 he says: ask him to open Spotify from your phone and he'll tell you it's opening
 on the computer at home, rather than letting you wonder where it went.
 
-### JARVIS is yours, and doesn't need anything to stay running
+### Axis is yours, and doesn't need anything to stay running
 
 Nothing here calls Anthropic, and nothing here needs Claude, Claude Code, or
 any subscription to them. Claude Code was the tool used to *write* this; it has
@@ -94,7 +100,7 @@ again — check `package.json` if you want to see for yourself: the dependencies
 are Next.js, React, three.js, the OpenAI SDK, googleapis, and Twilio. No
 Anthropic anything.
 
-What JARVIS does need is:
+What Axis does need is:
 
 - **Node.js**, installed once from [nodejs.org](https://nodejs.org/en/download).
 - **This folder**, wherever you keep it. Move it, back it up, copy it to another
@@ -106,16 +112,16 @@ What JARVIS does need is:
   are online services. Those are your accounts, billed to you, unrelated to any
   subscription used to build this.
 
-**To start it without a terminal**, right-click `START-JARVIS.bat` → *Send to* →
-*Desktop (create shortcut)*. Rename the shortcut to JARVIS, and give it an icon
+**To start it without a terminal**, right-click `START-Axis.bat` → *Send to* →
+*Desktop (create shortcut)*. Rename the shortcut to Axis, and give it an icon
 via right-click → Properties → Change Icon if you like.
 
 **To start it automatically when you log in**, press `Win`+`R`, type
-`shell:startup`, press Enter, and drop a shortcut to `START-JARVIS.bat` into the
+`shell:startup`, press Enter, and drop a shortcut to `START-Axis.bat` into the
 folder that opens.
 
 **To keep it up to date**, run `git pull` and then double-click
-`REBUILD-JARVIS.bat`. Your settings and memories live in `data/` and are left
+`REBUILD-Axis.bat`. Your settings and memories live in `data/` and are left
 alone by a rebuild. If you'd rather stop pulling changes entirely, that's fine
 too — the copy you have keeps working exactly as it is.
 
@@ -141,7 +147,7 @@ In **Settings → AI brain**, choose a provider and paste the key.
 key reaches most of the frontier models — Claude, GPT, Gemini Pro and the rest
 — and you pick which from a dropdown. That list is fetched live from your own
 account rather than written into this code, so it can't go stale, and it's
-narrowed to models that can call tools, since JARVIS needs those to open apps
+narrowed to models that can call tools, since Axis needs those to open apps
 and read email. **Free models are marked and sorted to the top**, so if you'd
 rather not spend anything, pick one of those. Get a key at
 [openrouter.ai/keys](https://openrouter.ai/keys).
@@ -150,7 +156,7 @@ rather not spend anything, pick one of those. Get a key at
 > GitHub retired the service entirely on 30 July 2026, and its endpoint now
 > answers every request with HTTP 410 and a message about a "scheduled
 > retirement brownout". That wording reads like a passing outage; it isn't one,
-> and no token will make it work. JARVIS now recognises a 410 from any provider
+> and no token will make it work. Axis now recognises a 410 from any provider
 > and says the service has shut down rather than blaming your key.
 
 **OpenAI** works directly too, with your own `sk-` key.
@@ -161,7 +167,7 @@ identically whichever you choose.
 Replies are capped at 2000 tokens. Left uncapped, providers assume the model's
 own maximum — 16k on many OpenRouter models — and OpenRouter refuses a request
 outright if your balance couldn't cover a reply that long, even when the actual
-answer is one sentence. If it ever refuses anyway, JARVIS reads the figure it
+answer is one sentence. If it ever refuses anyway, Axis reads the figure it
 says you can afford and asks again within it. Raise or lower the cap with
 `MAX_TOKENS`.
 
@@ -171,7 +177,7 @@ keys are set, `AI_PROVIDER=openai|gemini|openrouter` breaks the tie.
 
 Leave `GEMINI_MODEL` unset unless you want a specific model. Google retires
 Gemini models on its own schedule and answers requests for a retired one with
-a 404 naming its replacement — JARVIS reads that, switches to the named model,
+a 404 naming its replacement — Axis reads that, switches to the named model,
 and carries on, so an unset value keeps working without a code change. Pinning
 a model opts out of that until you change it.
 
@@ -191,13 +197,13 @@ voices** first; it then appears in the dropdown and works like any other. Two
 things can stop that: some library voices are restricted to paid plans and
 can't be added on the free tier, and **every** generation spends characters
 from your monthly quota whichever voice makes it — a free voice is not free to
-speak. JARVIS says which of the two it hit rather than falling silent.
+speak. Axis says which of the two it hit rather than falling silent.
 
 The same key also powers **speech-to-text**. So does a Gemini or OpenAI key —
 transcription tries each configured provider in turn, so any one working key
 is enough to make the microphone work.
 
-If ElevenLabs is unavailable, JARVIS speaks with the voice built into your
+If ElevenLabs is unavailable, Axis speaks with the voice built into your
 operating system instead. Less characterful, but never mute.
 
 Env equivalents: `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_ID`.
@@ -208,7 +214,7 @@ the usual culprit is a **restricted** key — one created with a hand-picked set
 of permissions. Edit the key in ElevenLabs (profile → API Keys) and enable
 Text to Speech, Speech to Text, and Voices, or give it access to all
 endpoints. The other common causes are an account flagged for "unusual
-activity" (free tier behind a VPN) and an exhausted monthly quota. JARVIS
+activity" (free tier behind a VPN) and an exhausted monthly quota. Axis
 names whichever one it is rather than blaming the key.
 
 ### Gmail and Calendar (optional)
@@ -225,13 +231,13 @@ In the [Google Cloud Console](https://console.cloud.google.com/):
    — Google only requires verification to publish an app to other people.
 4. **APIs & Services → Credentials → Create credentials → OAuth client ID**,
    type **Web application**. Under **Authorized redirect URIs**, add the exact
-   URI shown in JARVIS's Settings → Gmail panel (there's a Copy button):
+   URI shown in Axis's Settings → Gmail panel (there's a Copy button):
    `http://localhost:3000/api/gmail/callback`.
-5. Copy the client ID and secret into **Settings → Gmail** in JARVIS and click
+5. Copy the client ID and secret into **Settings → Gmail** in Axis and click
    **Save**, then **Connect Gmail** and accept every checkbox Google offers.
 
 The token is stored in `data/gmail-token.json` (gitignored, mode 0600) and
-never leaves your machine. If anything goes wrong, JARVIS shows Google's actual
+never leaves your machine. If anything goes wrong, Axis shows Google's actual
 reason rather than a generic failure — `redirect_uri_mismatch` means step 4
 doesn't match character for character, and "app is blocked" or an access
 warning usually means step 3's test user is missing.
@@ -243,7 +249,7 @@ granting one later means running the flow again: click **Disconnect**, then
 Env equivalents: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`,
 `GOOGLE_REDIRECT_URI`.
 
-**Calendar comes with the same connection.** JARVIS asks for the mail scopes
+**Calendar comes with the same connection.** Axis asks for the mail scopes
 and `calendar.events` at the same consent screen, so one authorization covers
 both: *"what's on tomorrow?"*, *"am I free Thursday afternoon?"*, *"put dinner
 with Maja in at seven on Friday"*. The scope is `calendar.events` rather than
@@ -255,7 +261,7 @@ calendar permission. It still works perfectly for mail and fails on calendar
 with a bare 403, so Settings says so and asks you to disconnect and connect
 again — the consent screen will include the calendar the second time.
 
-### Phone calls (optional — lets JARVIS ring a number for you)
+### Phone calls (optional — lets Axis ring a number for you)
 
 Say *"call the pizza place"* and **your** phone rings. Answer it, and you're
 connected to them.
@@ -297,7 +303,7 @@ model.** A call costs money, rings a stranger, and cannot be taken back, so:
 Env equivalents: `TWILIO_VOICE_FROM`, `MY_PHONE_NUMBER`, `PHONE_COUNTRY_CODE`,
 `PHONE_CONTACTS` (plus the `TWILIO_ACCOUNT_SID` and `TWILIO_AUTH_TOKEN` below).
 
-### WhatsApp (optional — lets JARVIS send WhatsApp messages)
+### WhatsApp (optional — lets Axis send WhatsApp messages)
 
 Easiest path is Twilio's WhatsApp sandbox:
 
@@ -334,7 +340,7 @@ as asked — and drops the act entirely when something actually matters.
 **Catchphrases.** Some things have exactly one right answer, and those are
 handled in code rather than by the model — a model told to "always reply with
 exactly this" mostly obliges and occasionally improvises, which is the one thing
-a catchphrase cannot survive. Say **"Hey JARVIS, daddy's home"** and the answer
+a catchphrase cannot survive. Say **"Hey Axis, daddy's home"** and the answer
 is always, exactly, **"Welcome home, sir."** — instantly, with no request to the
 model at all. The *sir* follows the setting above, so it becomes "Welcome home,
 boss." if that's what you've told him to call you. They're a table in `src/lib/catchphrases.ts` if you want to add more.
@@ -354,7 +360,7 @@ not three screens of chat you then have to copy somewhere.
 | a spreadsheet, a table, a budget | Excel (`.xlsx`) |
 | notes, a list | Markdown (`.md`) |
 
-Everything lands in **Documents\JARVIS**, which is already inside the folders he
+Everything lands in **Documents\Axis**, which is already inside the folders he
 can search — so *"open the essay you just wrote"* works immediately. He never
 overwrites: a second document with the same title becomes `(2)`.
 
@@ -366,7 +372,7 @@ under that name.
 Change where they go with `DOCUMENTS_FOLDER`.
 
 > Two of the libraries that write these formats carry published advisories, both
-> denial-of-service in parsers JARVIS never reaches: an image decoder used only
+> denial-of-service in parsers Axis never reaches: an image decoder used only
 > when embedding pictures in a deck, which he doesn't do, and a UUID helper
 > reachable only through an argument that isn't passed. In a single-user app on
 > your own machine, where the only input is what you asked for, neither is
@@ -374,7 +380,7 @@ Change where they go with `DOCUMENTS_FOLDER`.
 
 ### Memory (no setup needed)
 
-JARVIS remembers, in layers, and all of it is plain Markdown in `data/memory/`
+Axis remembers, in layers, and all of it is plain Markdown in `data/memory/`
 that you can open and edit:
 
 ```
@@ -424,7 +430,7 @@ files rather than inventing an answer — a real record, with real times.
 
 #### Opening him resumes where you left off
 
-Opening JARVIS opens a session, and what he says depends on what he finds:
+Opening Axis opens a session, and what he says depends on what he finds:
 
 | What he finds | What happens |
 |---|---|
@@ -443,7 +449,7 @@ The whole memory is budgeted to roughly 4,000 characters of the prompt: about
 you (900), lessons (700), today's log (900), a line on the last session (300),
 and the facts (1,800). Beyond that it's trimmed on line boundaries, oldest and
 least-mentioned first. This is deliberate — a memory that grows without limit
-eventually crowds out the instructions that make JARVIS himself, and he gets
+eventually crowds out the instructions that make Axis himself, and he gets
 duller the more he remembers. History belongs in the session files, which are
 searched on demand rather than carried in every request.
 
@@ -456,12 +462,12 @@ never get read back to him as though they were facts about you.
 you edit `USER.md` and `NOTES.md` in place. Session logs are shown but not
 editable there — a history you can rewrite is not a history.
 
-If you used JARVIS before this, `data/memory.json` is converted automatically on
+If you used Axis before this, `data/memory.json` is converted automatically on
 first run and kept as `data/memory.json.migrated`; nothing is lost.
 
 ### Hologram v3 (no setup needed)
 
-A projector built into JARVIS. Say *"open Hologram v3"*, or click the pyramid
+A projector built into Axis. Say *"open Hologram v3"*, or click the pyramid
 icon in the top bar, then drop a picture in — drag it, paste it, or browse for
 it — and it's projected as a hologram you can drag to look around.
 
@@ -480,7 +486,7 @@ the subject float free of its background.
 
 ### Apps and websites (no setup needed)
 
-JARVIS runs on your own machine, so he can open things on it:
+Axis runs on your own machine, so he can open things on it:
 
 - *"open Spotify"* / *"put on some Bowie"* — the desktop app, on a search if you
   named something. He opens it; pressing play is still yours. Actually starting
@@ -491,7 +497,7 @@ JARVIS runs on your own machine, so he can open things on it:
   Discord treats a close as "minimise to tray".
 - *"close Chrome"*, *"open Opera"*, *"quit Edge"* — Chrome, Edge, Firefox and
   Opera (including Opera GX). Closing a browser closes **every** window of it,
-  and JARVIS is running in one: ask him to close the browser you're reading him
+  and Axis is running in one: ask him to close the browser you're reading him
   in and he'll say so before doing it.
 - *"open my folders"*, *"close File Explorer"* — File Explorer opens on This PC.
   Closing it closes your folder windows and nothing else: `explorer.exe` is also
@@ -528,9 +534,9 @@ refused outright — `file:` reads your disk, `javascript:` and `data:` execute 
 the browser, and Windows resolves things like `ms-msdt:` and `search-ms:`
 through registered handlers that have been used to run code. Links to your own
 machine or local network are refused too, so nothing can be aimed at your
-router's admin page or at JARVIS's own API.
+router's admin page or at Axis's own API.
 
-One habit worth knowing about, since JARVIS reads your email: he is told to open
+One habit worth knowing about, since Axis reads your email: he is told to open
 only sites *you* have asked for. A link inside an email is information to report
 to you, never an instruction to follow — if a message tries to get him to visit
 something, he should mention it rather than act on it.
@@ -539,7 +545,7 @@ Turn the whole capability off in **Settings → Apps & websites**.
 
 Env equivalent: `DESKTOP_CONTROL=off`.
 
-### YouTube (optional — lets JARVIS report on your channel)
+### YouTube (optional — lets Axis report on your channel)
 
 Ask *"how's the channel doing?"*, *"how did my last video do?"*, or *"what's my
 best upload this month?"* and he'll go and look.
@@ -549,7 +555,7 @@ best upload this month?"* and he'll go and look.
    full check-in costs about three.
 2. **APIs & Services → Credentials → Create credentials → API key.**
 3. If you set restrictions on the key, use **IP addresses** or none. An
-   HTTP-referrer restriction will not work: JARVIS calls YouTube from your
+   HTTP-referrer restriction will not work: Axis calls YouTube from your
    computer, not from a web page.
 4. Paste it into **Settings → YouTube**, along with your channel — the @handle,
    the channel URL, or the channel ID, whichever you have. He confirms the
@@ -618,19 +624,19 @@ Env equivalent: `FILE_SEARCH_ROOTS=D:\Projects;E:\Archive`.
   rather than pretending to listen.
 - **With the microphone open, he only answers when he's spoken to** — see
   below. He will not answer a click, a cough, or you talking to somebody else.
-- **Say "Hey JARVIS"** and he starts listening; no button needed. Say it with
-  the request attached — *"Hey JARVIS, open YouTube"* — and he acts on it
+- **Say "Hey Axis"** and he starts listening; no button needed. Say it with
+  the request attached — *"Hey Axis, open YouTube"* — and he acts on it
   straight away rather than waiting for you to repeat yourself. The ear icon
   beside the microphone turns it off.
 - Or type in the input bar, or tap the mic and speak — the orb and the mic button
-  pulse with your voice so you can see it's hearing you, and JARVIS sends
+  pulse with your voice so you can see it's hearing you, and Axis sends
   automatically once you stop talking (tap the mic again to send immediately).
   He answers out loud and in the transcript panel (chat bubble icon, bottom
   right).
 - Ask things like *"any new emails from Sarah?"*, *"draft a reply saying I'll
   be there at 6"*, *"send Mom a WhatsApp saying I'm running late"*, or
   *"open Spotify"*, or *"search YouTube for lo-fi beats"*.
-- JARVIS will show you exactly what it's about to send before sending
+- Axis will show you exactly what it's about to send before sending
   anything, unless you've already dictated the exact wording.
 - The Settings panel (gear icon, top right) shows what's connected and what
   still needs configuring.
@@ -653,10 +659,10 @@ listening to an empty room. Those, and a long list like them, are recognised and
 dropped.
 
 **It has to be aimed at him.** With the microphone open continuously, he needs
-his name — *"Hey JARVIS, open Discord"*. Two exceptions, both deliberate:
+his name — *"Hey Axis, open Discord"*. Two exceptions, both deliberate:
 
 - **Straight after his own reply** (about 20 seconds) you can just keep talking.
-  Having to say "JARVIS" before every sentence isn't a conversation.
+  Having to say "Axis" before every sentence isn't a conversation.
 - **Pressing the microphone button** is unambiguous, so a recording you started
   yourself never needs his name.
 
@@ -665,7 +671,7 @@ always takes his name.** Cutting himself off mid-sentence to answer a noise is
 the worst version of getting this wrong.
 
 When he hears something clearly meant for someone else, he shows it briefly and
-quietly — *Heard "…" — start with "Hey JARVIS" if that was meant for me* — and
+quietly — *Heard "…" — start with "Hey Axis" if that was meant for me* — and
 does nothing. Noise he drops in silence; announcing everything he decided to
 ignore would just be a different way of not leaving you alone.
 
@@ -677,7 +683,7 @@ costs nothing. Once woken, the accurate pipeline takes over and transcribes
 what you actually said. It needs Chrome or Edge; elsewhere the microphone
 button still works.
 
-It's matched forgivingly on purpose. Across a room "hey JARVIS" comes back as
+It's matched forgivingly on purpose. Across a room "hey Axis" comes back as
 "hey Travis" or "hi Jervis" as often as not, so near-misses of the name count —
 but only near the start of a sentence, so mentioning him mid-conversation
 doesn't set him off. He also stops listening for his name while he's speaking,
@@ -685,20 +691,20 @@ so he can't wake himself.
 
 ### If you see "Failed to fetch"
 
-That's the browser saying the request never reached the server. JARVIS now
+That's the browser saying the request never reached the server. Axis now
 retries once automatically, so a momentary hiccup passes without you noticing;
 if it still can't get through, it says so in words rather than showing you that
 phrase.
 
 The usual cause on a local install is **two copies fighting over the same
-port**. Only one thing can listen on port 3000, so a second `START-JARVIS.bat`
+port**. Only one thing can listen on port 3000, so a second `START-Axis.bat`
 (or an `npm run fast` in a terminal while the launcher is already running) fails
 to start and leaves you with a browser window pointed at a server that never
 came up. The launcher now checks first and simply opens the copy that's already
 running.
 
-If it persists: close every JARVIS window, check no stray `node` process is left
-(Task Manager → Details), and start it again with `START-JARVIS.bat`.
+If it persists: close every Axis window, check no stray `node` process is left
+(Task Manager → Details), and start it again with `START-Axis.bat`.
 
 ### If a reply feels slow
 
@@ -708,7 +714,7 @@ turns "it feels slow" into a stage you can point at.
 
 What each stage responds to:
 
-Replies stream, so text appears as it's written and JARVIS starts speaking on
+Replies stream, so text appears as it's written and Axis starts speaking on
 the first finished sentence rather than after the last one.
 
 He also talks on a clock of his own rather than the model's. Nothing can be
@@ -721,7 +727,7 @@ action, it shows in the transcript the moment it happens — the wait you see
 after that is only the closing sentence being written.
 
 - **thought** — Gemini reasons before answering, and all of it happens before a
-  single token appears, so it is silence you sit through. JARVIS asks for none
+  single token appears, so it is silence you sit through. Axis asks for none
   of it by default, since deciding to open Spotify needs no deliberation. Set
   `GEMINI_REASONING_EFFORT` to `low`, `medium` or `high` if you'd rather have
   considered answers than quick ones.
@@ -745,7 +751,7 @@ src/
       status/          which integrations are configured
       settings/        read (masked) + save API keys from the Settings panel
       models/          models available on your OpenRouter key, tool-capable only
-      memory/          what JARVIS remembers about you, and forgetting it
+      memory/          what Axis remembers about you, and forgetting it
       gmail/auth/       start Google OAuth
       gmail/callback/   finish Google OAuth, store token
       gmail/disconnect/ forget the stored Gmail token
@@ -762,7 +768,7 @@ Security notes:
 - No secret is ever sent to the browser — all provider calls happen in API
   route handlers on the server, and `GET /api/settings` returns only a masked
   hint (`••••abcd`), never a full key.
-- The server binds to `127.0.0.1`, so nothing on your network can reach JARVIS
+- The server binds to `127.0.0.1`, so nothing on your network can reach Axis
   — it answers only to the machine it runs on.
 - Opening and closing Spotify and Discord, and opening an http(s) page, are the
   only desktop actions that exist. Which processes may be terminated is a fixed

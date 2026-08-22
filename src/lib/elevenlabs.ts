@@ -41,7 +41,7 @@ export async function elevenLabsFetch(
 }
 
 // Adam — a deep, composed, classic ElevenLabs premade voice. A solid default
-// for a JARVIS-style butler voice. Override with ELEVENLABS_VOICE_ID.
+// for a Axis-style butler voice. Override with ELEVENLABS_VOICE_ID.
 const FALLBACK_VOICE_ID = "pNInz6obpgDQGcFmaJgB";
 
 // Resolved per call rather than at module load, so a voice saved in Settings

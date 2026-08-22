@@ -1,6 +1,6 @@
 import { detectWakeWord } from "./wakeWord";
 
-// Deciding whether something heard was actually meant for JARVIS.
+// Deciding whether something heard was actually meant for Axis.
 //
 // An always-open microphone hears everything: a mouse click, a door, the
 // television, you talking to somebody else in the room. Worse, speech-to-text
@@ -120,8 +120,8 @@ export interface ScreenOptions {
 /**
  * The gate. Everything the microphone produces goes through here.
  *
- * When his name is required, it must appear near the start — "Jarvis, open
- * Discord" is being spoken to, "I was telling Jarvis about it" is being spoken
+ * When his name is required, it must appear near the start — "Axis, open
+ * Discord" is being spoken to, "I was telling Axis about it" is being spoken
  * about, and the difference matters when the microphone never closes.
  */
 export function screenUtterance(transcript: string, options: ScreenOptions): VoiceVerdict {

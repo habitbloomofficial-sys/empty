@@ -11,10 +11,10 @@ const DEFAULT_TIMEOUT_MS = 30_000;
 
 export function describeClientFetchError(error: unknown): string {
   if (error instanceof DOMException && error.name === "TimeoutError") {
-    return "The JARVIS server took too long to answer, sir. It may still be starting up — give it a moment and try again.";
+    return "The Axis server took too long to answer, sir. It may still be starting up — give it a moment and try again.";
   }
   if (error instanceof TypeError) {
-    return "I couldn't reach the JARVIS server, sir. Check the terminal you started it in is still running, then try again.";
+    return "I couldn't reach the Axis server, sir. Check the terminal you started it in is still running, then try again.";
   }
   return error instanceof Error ? error.message : String(error);
 }

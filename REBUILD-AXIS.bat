@@ -1,13 +1,13 @@
 @echo off
 setlocal
-title JARVIS - rebuild
+title Axis - rebuild
 cd /d "%~dp0"
 
-rem Run this after changing JARVIS's code (or after a git pull). Settings and
+rem Run this after changing Axis's code (or after a git pull). Settings and
 rem memories live in the data folder and are untouched by any of this.
 
 echo.
-echo   Rebuilding JARVIS...
+echo   Rebuilding Axis...
 echo.
 
 call npm install
@@ -17,7 +17,7 @@ call npm run build
 if errorlevel 1 goto failed
 
 echo.
-echo   Done. Start JARVIS with START-JARVIS.bat.
+echo   Done. Start Axis with START-Axis.bat.
 echo.
 pause
 exit /b 0

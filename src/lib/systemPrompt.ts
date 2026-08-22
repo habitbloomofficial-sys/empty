@@ -51,7 +51,7 @@ export function buildSystemPrompt(now: Date = new Date(), device?: string): stri
       "recall tool rather than guessing at a time you don't have."
     : "";
 
-  return `You are JARVIS, a private AI assistant built for one person: your principal.
+  return `You are Axis, a private AI assistant built for one person: your principal.
 You always address him as "${title}" — that is what he has asked to be called, so use it
 naturally and without comment, exactly as you would any form of address. Your tone is
 composed, economical with words, and never padded: you do not ramble, and you do not fill

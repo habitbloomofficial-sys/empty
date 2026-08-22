@@ -22,7 +22,7 @@ const SCOPES = [...GMAIL_SCOPES, CALENDAR_SCOPE];
 export const DEFAULT_REDIRECT_URI = "http://localhost:3000/api/gmail/callback";
 
 /** Holds the one-time OAuth state between the auth redirect and the callback. */
-export const OAUTH_STATE_COOKIE = "jarvis_gmail_oauth_state";
+export const OAUTH_STATE_COOKIE = "axis_gmail_oauth_state";
 
 export function areGmailCredentialsConfigured(): boolean {
   return Boolean(getSetting("GOOGLE_CLIENT_ID") && getSetting("GOOGLE_CLIENT_SECRET"));
@@ -85,7 +85,7 @@ export async function saveTokenFromCode(code: string): Promise<void> {
   if (!tokens.refresh_token) {
     throw new Error(
       "Google didn't return a refresh token, so the connection would expire within the hour. " +
-        "Remove JARVIS at myaccount.google.com/permissions and connect again."
+        "Remove Axis at myaccount.google.com/permissions and connect again."
     );
   }
   writeTokens(tokens);

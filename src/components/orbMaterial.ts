@@ -112,8 +112,8 @@ const OrbMaterial = shaderMaterial(
   {
     uTime: 0,
     uIntensity: 0.15,
-    uColorCore: new THREE.Color("#eaf7ff"),
-    uColorEdge: new THREE.Color("#38bdf8"),
+    uColorCore: new THREE.Color("#ffb347"),
+    uColorEdge: new THREE.Color("#a83800"),
   },
   vertexShader,
   fragmentShader

@@ -55,7 +55,7 @@ export function useWakeWord({
   onWake,
 }: {
   enabled: boolean;
-  /** Held off while JARVIS is speaking or already listening for a command. */
+  /** Held off while Axis is speaking or already listening for a command. */
   paused: boolean;
   onWake: (command: string) => void;
 }) {

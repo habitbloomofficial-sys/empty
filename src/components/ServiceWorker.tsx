@@ -4,7 +4,7 @@ import { useEffect } from "react";
 
 /**
  * Registers the service worker, which is what makes the browser offer to
- * install JARVIS as an app.
+ * install Axis as an app.
  *
  * Only in production: in development the worker would sit between you and
  * every page you are editing, and the confusion it causes is out of all

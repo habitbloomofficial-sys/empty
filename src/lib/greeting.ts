@@ -1,12 +1,12 @@
 // What he says when you arrive. Two lines, alternating rather than random, so
-// opening JARVIS twice in a row doesn't greet you the same way twice.
+// opening Axis twice in a row doesn't greet you the same way twice.
 
 export const GREETINGS = [
   "Hey, sir. Welcome back.",
   "All operations are up and running. Is there anything you would like to change, sir?",
 ] as const;
 
-const STORAGE_KEY = "jarvis:lastGreeting";
+const STORAGE_KEY = "axis:lastGreeting";
 
 /** The next line in the rotation, remembered across page loads. */
 export function nextGreeting(): string {

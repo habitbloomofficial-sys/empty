@@ -97,19 +97,19 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-white/70 bg-white/40 p-4">
+    <div className="rounded-none border border-amber-500/[0.13] bg-black/25 p-4">
       <div className="mb-2.5 flex items-center gap-2">
-        <span className="text-sky-600">{icon}</span>
-        <h3 className="text-sm font-semibold text-ink-900">{title}</h3>
+        <span className="text-amber-400">{icon}</span>
+        <h3 className="text-sm font-semibold text-cream">{title}</h3>
         <span
           className={`ml-auto rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-            ok ? "bg-sky-500/15 text-sky-700" : "bg-slate-400/15 text-slate-500"
+            ok ? "bg-amber-500/15 text-amber-400" : "bg-white/[0.04] text-sand-600"
           }`}
         >
           {ok ? "Connected" : "Not connected"}
         </span>
       </div>
-      <div className="space-y-2.5 text-xs leading-relaxed text-ink-700/70">{children}</div>
+      <div className="space-y-2.5 text-xs leading-relaxed text-sand-500">{children}</div>
     </div>
   );
 }
@@ -140,13 +140,13 @@ function Field({
 
   return (
     <label className="block">
-      <span className="mb-1 flex items-center gap-2 text-[11px] font-semibold text-ink-900">
+      <span className="mb-1 flex items-center gap-2 text-[11px] font-semibold text-cream">
         {label}
         {secret && (
           <button
             type="button"
             onClick={() => setRevealed((v) => !v)}
-            className="ml-auto rounded px-1.5 py-0.5 text-[10px] font-medium text-sky-600 hover:bg-sky-500/10"
+            className="ml-auto rounded px-1.5 py-0.5 text-[10px] font-medium text-amber-400 hover:bg-amber-500/10"
           >
             {revealed ? "Hide" : "Show"}
           </button>
@@ -159,7 +159,7 @@ function Field({
           placeholder={placeholder ?? (view?.set ? view.display : "")}
           rows={3}
           spellCheck={false}
-          className="w-full resize-y rounded-lg border border-white/80 bg-white/70 px-3 py-2 font-mono text-xs leading-relaxed text-ink-900 placeholder:font-sans placeholder:text-ink-700/35 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/30"
+          className="w-full resize-y rounded-none border border-amber-500/20 bg-black/40 px-3 py-2 font-mono text-xs leading-relaxed text-cream placeholder:font-sans placeholder:text-sand-700 focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-400/30"
         />
       ) : (
         <input
@@ -169,11 +169,11 @@ function Field({
           placeholder={placeholder ?? (view?.set ? view.display : "")}
           autoComplete="off"
           spellCheck={false}
-          className="w-full rounded-lg border border-white/80 bg-white/70 px-3 py-2 font-mono text-xs text-ink-900 placeholder:font-sans placeholder:text-ink-700/35 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/30"
+          className="w-full rounded-none border border-amber-500/20 bg-black/40 px-3 py-2 font-mono text-xs text-cream placeholder:font-sans placeholder:text-sand-700 focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-400/30"
         />
       )}
       {(hint || savedHint) && (
-        <span className="mt-1 block text-[10px] text-ink-700/50">
+        <span className="mt-1 block text-[10px] text-sand-600">
           {hint ?? savedHint}
         </span>
       )}
@@ -204,18 +204,18 @@ function SaveButton({
           type="button"
           onClick={onClick}
           disabled={busy || disabled}
-          className="rounded-full bg-sky-500 px-3.5 py-1.5 text-xs font-semibold text-white transition hover:bg-sky-600 disabled:opacity-40"
+          className="rounded-full bg-amber-500 px-3.5 py-1.5 text-xs font-semibold text-white transition hover:bg-amber-400 disabled:opacity-40"
         >
           {busy ? "Checking…" : "Save"}
         </button>
         {extra}
-        {saved && <span className="text-[11px] font-medium text-sky-700">Saved ✓</span>}
+        {saved && <span className="text-[11px] font-medium text-amber-400">Saved ✓</span>}
       </div>
       {checks?.map((check) => (
         <p
           key={check.key}
-          className={`rounded-lg px-2.5 py-1.5 text-[11px] ${
-            check.ok ? "bg-sky-500/10 text-sky-800" : "bg-rose-500/10 text-rose-700"
+          className={`rounded-none px-2.5 py-1.5 text-[11px] ${
+            check.ok ? "bg-amber-500/10 text-amber-300" : "bg-rose-500/10 text-rose-400"
           }`}
         >
           {check.ok ? "✓ " : "⚠ "}
@@ -418,13 +418,13 @@ export function SettingsModal({
   const brainKeySet = views[brainKey]?.set ?? false;
 
   return (
-    <div className="fixed inset-0 z-30 flex items-center justify-center bg-sky-950/20 p-4 backdrop-blur-sm">
-      <div className="glass-strong flex max-h-[88vh] w-full max-w-lg flex-col rounded-2xl">
-        <div className="flex items-center justify-between border-b border-white/60 px-6 py-4">
-          <h2 className="font-display text-lg font-semibold text-ink-900">Settings</h2>
+    <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+      <div className="glass-strong flex max-h-[88vh] w-full max-w-lg flex-col rounded-none">
+        <div className="flex items-center justify-between border-b border-amber-500/[0.13] px-6 py-4">
+          <h2 className="font-display text-lg font-semibold text-cream">Settings</h2>
           <button
             onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-full text-ink-700 hover:bg-sky-500/10"
+            className="flex h-8 w-8 items-center justify-center rounded-full text-sand-500 hover:bg-amber-500/10"
             aria-label="Close settings"
           >
             <CloseIcon className="h-4 w-4" />
@@ -433,7 +433,7 @@ export function SettingsModal({
 
         <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-6 py-4">
           {error && (
-            <div className="rounded-lg bg-rose-500/10 px-3 py-2 text-xs text-rose-700">
+            <div className="rounded-none bg-rose-500/10 px-3 py-2 text-xs text-rose-400">
               {error}
             </div>
           )}
@@ -443,9 +443,9 @@ export function SettingsModal({
             title="AI brain"
             ok={Boolean(status?.brain)}
           >
-            <p>Paste an API key below to give JARVIS a brain. You only need one.</p>
+            <p>Paste an API key below to give Axis a brain. You only need one.</p>
 
-            <div className="flex gap-1.5 rounded-full bg-white/60 p-1">
+            <div className="flex gap-1.5 rounded-full bg-black/30 p-1">
               {(Object.keys(PROVIDER_LABELS) as Provider[]).map((p) => (
                 <button
                   key={p}
@@ -453,8 +453,8 @@ export function SettingsModal({
                   onClick={() => setProvider(p)}
                   className={`flex-1 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
                     provider === p
-                      ? "bg-sky-500 text-white shadow-sm"
-                      : "text-ink-700/70 hover:bg-sky-500/10"
+                      ? "bg-amber-500 text-white shadow-sm"
+                      : "text-sand-500 hover:bg-amber-500/10"
                   }`}
                 >
                   {PROVIDER_LABELS[p]}
@@ -472,7 +472,7 @@ export function SettingsModal({
 
             {LISTS_MODELS.includes(provider) && (
               <label className="block">
-                <span className="mb-1 block text-[11px] font-semibold text-ink-900">Model</span>
+                <span className="mb-1 block text-[11px] font-semibold text-cream">Model</span>
                 <input
                   list="account-models"
                   value={draft(modelKey)}
@@ -480,9 +480,9 @@ export function SettingsModal({
                   placeholder="anthropic/claude-… — start typing to search"
                   autoComplete="off"
                   spellCheck={false}
-                  className="w-full rounded-lg border border-white/80 bg-white/70 px-3 py-2 font-mono text-xs text-ink-900 placeholder:font-sans placeholder:text-ink-700/35 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/30"
+                  className="w-full rounded-none border border-amber-500/20 bg-black/40 px-3 py-2 font-mono text-xs text-cream placeholder:font-sans placeholder:text-sand-700 focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-400/30"
                 />
-                <span className="mt-1 block text-[10px] text-ink-700/50">
+                <span className="mt-1 block text-[10px] text-sand-600">
                   {models.length > 0
                     ? `${models.length} models on your key that can use tools${
                         freeCount > 0 ? `, ${freeCount} of them free` : ""
@@ -507,7 +507,7 @@ export function SettingsModal({
                   href="https://aistudio.google.com/apikey"
                   target="_blank"
                   rel="noreferrer"
-                  className="font-medium text-sky-600 underline"
+                  className="font-medium text-amber-400 underline"
                 >
                   Google AI Studio
                 </a>
@@ -522,11 +522,11 @@ export function SettingsModal({
                   href="https://openrouter.ai/keys"
                   target="_blank"
                   rel="noreferrer"
-                  className="font-medium text-sky-600 underline"
+                  className="font-medium text-amber-400 underline"
                 >
                   openrouter.ai/keys
                 </a>
-                . Only models that can call tools are listed, since JARVIS needs
+                . Only models that can call tools are listed, since Axis needs
                 them to open apps and read email — and the free ones are marked
                 and sorted to the top.
               </p>
@@ -564,7 +564,7 @@ export function SettingsModal({
                 still there for a voice the list doesn't know about. */}
             {voices.length > 0 && !byId ? (
               <label className="block">
-                <span className="mb-1 block text-[11px] font-semibold text-ink-900">
+                <span className="mb-1 block text-[11px] font-semibold text-cream">
                   Voice
                 </span>
                 <select
@@ -580,7 +580,7 @@ export function SettingsModal({
                     }
                     setDraft("ELEVENLABS_VOICE_ID", e.target.value);
                   }}
-                  className="w-full rounded-lg border border-white/80 bg-white/70 px-3 py-2 text-xs text-ink-900 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/30"
+                  className="w-full rounded-none border border-amber-500/20 bg-black/40 px-3 py-2 text-xs text-cream focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-400/30"
                 >
                   <option value="">Default voice (Adam)</option>
                   {voices.map((voice) => (
@@ -591,7 +591,7 @@ export function SettingsModal({
                   ))}
                   <option value="__other__">Paste a voice ID instead…</option>
                 </select>
-                <span className="mt-1 block text-[10px] text-ink-700/50">
+                <span className="mt-1 block text-[10px] text-sand-600">
                   These are the voices in your ElevenLabs account. To use one from
                   the Voice Library, open it there and click “Add to my voices” —
                   it appears here straight after.
@@ -615,7 +615,7 @@ export function SettingsModal({
               <button
                 type="button"
                 onClick={() => setById(false)}
-                className="text-[11px] font-medium text-sky-600 hover:underline"
+                className="text-[11px] font-medium text-amber-400 hover:underline"
               >
                 ← Back to my voices
               </button>
@@ -638,14 +638,14 @@ export function SettingsModal({
                   type="button"
                   onClick={testVoice}
                   disabled={testing || !status?.elevenlabs}
-                  className="rounded-full border border-sky-500/40 px-3.5 py-1.5 text-xs font-semibold text-sky-700 transition hover:bg-sky-500/10 disabled:opacity-40"
+                  className="rounded-full border border-amber-500/40 px-3.5 py-1.5 text-xs font-semibold text-amber-400 transition hover:bg-amber-500/10 disabled:opacity-40"
                 >
                   {testing ? "Speaking…" : "Hear it"}
                 </button>
               }
             />
             {testNote && (
-              <p className="rounded-lg bg-rose-500/10 px-2.5 py-1.5 text-[11px] text-rose-700">
+              <p className="rounded-none bg-rose-500/10 px-2.5 py-1.5 text-[11px] text-rose-400">
                 ⚠ {testNote}
               </p>
             )}
@@ -658,21 +658,21 @@ export function SettingsModal({
           >
             {status?.gmail ? (
               <>
-                <p className="rounded-lg bg-sky-500/10 px-2.5 py-1.5 text-sky-800">
-                  ✓ Connected — JARVIS can search, read, draft, reply to, and send
+                <p className="rounded-none bg-amber-500/10 px-2.5 py-1.5 text-amber-300">
+                  ✓ Connected — Axis can search, read, draft, reply to, and send
                   email.
                 </p>
                 {status.calendar ? (
-                  <p className="rounded-lg bg-sky-500/10 px-2.5 py-1.5 text-sky-800">
+                  <p className="rounded-none bg-amber-500/10 px-2.5 py-1.5 text-amber-300">
                     ✓ Calendar too — he can see what&apos;s on and add to it.
                   </p>
                 ) : (
                   // A connection made before the calendar scope existed works
                   // perfectly for mail and fails on calendar with a bare 403.
                   // Better to say so here than to let him discover it.
-                  <p className="rounded-lg bg-amber-500/10 px-2.5 py-1.5 text-amber-800">
+                  <p className="rounded-none bg-amber-500/10 px-2.5 py-1.5 text-amber-300">
                     Calendar isn&apos;t included in this connection — it was made
-                    before JARVIS could read it. Disconnect and connect again, and
+                    before Axis could read it. Disconnect and connect again, and
                     the consent screen will ask for your calendar this time.
                   </p>
                 )}
@@ -687,12 +687,12 @@ export function SettingsModal({
 
             {/* redirect_uri_mismatch is the usual reason this fails, so show the
                 exact string Google needs rather than describing it. */}
-            <div className="rounded-lg bg-sky-500/10 px-2.5 py-2">
-              <p className="mb-1 font-semibold text-ink-900">
+            <div className="rounded-none bg-amber-500/10 px-2.5 py-2">
+              <p className="mb-1 font-semibold text-cream">
                 Add this as an Authorized redirect URI in Google:
               </p>
               <div className="flex items-center gap-1.5">
-                <code className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap rounded bg-white/70 px-2 py-1 font-mono text-[10px] text-ink-900">
+                <code className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap rounded bg-black/40 px-2 py-1 font-mono text-[10px] text-cream">
                   {status?.gmailRedirectUri ?? "http://localhost:3000/api/gmail/callback"}
                 </code>
                 <button
@@ -706,12 +706,12 @@ export function SettingsModal({
                       .then(() => setCopiedRedirect(true))
                       .catch(() => setError("Couldn't copy — select the text instead."));
                   }}
-                  className="shrink-0 rounded px-2 py-1 text-[10px] font-semibold text-sky-700 hover:bg-sky-500/15"
+                  className="shrink-0 rounded px-2 py-1 text-[10px] font-semibold text-amber-400 hover:bg-amber-500/15"
                 >
                   {copiedRedirect ? "Copied ✓" : "Copy"}
                 </button>
               </div>
-              <p className="mt-1 text-[10px] text-ink-700/60">
+              <p className="mt-1 text-[10px] text-sand-500">
                 It must match character for character, including http and the port.
               </p>
             </div>
@@ -747,7 +747,7 @@ export function SettingsModal({
               {status?.gmailCredentials && (
                 <a
                   href="/api/gmail/auth"
-                  className="rounded-full border border-sky-500/40 px-3.5 py-1.5 text-xs font-semibold text-sky-700 hover:bg-sky-500/10"
+                  className="rounded-full border border-amber-500/40 px-3.5 py-1.5 text-xs font-semibold text-amber-400 hover:bg-amber-500/10"
                 >
                   {status.gmail ? "Reconnect" : "Connect Gmail"}
                 </a>
@@ -761,14 +761,14 @@ export function SettingsModal({
                     );
                     onSaved();
                   }}
-                  className="rounded-full px-3 py-1.5 text-xs font-semibold text-ink-700/60 hover:bg-slate-500/10"
+                  className="rounded-full px-3 py-1.5 text-xs font-semibold text-sand-500 hover:bg-white/[0.06]"
                 >
                   Disconnect
                 </button>
               )}
             </div>
             {!status?.gmailCredentials && (
-              <p className="text-[11px] text-ink-700/50">
+              <p className="text-[11px] text-sand-600">
                 Save the client ID and secret first — the Connect button appears once
                 they&apos;re stored.
               </p>
@@ -833,12 +833,12 @@ export function SettingsModal({
             ok={Boolean(status?.desktopControl)}
           >
             <p>
-              Lets JARVIS open things on this computer — &quot;open Spotify&quot;,
+              Lets Axis open things on this computer — &quot;open Spotify&quot;,
               &quot;put on some Bowie&quot;, &quot;open YouTube&quot;, &quot;search
               YouTube for lo-fi&quot;, or any site you name. Spotify opens to a search;
               pressing play is still yours.
             </p>
-            <div className="flex gap-1.5 rounded-full bg-white/60 p-1">
+            <div className="flex gap-1.5 rounded-full bg-black/30 p-1">
               {(["on", "off"] as const).map((value) => {
                 const active = (status?.desktopControl ? "on" : "off") === value;
                 return (
@@ -849,8 +849,8 @@ export function SettingsModal({
                     disabled={busySection === "desktop"}
                     className={`flex-1 rounded-full px-3 py-1.5 text-xs font-semibold transition disabled:opacity-50 ${
                       active
-                        ? "bg-sky-500 text-white shadow-sm"
-                        : "text-ink-700/70 hover:bg-sky-500/10"
+                        ? "bg-amber-500 text-white shadow-sm"
+                        : "text-sand-500 hover:bg-amber-500/10"
                     }`}
                   >
                     {value === "on" ? "Allowed" : "Blocked"}
@@ -858,7 +858,7 @@ export function SettingsModal({
                 );
               })}
             </div>
-            <p className="text-[10px] text-ink-700/50">
+            <p className="text-[10px] text-sand-600">
               This permits opening Spotify, ordinary web pages, and files found by
               the search below — nothing else. No other protocols, and no general
               &quot;run a command&quot; ability behind it.
@@ -871,7 +871,7 @@ export function SettingsModal({
             ok={Boolean(status?.youtube)}
           >
             <p>
-              Lets JARVIS report on your channel — subscribers, total views, and how
+              Lets Axis report on your channel — subscribers, total views, and how
               your recent uploads are doing. Ask him &quot;how&apos;s the channel
               doing?&quot; once this is set.
             </p>
@@ -888,7 +888,7 @@ export function SettingsModal({
                     href="https://console.cloud.google.com/apis/library/youtube.googleapis.com"
                     target="_blank"
                     rel="noreferrer"
-                    className="text-sky-600 underline"
+                    className="text-amber-400 underline"
                   >
                     Google Cloud
                   </a>
@@ -919,7 +919,7 @@ export function SettingsModal({
               saved={savedSection === "youtube"}
               checks={checks.youtube}
             />
-            <p className="text-[10px] text-ink-700/50">
+            <p className="text-[10px] text-sand-600">
               These are the public numbers, the same ones on your channel page.
               YouTube rounds subscriber counts above a thousand, and watch time and
               impressions live in Studio behind a separate login.
@@ -932,7 +932,7 @@ export function SettingsModal({
             ok={(status?.fileRoots?.length ?? 0) > 0}
           >
             <p>
-              JARVIS can find files in your own folders — ask him &quot;where&apos;s
+              Axis can find files in your own folders — ask him &quot;where&apos;s
               my tax return?&quot; or &quot;find the video I downloaded
               yesterday&quot; — and open what he finds. He can see where files are,
               not what is inside them.
@@ -942,7 +942,7 @@ export function SettingsModal({
                 {status.fileRoots.map((root) => (
                   <span
                     key={root}
-                    className="rounded-full bg-sky-500/10 px-2 py-0.5 text-[10px] font-medium text-sky-700"
+                    className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-400"
                   >
                     {root}
                   </span>
@@ -962,7 +962,7 @@ export function SettingsModal({
               busy={busySection === "files"}
               saved={savedSection === "files"}
             />
-            <p className="text-[10px] text-ink-700/50">
+            <p className="text-[10px] text-sand-600">
               Searching follows the Apps &amp; websites switch above — turn that off
               and file search goes with it.
             </p>
@@ -973,13 +973,13 @@ export function SettingsModal({
             ok={memories.length > 0}
           >
             <p>
-              Things JARVIS has learned about you, kept between sessions. He saves
+              Things Axis has learned about you, kept between sessions. He saves
               these himself as they come up — names, preferences, how you like things
               done — and you can ask him to forget any of them.
             </p>
 
             {memories.length === 0 ? (
-              <p className="text-[11px] text-ink-700/50">
+              <p className="text-[11px] text-sand-600">
                 Nothing yet. He&apos;ll start remembering as you talk.
               </p>
             ) : (
@@ -987,9 +987,9 @@ export function SettingsModal({
                 {memories.map((memory) => (
                   <li
                     key={memory.id}
-                    className="group flex items-start gap-2 rounded-lg bg-white/50 px-2.5 py-1.5"
+                    className="group flex items-start gap-2 rounded-none bg-black/30 px-2.5 py-1.5"
                   >
-                    <span className="flex-1 text-[11px] leading-relaxed text-ink-900">
+                    <span className="flex-1 text-[11px] leading-relaxed text-cream">
                       {memory.text}
                     </span>
                     <button
@@ -1001,7 +1001,7 @@ export function SettingsModal({
                         await loadMemories();
                         onSaved();
                       }}
-                      className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold text-ink-700/40 hover:bg-rose-500/10 hover:text-rose-600"
+                      className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold text-sand-700 hover:bg-rose-500/10 hover:text-rose-400"
                       aria-label="Forget this"
                     >
                       Forget
@@ -1019,7 +1019,7 @@ export function SettingsModal({
                   await loadMemories();
                   onSaved();
                 }}
-                className="rounded-full px-3 py-1.5 text-xs font-semibold text-ink-700/60 hover:bg-slate-500/10"
+                className="rounded-full px-3 py-1.5 text-xs font-semibold text-sand-500 hover:bg-white/[0.06]"
               >
                 Forget everything
               </button>
@@ -1033,7 +1033,7 @@ export function SettingsModal({
           >
             <p>
               Say <i>&quot;call the pizza place&quot;</i> and your phone rings — answer
-              it and you&apos;re connected. <b>You</b> do the talking; JARVIS places the
+              it and you&apos;re connected. <b>You</b> do the talking; Axis places the
               call and gets out of the way.
             </p>
             <Field
@@ -1074,7 +1074,7 @@ export function SettingsModal({
                 {status.phoneContacts.map((name) => (
                   <span
                     key={name}
-                    className="rounded-full bg-sky-500/10 px-2 py-0.5 text-[10px] font-medium text-sky-700"
+                    className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-400"
                   >
                     {name}
                   </span>
@@ -1094,7 +1094,7 @@ export function SettingsModal({
               saved={savedSection === "phone"}
               checks={checks.phone}
             />
-            <p className="text-[10px] text-ink-700/50">
+            <p className="text-[10px] text-sand-600">
               Calls cost whatever Twilio charges and ring a real person, so he reads
               the number back and waits for a yes. Emergency numbers are refused
               outright — call those yourself, so they have your line and location.
@@ -1108,7 +1108,7 @@ export function SettingsModal({
             ok
           >
             <p>
-              How JARVIS speaks to you. Both apply everywhere — spoken replies,
+              How Axis speaks to you. Both apply everywhere — spoken replies,
               typed ones, and the little things he says while he works.
             </p>
             <Field
@@ -1120,8 +1120,8 @@ export function SettingsModal({
               hint="Anything you like — sir, boss, captain, your name. Leave blank for “sir”."
             />
             <div>
-              <span className="mb-1 block text-[11px] font-semibold text-ink-900">Humour</span>
-              <div className="flex gap-1.5 rounded-full bg-white/60 p-1">
+              <span className="mb-1 block text-[11px] font-semibold text-cream">Humour</span>
+              <div className="flex gap-1.5 rounded-full bg-black/30 p-1">
                 {(
                   [
                     ["dry", "Dry"],
@@ -1137,8 +1137,8 @@ export function SettingsModal({
                       onClick={() => setDraft("HUMOUR", value)}
                       className={`flex-1 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
                         active
-                          ? "bg-sky-500 text-white shadow-sm"
-                          : "text-ink-700/70 hover:bg-sky-500/10"
+                          ? "bg-amber-500 text-white shadow-sm"
+                          : "text-sand-500 hover:bg-amber-500/10"
                       }`}
                     >
                       {label}
@@ -1146,7 +1146,7 @@ export function SettingsModal({
                   );
                 })}
               </div>
-              <span className="mt-1 block text-[10px] text-ink-700/50">
+              <span className="mt-1 block text-[10px] text-sand-600">
                 Playful teases you, gets smug when it pulls something off, and acts
                 mildly put upon before doing exactly as asked. It drops the act when
                 something actually matters.
@@ -1162,8 +1162,8 @@ export function SettingsModal({
               busy={busySection === "personality"}
               saved={savedSection === "personality"}
             />
-            <p className="text-[10px] text-ink-700/50">
-              Some things are fixed: say “Hey JARVIS, daddy&apos;s home” and the
+            <p className="text-[10px] text-sand-600">
+              Some things are fixed: say “Hey Axis, daddy&apos;s home” and the
               answer is always, exactly, “Welcome home,{" "}
               {draft("USER_TITLE") || status?.title || "sir"}.”
             </p>
@@ -1178,7 +1178,7 @@ export function SettingsModal({
           </Section>
         </div>
 
-        <p className="border-t border-white/60 px-6 py-3 text-[11px] text-ink-700/50">
+        <p className="border-t border-amber-500/[0.13] px-6 py-3 text-[11px] text-sand-600">
           Keys are saved to data/settings.json on this computer only — never committed to
           git and never sent to the browser once saved.
         </p>

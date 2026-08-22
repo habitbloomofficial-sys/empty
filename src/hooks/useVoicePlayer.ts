@@ -2,7 +2,7 @@
 
 import { useCallback, useRef, useState } from "react";
 
-// JARVIS speaks through ElevenLabs when it can, and through the voice built
+// Axis speaks through ElevenLabs when it can, and through the voice built
 // into the operating system when it can't. A refused ElevenLabs key shouldn't
 // leave him mute — a slightly less characterful voice beats silence.
 

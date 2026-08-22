@@ -1,12 +1,12 @@
-// The smallest service worker that makes JARVIS installable.
+// The smallest service worker that makes Axis installable.
 //
-// It deliberately caches almost nothing. JARVIS is a live thing — every reply,
+// It deliberately caches almost nothing. Axis is a live thing — every reply,
 // every piece of memory and every action comes from the server on this
 // machine, and serving any of that from a cache would show you yesterday's
 // answer. What the browser wants in order to offer "Install" is a service
 // worker with a fetch handler, and a page to show when the server isn't there.
 
-const SHELL = "jarvis-shell-v1";
+const SHELL = "axis-shell-v1";
 const OFFLINE = "/offline.html";
 
 self.addEventListener("install", (event) => {

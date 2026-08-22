@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { TopBar } from "./TopBar";
+import { SystemRail } from "./SystemRail";
 import { ChatDock } from "./ChatDock";
 import { TranscriptPanel } from "./TranscriptPanel";
 import { SettingsModal } from "./SettingsModal";
@@ -30,7 +31,7 @@ const ORB_LABEL: Record<OrbState, string> = {
   speaking: "Speaking…",
 };
 
-export default function JarvisApp() {
+export default function AxisApp() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [status, setStatus] = useState<IntegrationStatus | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -45,6 +46,7 @@ export default function JarvisApp() {
   // been opened; "" once opened with nothing worth saying.
   const [briefing, setBriefing] = useState<string | undefined>(undefined);
   const [recap, setRecap] = useState<{ line: string; case: string } | null>(null);
+  const [sessionDate, setSessionDate] = useState<string | null>(null);
   // Hands-free: pressing the microphone opens it and leaves it open, so a
   // conversation is a conversation rather than a series of button presses.
   const [handsFree, setHandsFree] = useState(false);
@@ -289,7 +291,7 @@ export default function JarvisApp() {
       stopFillers();
       setIsThinking(false);
       // Same treatment as the Settings panel: a request that never reached the
-      // server says "Failed to fetch" and nothing else, which reads as JARVIS
+      // server says "Failed to fetch" and nothing else, which reads as Axis
       // being broken rather than the terminal having been closed.
       setError(describeClientFetchError(err));
     } finally {
@@ -319,7 +321,7 @@ export default function JarvisApp() {
     // closed is not, so that one has to earn it:
     //
     //   - straight after his own reply, a follow-up needs no name, because
-    //     having to say "Jarvis" before every sentence isn't a conversation;
+    //     having to say "Axis" before every sentence isn't a conversation;
     //   - but cutting into a reply already under way always takes his name,
     //     since interrupting himself over a noise is the worst version of
     //     getting this wrong.
@@ -350,7 +352,7 @@ export default function JarvisApp() {
     enabled: wakeEnabled,
     paused: voicePlayer.isSpeaking || speech.isListening || speech.isTranscribing || isThinking,
     onWake: (command) => {
-      // "Hey Jarvis, open YouTube" shouldn't need saying twice — if the
+      // "Hey Axis, open YouTube" shouldn't need saying twice — if the
       // instruction came in the same breath, act on it directly.
       if (command.trim().length > 2) void handleSend(command.trim());
       else void speech.start();
@@ -358,20 +360,26 @@ export default function JarvisApp() {
   });
 
   useEffect(() => {
-    // Opening JARVIS opens a session. He works out whether this is a new day,
+    // Opening Axis opens a session. He works out whether this is a new day,
     // a session being picked up, or one that stopped without saying so, and
     // hands back a line about where things stood — which is the difference
     // between an assistant who greets you and one who remembers you.
     let cancelled = false;
     (async () => {
       try {
-        const data = await postJson<{ briefing?: string; case?: string; previous?: { date: string; summary: string } | null }>(
+        const data = await postJson<{
+          briefing?: string;
+          case?: string;
+          date?: string;
+          previous?: { date: string; summary: string } | null;
+        }>(
           "/api/session",
           { action: "open" }
         );
         if (cancelled) return;
         const line = typeof data.briefing === "string" ? data.briefing : "";
         setBriefing(line);
+        if (typeof data.date === "string") setSessionDate(data.date);
         // Shown as well as spoken. He has remembered this all along; not
         // putting it on screen was the reason it never felt like it.
         if (line) setRecap({ line, case: data.case ?? "" });
@@ -541,41 +549,43 @@ export default function JarvisApp() {
         onOpenHologram={() => setHologramOpen(true)}
       />
 
-      <main className="relative flex flex-1 flex-col items-center justify-center px-4">
+      <SystemRail status={status} state={orbState} sessionDate={sessionDate} />
+
+      <main className="relative flex flex-1 flex-col items-center justify-center px-4 xl:pr-[224px]">
         <div className="animate-float relative h-[min(60vw,340px)] w-[min(60vw,340px)] sm:h-[380px] sm:w-[380px]">
           <Orb state={orbState} audioLevel={orbLevel} />
         </div>
 
-        <p className="mt-2 text-sm font-medium text-ink-700/70">
+        <p className="mt-2 text-sm font-medium text-sand-500">
           {speech.isTranscribing ? "Transcribing…" : ORB_LABEL[orbState]}
         </p>
 
         {(speech.error || error || voiceError) && (
-          <div className="glass mt-3 max-w-md rounded-xl px-4 py-2 text-center text-xs text-rose-600">
+          <div className="glass mt-3 max-w-md rounded-none px-4 py-2 text-center text-xs text-rose-400">
             {speech.error || error || voiceError}
           </div>
         )}
 
         {recap && (
-          <div className="glass mt-3 w-full max-w-md rounded-xl px-4 py-3 text-left">
+          <div className="glass mt-3 w-full max-w-md rounded-none px-4 py-3 text-left">
             <div className="mb-1 flex items-center gap-2">
-              <span className="text-[10px] font-semibold uppercase tracking-wide text-sky-700/70">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-amber-400/70">
                 {recap.case === "recovery" ? "We were interrupted" : "Where we left off"}
               </span>
               {status?.device?.kind && status.device.kind !== "computer" && (
-                <span className="rounded-full bg-sky-500/10 px-2 py-0.5 text-[10px] font-medium text-sky-700">
+                <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-400">
                   on {status.device.kind}
                 </span>
               )}
               <button
                 type="button"
                 onClick={() => setRecap(null)}
-                className="ml-auto rounded px-1.5 text-[10px] font-semibold text-ink-700/40 hover:bg-slate-500/10"
+                className="ml-auto rounded px-1.5 text-[10px] font-semibold text-sand-700 hover:bg-white/[0.06]"
               >
                 Dismiss
               </button>
             </div>
-            <p className="text-xs leading-relaxed text-ink-900">{recap.line}</p>
+            <p className="text-xs leading-relaxed text-cream">{recap.line}</p>
           </div>
         )}
 
@@ -583,27 +593,27 @@ export default function JarvisApp() {
             quietly: without it an ignored request is indistinguishable from a
             microphone that has stopped working. */}
         {ignored?.reason === "not-addressed" && (
-          <div className="glass mt-3 max-w-md rounded-xl px-4 py-2 text-center text-xs text-ink-700/60">
-            Heard “{ignored.text.slice(0, 60)}” — start with <b>“Hey JARVIS”</b> if that
+          <div className="glass mt-3 max-w-md rounded-none px-4 py-2 text-center text-xs text-sand-500">
+            Heard “{ignored.text.slice(0, 60)}” — start with <b>“Hey Axis”</b> if that
             was meant for me.
           </div>
         )}
 
         {greetingPending && (
-          <div className="glass mt-3 max-w-md rounded-xl px-4 py-2 text-center text-xs text-ink-700/70">
+          <div className="glass mt-3 max-w-md rounded-none px-4 py-2 text-center text-xs text-sand-500">
             Click anywhere and I&apos;ll say hello, sir — your browser won&apos;t let me
             speak until you&apos;ve touched the page.
           </div>
         )}
 
         {wake.error && (
-          <div className="glass mt-3 max-w-md rounded-xl px-4 py-2 text-center text-xs text-amber-700">
+          <div className="glass mt-3 max-w-md rounded-none px-4 py-2 text-center text-xs text-amber-700">
             {wake.error}
           </div>
         )}
 
         {!voiceError && voicePlayer.fallbackNotice && (
-          <div className="glass mt-3 max-w-md rounded-xl px-4 py-2 text-center text-xs text-amber-700">
+          <div className="glass mt-3 max-w-md rounded-none px-4 py-2 text-center text-xs text-amber-700">
             {voicePlayer.fallbackNotice}
           </div>
         )}
@@ -611,7 +621,7 @@ export default function JarvisApp() {
         {status && !status.brain && (
           <button
             onClick={() => setSettingsOpen(true)}
-            className="glass mt-3 max-w-md rounded-xl px-4 py-2 text-center text-xs text-ink-700/70 transition hover:text-sky-700"
+            className="glass mt-3 max-w-md rounded-none px-4 py-2 text-center text-xs text-sand-500 transition hover:text-amber-400"
           >
             No brain connected yet, sir — open <span className="font-semibold">Settings</span> and
             paste a Gemini or OpenAI API key.
@@ -619,7 +629,7 @@ export default function JarvisApp() {
         )}
       </main>
 
-      <div className="relative z-10 w-full px-4 pb-6 sm:pb-8">
+      <div className="relative z-10 w-full px-4 pb-6 sm:pb-8 xl:pr-[240px]">
         <ChatDock
           onSend={handleSend}
           wakeSupported={wake.supported}
@@ -653,12 +663,12 @@ export default function JarvisApp() {
 
       <button
         onClick={() => setTranscriptOpen((v) => !v)}
-        className="glass fixed bottom-24 right-4 z-20 flex h-11 w-11 items-center justify-center rounded-full text-sky-600 shadow-lg sm:bottom-8 sm:right-8"
+        className="glass fixed bottom-24 right-4 z-20 flex h-11 w-11 items-center justify-center rounded-full text-amber-400 shadow-lg sm:bottom-8 sm:right-8"
         aria-label="Toggle transcript"
       >
         {transcriptOpen ? <CloseIcon className="h-4 w-4" /> : <ChatIcon className="h-[18px] w-[18px]" />}
         {messages.length > 0 && !transcriptOpen && (
-          <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-sky-500" />
+          <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-amber-500" />
         )}
       </button>
 
@@ -669,15 +679,15 @@ export default function JarvisApp() {
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 28, stiffness: 260 }}
-            className="glass-strong fixed inset-y-0 right-0 z-20 flex w-full max-w-sm flex-col rounded-l-2xl"
+            className="glass-strong fixed inset-y-0 right-0 z-20 flex w-full max-w-sm flex-col rounded-none"
           >
-            <div className="flex items-center justify-between border-b border-white/60 px-4 py-3">
-              <h2 className="font-display text-sm font-semibold tracking-wide text-ink-900">
+            <div className="flex items-center justify-between border-b border-amber-500/[0.13] px-4 py-3">
+              <h2 className="font-display text-sm font-semibold tracking-wide text-cream">
                 Transcript
               </h2>
               <button
                 onClick={() => setTranscriptOpen(false)}
-                className="flex h-7 w-7 items-center justify-center rounded-full text-ink-700 hover:bg-sky-500/10"
+                className="flex h-7 w-7 items-center justify-center rounded-full text-sand-500 hover:bg-amber-500/10"
               >
                 <CloseIcon className="h-3.5 w-3.5" />
               </button>
