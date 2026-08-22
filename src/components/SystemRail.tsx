@@ -45,6 +45,13 @@ const PROVIDER: Record<string, string> = {
   openai: "OPENAI",
 };
 
+// He can always read a page; searching is the part that needs a key. "READ
+// ONLY" says that in two words rather than implying he is cut off.
+const SEARCH: Record<"google" | "gemini", string> = {
+  google: "GOOGLE",
+  gemini: "GEMINI",
+};
+
 const STATE_LABEL: Record<OrbState, string> = {
   idle: "STANDBY",
   listening: "LISTENING",
@@ -92,6 +99,11 @@ export function SystemRail({
       </div>
       <Reading label="FACTS HELD" value={String(status?.memories ?? 0)} lit={(status?.memories ?? 0) > 0} />
       <Reading
+        label="LEARNED"
+        value={String(status?.learned ?? 0)}
+        lit={(status?.learned ?? 0) > 0}
+      />
+      <Reading
         label="DAYS LOGGED"
         value={String(status?.sessionDays ?? 0)}
         lit={(status?.sessionDays ?? 0) > 0}
@@ -106,6 +118,11 @@ export function SystemRail({
         label="DESKTOP"
         value={status?.desktopControl ? "ALLOWED" : "BLOCKED"}
         lit={Boolean(status?.desktopControl)}
+      />
+      <Reading
+        label="WEB"
+        value={status?.webSearch ? SEARCH[status.webSearch] : "READ ONLY"}
+        lit={Boolean(status?.webSearch)}
       />
       <Reading label="LINK" value={(status?.device?.kind ?? "computer").toUpperCase()} />
 

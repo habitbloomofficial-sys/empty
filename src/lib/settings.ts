@@ -35,6 +35,8 @@ export const SETTING_KEYS = [
   "PHONE_CONTACTS",
   "PHONE_COUNTRY_CODE",
   "ZAPIER_HOOKS",
+  "GOOGLE_SEARCH_KEY",
+  "GOOGLE_SEARCH_CX",
   "YOUTUBE_API_KEY",
   "YOUTUBE_CHANNEL",
   "DESKTOP_CONTROL",
@@ -56,6 +58,7 @@ const SECRET_KEYS = new Set<SettingKey>([
   "GOOGLE_CLIENT_SECRET",
   "TWILIO_AUTH_TOKEN",
   "YOUTUBE_API_KEY",
+  "GOOGLE_SEARCH_KEY",
 ]);
 
 export function isSecretKey(key: SettingKey): boolean {

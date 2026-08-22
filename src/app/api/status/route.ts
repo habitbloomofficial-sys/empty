@@ -16,6 +16,8 @@ import { isDesktopControlEnabled } from "@/lib/desktop";
 import { configuredChannel, isYouTubeConfigured } from "@/lib/youtube";
 import { isFileSearchEnabled, searchRoots } from "@/lib/files";
 import { memoryCount } from "@/lib/memory";
+import { learnedCount } from "@/lib/learned";
+import { searchProvider } from "@/lib/web";
 import { listSessionDates } from "@/lib/sessions";
 import { humour, userTitle } from "@/lib/address";
 import type { IntegrationStatus } from "@/lib/types";
@@ -41,6 +43,8 @@ export async function GET(req: NextRequest) {
     calendar: isCalendarConfigured(),
     zaps: savedZaps().map((zap) => zap.name),
     desktopControl: isDesktopControlEnabled(),
+    webSearch: searchProvider(),
+    learned: learnedCount(),
     youtube: isYouTubeConfigured(),
     youtubeChannel: configuredChannel() ?? null,
     fileRoots: isFileSearchEnabled() ? searchRoots().map((root) => root.label) : [],

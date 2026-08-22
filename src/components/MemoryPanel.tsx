@@ -74,6 +74,7 @@ export function MemoryPanel({ onChanged }: { onChanged: () => void }) {
   const [session, setSession] = useState<SessionLog | null>(null);
   const [user, setUser] = useState("");
   const [notes, setNotes] = useState("");
+  const [learned, setLearned] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -100,6 +101,7 @@ export function MemoryPanel({ onChanged }: { onChanged: () => void }) {
         const data = await res.json();
         setUser(typeof data.user === "string" ? data.user : "");
         setNotes(typeof data.notes === "string" ? data.notes : "");
+        setLearned(typeof data.learned === "string" ? data.learned : "");
       } catch {
         /* the session list above is still useful on its own */
       }
@@ -124,7 +126,7 @@ export function MemoryPanel({ onChanged }: { onChanged: () => void }) {
     };
   }, [selected]);
 
-  async function saveLayer(layer: "user" | "notes", text: string) {
+  async function saveLayer(layer: "user" | "notes" | "learned", text: string) {
     setBusy(layer);
     setSaved(null);
     setError(null);
@@ -238,6 +240,16 @@ export function MemoryPanel({ onChanged }: { onChanged: () => void }) {
         onSave={() => void saveLayer("notes", notes)}
         busy={busy === "notes"}
         saved={saved === "notes"}
+      />
+
+      <Editor
+        label="What he has learned"
+        hint="Facts he looked up, and ways of working he picked up. Anything off the web can be wrong — correct or delete a line and that is what he knows."
+        value={learned}
+        onChange={setLearned}
+        onSave={() => void saveLayer("learned", learned)}
+        busy={busy === "learned"}
+        saved={saved === "learned"}
       />
 
       <p className="text-[10px] text-sand-600">

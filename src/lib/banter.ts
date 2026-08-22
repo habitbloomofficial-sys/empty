@@ -94,6 +94,30 @@ export const BANTER: Banter[] = [
       "Searching. I'll try not to be distracted by everything else in there.",
     ],
   },
+  // Before the browsers entry, which owns the word "google": "google what the
+  // weather is" is a request to look something up, not to open Chrome. Asking
+  // to open Google by name still lands on the browser, as it should.
+  {
+    pattern:
+      /\b(look (it|that|this) up|look up|search the web|search for|find out|latest news|the news|what's happening|who won|how much (is|are|does|do)|what time does)\b|\bgoogle (it|that|this|what|who|when|where|why|how|the|for)\b/,
+    plain: ["Looking that up now, {title}.", "Searching for that."],
+    playful: [
+      "Looking it up, {title}. I do read, occasionally.",
+      "Searching. Try to look impressed when I come back with it.",
+      "Off to the internet, {title}. I'll bring back the good parts.",
+      "Looking it up. This is the one part of the job with no dignity cost.",
+    ],
+  },
+  {
+    pattern:
+      /\b(read (this|that|the) (page|article|link|site)|what does (this|that|it) say|summari[sz]e (this|that|the) (page|article|link))\b/,
+    plain: ["Reading it now, {title}.", "Having a look at that page."],
+    playful: [
+      "Reading it, {title}. You have my full and undivided attention, unlike some.",
+      "I'll read it. You put the kettle on.",
+      "Reading the page, {title}. Someone has to.",
+    ],
+  },
   {
     pattern: /\b(chrome|browser|opera|edge|firefox|google)\b/,
     plain: ["Opening the browser, {title}."],
@@ -138,7 +162,7 @@ export const BANTER: Banter[] = [
     pattern: /\b(look up|google|search the web|what is|who is|how do)\b/,
     plain: ["Looking that up, {title}."],
     playful: [
-      "Looking it up, {title}. You could have asked me outright, but here we are.",
+      "Looking it up, {title}. Knowing things is half the appeal.",
       "Searching. Do act surprised by the answer.",
     ],
   },

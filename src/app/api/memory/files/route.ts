@@ -1,4 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import fs from "node:fs";
+import path from "node:path";
+import { MEMORY_DIR } from "@/lib/memory";
+import { writeFileAtomic } from "@/lib/atomicWrite";
 import {
   ensureMemoryFiles,
   readNotes,
@@ -11,11 +15,26 @@ import {
 export const runtime = "nodejs";
 
 // The editable layers, so the files can be read and changed from the panel as
-// well as from Notepad. Only these two: facts have their own list, and session
+// well as from Notepad. Only these three: facts have their own list, and session
 // logs are a record — editing history to say something that didn't happen is
 // the one thing that would make the whole system worthless.
+//
+// What he has learned is editable for the opposite reason. He now picks things
+// up off the web on his own, and anything picked up that way can be wrong; a
+// belief you cannot correct is worse than one he never formed.
 
-const LAYERS = ["user", "notes"] as const;
+const LAYERS = ["user", "notes", "learned"] as const;
+
+const LEARNED_PATH = path.join(MEMORY_DIR, "LEARNED.md");
+
+function readLearnedFile(): string {
+  try {
+    return fs.readFileSync(LEARNED_PATH, "utf-8");
+  } catch {
+    return "";
+  }
+}
+
 type Layer = (typeof LAYERS)[number];
 
 function isLayer(value: string): value is Layer {
@@ -33,7 +52,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ session: readSession(session) });
   }
 
-  return NextResponse.json({ user: readUserProfile(), notes: readNotes() });
+  return NextResponse.json({
+    user: readUserProfile(),
+    notes: readNotes(),
+    learned: readLearnedFile(),
+  });
 }
 
 export async function PUT(req: NextRequest) {
@@ -59,7 +82,13 @@ export async function PUT(req: NextRequest) {
   }
 
   if (body.layer === "user") writeUserProfile(body.text);
-  else writeNotes(body.text);
+  else if (body.layer === "notes") writeNotes(body.text);
+  else writeFileAtomic(LEARNED_PATH, body.text);
 
-  return NextResponse.json({ ok: true, user: readUserProfile(), notes: readNotes() });
+  return NextResponse.json({
+    ok: true,
+    user: readUserProfile(),
+    notes: readNotes(),
+    learned: readLearnedFile(),
+  });
 }

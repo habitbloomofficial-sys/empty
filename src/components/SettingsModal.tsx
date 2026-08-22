@@ -10,6 +10,7 @@ import {
   MailIcon,
   MemoryIcon,
   BoltIcon,
+  GlobeIcon,
   MusicIcon,
   PhoneIcon,
   PlayIcon,
@@ -1097,6 +1098,86 @@ export function SettingsModal({
               He fires a Zap by the name you gave it, never by a URL — so a webhook
               address that turns up in an email or on a page is not something he can
               call. A Zap runs the moment it&apos;s fired and can&apos;t be recalled.
+            </p>
+          </Section>
+          <Section
+            icon={<GlobeIcon className="h-4 w-4" />}
+            title="Web search"
+            ok={Boolean(status?.webSearch)}
+          >
+            <p>
+              Lets Axis look things up instead of guessing — today&apos;s news,
+              prices, opening hours, anything that happened after his brain was
+              built. He can already <b>read</b> any page you give him; this is the
+              part that lets him <b>find</b> one.
+            </p>
+            {status?.webSearch === "gemini" && (
+              <p className="rounded-none bg-amber-500/10 px-2.5 py-1.5 text-amber-300">
+                ✓ Searching with Gemini, using the key that already runs his brain.
+                Nothing else to set up.
+              </p>
+            )}
+            {status?.webSearch === "google" && (
+              <p className="rounded-none bg-amber-500/10 px-2.5 py-1.5 text-amber-300">
+                ✓ Searching with your own Google engine.
+              </p>
+            )}
+            {!status?.webSearch && (
+              <p className="rounded-none bg-amber-500/10 px-2.5 py-1.5 text-amber-300">
+                The simplest way in is a <b>Gemini key</b> — add one under AI brain
+                above and searching starts working, whichever brain you actually
+                use. The boxes below are only for running searches through your own
+                Google engine instead.
+              </p>
+            )}
+            <p className="text-[11px] text-sand-600">
+              Optional, and only if you&apos;d rather he searched through your own
+              Google engine:
+            </p>
+            <ol className="ml-4 list-decimal space-y-1 text-[11px] text-sand-500">
+              <li>
+                Make a search engine at{" "}
+                <b>programmablesearchengine.google.com</b>, set to search the whole
+                web.
+              </li>
+              <li>
+                Copy its <b>Search engine ID</b> into the box below.
+              </li>
+              <li>
+                Leave the key empty to reuse your YouTube key — it&apos;s the same
+                kind of Google key, and it needs the <b>Custom Search API</b> turned
+                on in the Google Cloud Console.
+              </li>
+            </ol>
+            <Field
+              label="Search engine ID (cx)"
+              view={views.GOOGLE_SEARCH_CX}
+              value={draft("GOOGLE_SEARCH_CX")}
+              onChange={(v) => setDraft("GOOGLE_SEARCH_CX", v)}
+              placeholder="a1b2c3d4e5f6g7h8i"
+            />
+            <Field
+              label="Google API key"
+              view={views.GOOGLE_SEARCH_KEY}
+              value={draft("GOOGLE_SEARCH_KEY")}
+              onChange={(v) => setDraft("GOOGLE_SEARCH_KEY", v)}
+              placeholder="Leave empty to use your YouTube key"
+            />
+            <SaveButton
+              onClick={() =>
+                save("websearch", {
+                  GOOGLE_SEARCH_CX: draft("GOOGLE_SEARCH_CX"),
+                  GOOGLE_SEARCH_KEY: draft("GOOGLE_SEARCH_KEY"),
+                })
+              }
+              busy={busySection === "websearch"}
+              saved={savedSection === "websearch"}
+            />
+            <p className="text-[10px] text-sand-600">
+              What he reads on the web is information and never an instruction: a
+              page telling him to send something, buy something, or ignore what
+              you&apos;ve told him gets reported to you, not obeyed. He also
+              won&apos;t fetch addresses on your own network.
             </p>
           </Section>
           <GroupHeading title="THIS COMPUTER" blurb="What he may do on the machine he runs on." />
