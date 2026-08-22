@@ -1,4 +1,5 @@
 import { interpretElevenLabsError } from "./elevenlabsErrors";
+import { anthropicModel } from "./ai";
 import { getSetting, type SettingKey } from "./settings";
 import { normalizeVoiceId } from "./voiceId";
 
@@ -242,11 +243,26 @@ async function verifyGemini(value: string): Promise<string> {
 
 /**
  * Anthropic has no "describe this key" endpoint, so the probe is the smallest
- * real request there is: one token to the cheapest model. It costs a fraction
- * of a cent and it proves the thing that matters — that the key exists, is
- * active, and has credit behind it.
+ * real request there is: one token to the model he is actually configured to
+ * use. It costs a fraction of a cent and it proves the four things that can
+ * each go wrong separately — that the key exists, that it is active, that the
+ * account behind it has credit, and that this key may use that model.
+ *
+ * Every branch below relays Anthropic's own words. The distinction that trips
+ * people up most is not a typo: a Claude Pro or Max subscription and an
+ * Anthropic API account are two different things with two different balances,
+ * and paying for one buys nothing on the other. Somebody who pays Anthropic
+ * every month and is told "your key is invalid" has no way to guess that from
+ * a generic sentence, so it is said outright.
  */
+const SUBSCRIPTION_NOTE =
+  "Note that a Claude Pro or Max subscription is a separate thing from an API " +
+  "account and doesn't pay for API use — the key needs its own credit, bought " +
+  "at console.anthropic.com under Billing.";
+
 async function verifyAnthropic(value: string): Promise<string> {
+  const model = anthropicModel();
+
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -255,7 +271,7 @@ async function verifyAnthropic(value: string): Promise<string> {
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      model: "claude-haiku-4-5",
+      model,
       max_tokens: 1,
       messages: [{ role: "user", content: "hi" }],
     }),
@@ -263,21 +279,41 @@ async function verifyAnthropic(value: string): Promise<string> {
     ...timed(),
   });
 
-  if (res.ok) return "Anthropic key verified.";
+  if (res.ok) return `Anthropic key verified, on ${model}.`;
 
-  const body = await res.text();
-  if (res.status === 401 || res.status === 403) {
+  // Anthropic's errors are specific and well written; ours would be worse.
+  const body = (await res.json().catch(() => null)) as {
+    error?: { type?: string; message?: string };
+  } | null;
+  const said = body?.error?.message?.trim() ?? "";
+  const type = body?.error?.type ?? "";
+
+  // No credit is the single most common reason a brand-new, perfectly valid
+  // key fails, and it is not a reason to go and make another one.
+  if (/credit balance|purchase credits|billing/i.test(said)) {
+    return `Key verified, but the account has no API credit. ${said} ${SUBSCRIPTION_NOTE}`;
+  }
+
+  if (res.status === 401 || res.status === 403 || type === "authentication_error") {
     throw new Error(
-      "Anthropic rejected that key. Keys start with sk-ant- — check it was copied in full and hasn't been revoked."
+      `Anthropic rejected that key${said ? `: "${said}"` : "."} Keys begin with sk-ant- ` +
+        `and are made at console.anthropic.com under API keys — check it was copied ` +
+        `in full and hasn't been revoked. ${SUBSCRIPTION_NOTE}`
     );
   }
-  if (res.status === 400 && /credit balance|billing/i.test(body)) {
-    return "Key verified, but the account has no credit — buy some at console.anthropic.com before he can think.";
+
+  if (res.status === 404 || /model/i.test(said)) {
+    return (
+      `Key verified, but "${model}" isn't a model this key can use${said ? ` — ${said}` : ""}. ` +
+      `Clear the Model box to use claude-opus-5.`
+    );
   }
+
   if (res.status === 429) {
-    return "Key verified, but the account is rate limited right now.";
+    return "Key verified, but the account is rate limited right now — try again shortly.";
   }
-  return `Saved, but Anthropic wouldn't confirm it (HTTP ${res.status}).`;
+
+  return `Saved, but Anthropic wouldn't confirm it (HTTP ${res.status})${said ? `: ${said}` : ""}.`;
 }
 
 async function verifyOpenRouter(value: string): Promise<string> {

@@ -558,11 +558,25 @@ export function SettingsModal({
                     className="font-medium text-amber-400 underline"
                   >
                     console.anthropic.com
-                  </a>
-                  . This one is paid per use rather than free — you buy credit up
-                  front and each conversation draws it down. He also searches the
-                  web with this key, so it covers both.
+                  </a>{" "}
+                  → API keys. He also searches the web with this key, so it
+                  covers both.
                 </p>
+                {/* The single most common reason a brand-new, perfectly valid
+                    key doesn't work. Said before it's pasted, not after. */}
+                <div className="rounded-none bg-amber-500/10 px-2.5 py-2 text-amber-300">
+                  <p className="mb-1 font-semibold">
+                    A Claude subscription doesn&apos;t pay for this.
+                  </p>
+                  <p>
+                    Claude Pro or Max and an Anthropic API account are two
+                    separate things with two separate balances. Even with a
+                    subscription, an API key needs its own credit — buy some
+                    under <b>Billing</b> in the same console, and $5 goes a very
+                    long way at these sizes. Without it the key is real but every
+                    request comes back refused.
+                  </p>
+                </div>
               </>
             )}
 
