@@ -1111,25 +1111,22 @@ export function SettingsModal({
               built. He can already <b>read</b> any page you give him; this is the
               part that lets him <b>find</b> one.
             </p>
-            {status?.webSearch === "gemini" && (
-              <p className="rounded-none bg-amber-500/10 px-2.5 py-1.5 text-amber-300">
-                ✓ Searching with Gemini, using the key that already runs his brain.
-                Nothing else to set up.
-              </p>
-            )}
-            {status?.webSearch === "google" && (
-              <p className="rounded-none bg-amber-500/10 px-2.5 py-1.5 text-amber-300">
-                ✓ Searching with your own Google engine.
-              </p>
-            )}
-            {!status?.webSearch && (
-              <p className="rounded-none bg-amber-500/10 px-2.5 py-1.5 text-amber-300">
-                The simplest way in is a <b>Gemini key</b> — add one under AI brain
-                above and searching starts working, whichever brain you actually
-                use. The boxes below are only for running searches through your own
-                Google engine instead.
-              </p>
-            )}
+            <p className="rounded-none bg-amber-500/10 px-2.5 py-1.5 text-amber-300">
+              {status?.webSearch === "openrouter" &&
+                "✓ Searching with OpenRouter, using the key that already runs his brain. Each search spends a little OpenRouter credit."}
+              {status?.webSearch === "gemini" &&
+                "✓ Searching with Gemini, using the same key that runs his brain. Free tier."}
+              {status?.webSearch === "google" &&
+                "✓ Searching with your own Google engine."}
+              {!status?.webSearch &&
+                "He can read a page you give him, but he has no way to search yet. An OpenRouter or Gemini key under AI brain above gives him one with nothing extra to set up — the same key searches and thinks."}
+            </p>
+            <p className="text-[11px] text-sand-600">
+              He searches through whichever brain you&apos;re running, so the key
+              doing the searching is the one you already know works. That matters:
+              an old key left in Settings from a provider you no longer use is not
+              a working key, and he won&apos;t reach past a good one to try it.
+            </p>
             <p className="text-[11px] text-sand-600">
               Optional, and only if you&apos;d rather he searched through your own
               Google engine:

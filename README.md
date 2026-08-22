@@ -17,7 +17,8 @@ real.
 - **Phone** — rings your phone and connects you to a number you name
 - **WhatsApp** — Twilio's WhatsApp API
 - **Music & web** — opens and closes Spotify and Discord, and opens any website
-- **The open web** — searches it, reads pages on it, and keeps what he learns
+- **The open web** — searches it through the brain you already run, reads pages
+  on it, and keeps what he learns
 - **YouTube** — subscribers, views, and how your recent uploads are performing
 - **Files** — finds things in your own folders and opens them
 - **Documents** — writes real Word, PowerPoint, Excel and Markdown files
@@ -274,7 +275,7 @@ calendar permission. It still works perfectly for mail and fails on calendar
 with a bare 403, so Settings says so and asks you to disconnect and connect
 again — the consent screen will include the calendar the second time.
 
-### The web (mostly no setup — one key makes it complete)
+### The web (no setup, if you already have a brain)
 
 Ask him something he can't know — today's news, a price, who currently holds a
 job, anything after his brain was built — and he looks it up instead of
@@ -285,23 +286,32 @@ There are two halves, and they're independent:
 **Reading a page** works out of the box. No key, nothing to sign up for. *"What
 does this say?"* with a link, and he reads it.
 
-**Searching** needs one of these, and you almost certainly already have the
-first:
+**Searching** runs through the brain you're already using, wherever it can:
 
-- **A Gemini key.** The key that runs his brain also runs Google's search
-  grounding, so if you have one, searching already works — even if you run him
-  on OpenAI or OpenRouter day to day. He gets an answer built from live pages,
-  with the sources attached. Nothing to set up.
-- **Your own Google search engine**, if you'd rather. Make one at
+- **On OpenRouter** — the same key searches. OpenRouter runs the search itself
+  and hands back an answer with its sources. It spends a little OpenRouter
+  credit per search, unlike the others; that's the trade for needing nothing new.
+- **On Gemini** — the same key searches, through Google's search grounding, on
+  the free tier. Nothing to set up.
+- **On OpenAI** — OpenAI's key can't search here, so he'll use a Gemini key if
+  you have one saved, or your own Google engine below.
+- **Your own Google search engine**, if you'd rather, and it takes precedence
+  when configured. Make one at
   [programmablesearchengine.google.com](https://programmablesearchengine.google.com),
   set it to search the whole web, and paste its **Search engine ID** into
   **Settings → Tool Armory → Web search**. Leave the key box empty and he reuses
-  your YouTube key — it's the same kind of Google key, and it needs the **Custom
-  Search API** switched on in the Google Cloud Console. Configure this and it
-  takes precedence, since setting it up is a deliberate choice.
+  your YouTube key — same kind of Google key, and it needs the **Custom Search
+  API** switched on in the Google Cloud Console.
 
-The rail on the right says which he's using: `WEB — GEMINI`, `WEB — GOOGLE`, or
-`WEB — READ ONLY` when he can read but not search.
+**A saved key is not a working key.** He searches with the key that's already
+running his brain precisely because that's the one you know works — he won't
+reach past it to try an old key from a provider you've stopped using. And if a
+key is refused mid-search he strikes it off, tries the next way in, and tells
+you *which* key and what it's for, rather than naming a provider you'd forgotten
+you ever signed up to.
+
+The rail on the right says which he's using: `WEB — OPENROUTER`, `WEB — GEMINI`,
+`WEB — GOOGLE`, or `WEB — READ ONLY` when he can read but not search.
 
 #### What he reads is information, never instruction
 

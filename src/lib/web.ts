@@ -1,4 +1,5 @@
 import { getSetting } from "./settings";
+import { getAIModel, getAIProvider } from "./ai";
 import { geminiModel } from "./geminiModel";
 import { extractReadable, type ExtractedPage } from "./htmlText";
 import { isPrivateHost, normalizeWebUrl } from "./webUrl";
@@ -25,7 +26,7 @@ import { isPrivateHost, normalizeWebUrl } from "./webUrl";
 //    the web. Every hop of every redirect is checked, not just the address you
 //    started with.
 
-export type SearchProvider = "google" | "gemini";
+export type SearchProvider = "google" | "gemini" | "openrouter";
 
 const SEARCH_TIMEOUT_MS = 20_000;
 const PAGE_TIMEOUT_MS = 15_000;
@@ -39,21 +40,72 @@ function googleSearchKey(): string | undefined {
 }
 
 /**
- * Which way he searches.
+ * Keys that turned out not to work, for the life of the process.
  *
- * A Programmable Search Engine wins when one is set up, because configuring a
- * cx is a deliberate act and it returns real ranked links. Gemini grounding is
- * the fallback and needs nothing new at all — the same key that runs his brain
- * also runs Google's search grounding, so anyone on Gemini already has this.
+ * A saved key is not a working key. An old Gemini key sitting in Settings from
+ * a provider you no longer use will be picked up, fail with "API key not
+ * valid", and — worse — go on failing on every search after that while a
+ * perfectly good OpenRouter key sits unused. Once a key has been refused, it is
+ * struck off and the next way in is tried. Restarting clears this, which is
+ * right: the fix is usually a new key pasted into Settings.
  */
+const refused = new Set<SearchProvider>();
+
+/** What each way in needs, in the order they are tried. */
+function providerReady(provider: SearchProvider): boolean {
+  if (provider === "google") return Boolean(getSetting("GOOGLE_SEARCH_CX") && googleSearchKey());
+  if (provider === "openrouter") return Boolean(getSetting("OPENROUTER_API_KEY"));
+  return Boolean(getSetting("GEMINI_API_KEY"));
+}
+
+/**
+ * Every way he could search, best first.
+ *
+ * The order matters, and one rule sits above the rest: **search through the
+ * brain he is actually running on**. Both OpenRouter and Gemini will search for
+ * him using the same key that answers his questions, so the key that is known
+ * to work is the one that gets used. Reaching past it for some other key saved
+ * months ago is how you end up being told your Gemini key is invalid when you
+ * do not use Gemini.
+ *
+ * A Programmable Search Engine still comes first when one is configured, since
+ * setting up a cx is a deliberate act and nobody does it by accident.
+ */
+export function searchProviders(): SearchProvider[] {
+  const brain = getAIProvider();
+  const order: SearchProvider[] = ["google"];
+  if (brain === "openrouter") order.push("openrouter", "gemini");
+  else order.push("gemini", "openrouter");
+
+  return order.filter((provider) => providerReady(provider) && !refused.has(provider));
+}
+
+/** The one he would use right now. */
 export function searchProvider(): SearchProvider | null {
-  if (getSetting("GOOGLE_SEARCH_CX") && googleSearchKey()) return "google";
-  if (getSetting("GEMINI_API_KEY")) return "gemini";
-  return null;
+  return searchProviders()[0] ?? null;
 }
 
 export function isWebSearchConfigured(): boolean {
   return searchProvider() !== null;
+}
+
+/** Whose key it is, in the words used in Settings. */
+const KEY_NAMES: Record<SearchProvider, string> = {
+  google: "Google search key",
+  gemini: "Gemini key",
+  openrouter: "OpenRouter key",
+};
+
+/**
+ * Is this the provider saying "that key is no good"? Those are worth striking
+ * the key off and trying the next way in. Anything else — a timeout, a bad
+ * query, a service having a bad day — is not, and must not silently cost a
+ * second search somewhere else.
+ */
+function isKeyRefusal(status: number, detail: string): boolean {
+  if (status === 401 || status === 403) return true;
+  if (status === 400 && /api[ _]?key|credential|unauthenticated|invalid/i.test(detail)) return true;
+  return false;
 }
 
 export interface SearchHit {
@@ -79,22 +131,62 @@ const UNTRUSTED_NOTE =
 
 function noSearchConfigured(): Error {
   return new Error(
-    "I've no way to search the web yet, sir. A Gemini key gives me one for " +
-      "free — add it under Web search in the Tool Armory."
+    "I've no way to search the web at the moment, sir. Searching runs on the " +
+      "same key as my brain when it can — an OpenRouter or Gemini key gives me " +
+      "one with nothing extra to set up. Have a look under Web search in the " +
+      "Tool Armory."
   );
 }
 
-/** Google's errors carry a real explanation; a bare status code doesn't. */
-async function googleError(res: Response, what: string): Promise<Error> {
+/**
+ * A search that failed, with enough detail to decide what to do about it.
+ *
+ * The distinction that matters is whether the *key* was refused. That is the
+ * one failure worth quietly trying another way in for, and the one worth
+ * naming in plain words — "your Gemini key isn't valid" is a fixable sentence,
+ * "HTTP 400" is not.
+ */
+class SearchError extends Error {
+  // Written out rather than declared as constructor parameters: those are the
+  // one bit of TypeScript that cannot be stripped away without a compiler, and
+  // the tests run these files directly.
+  provider: SearchProvider;
+  status: number;
+  detail: string;
+
+  constructor(provider: SearchProvider, status: number, detail: string, message: string) {
+    super(message);
+    this.name = "SearchError";
+    this.provider = provider;
+    this.status = status;
+    this.detail = detail;
+  }
+
+  get keyRefused(): boolean {
+    return isKeyRefusal(this.status, this.detail);
+  }
+}
+
+/** The provider's own explanation; a bare status code explains nothing. */
+async function failure(res: Response, provider: SearchProvider): Promise<SearchError> {
   let detail = "";
   try {
     const body: unknown = await res.json();
-    const message = (body as { error?: { message?: string } })?.error?.message;
-    if (typeof message === "string") detail = ` — ${message}`;
+    const error = (body as { error?: { message?: string } | string })?.error;
+    const message = typeof error === "string" ? error : error?.message;
+    // Trailing punctuation, because the detail gets folded into a sentence of
+    // ours and "API key not valid.." reads like a bug, which it was.
+    if (typeof message === "string") detail = message.trim().replace(/[.\s]+$/, "");
   } catch {
     // A non-JSON error body tells us nothing worth repeating.
   }
-  return new Error(`${what} refused that (HTTP ${res.status})${detail}`);
+
+  const key = KEY_NAMES[provider];
+  const message = isKeyRefusal(res.status, detail)
+    ? `Your ${key} isn't valid, sir${detail ? ` — ${detail}` : ""}`
+    : `The search refused that (HTTP ${res.status})${detail ? ` — ${detail}` : ""}`;
+
+  return new SearchError(provider, res.status, detail, message);
 }
 
 async function withTimeout<T>(ms: number, run: (signal: AbortSignal) => Promise<T>): Promise<T> {
@@ -125,7 +217,7 @@ async function searchViaGoogle(query: string, limit: number): Promise<SearchOutc
   const res = await withTimeout(SEARCH_TIMEOUT_MS, (signal) =>
     fetch(url, { cache: "no-store", signal })
   );
-  if (!res.ok) throw await googleError(res, "Google search");
+  if (!res.ok) throw await failure(res, "google");
 
   const body = (await res.json()) as {
     items?: { title?: string; link?: string; snippet?: string }[];
@@ -189,7 +281,7 @@ async function searchViaGemini(query: string): Promise<SearchOutcome> {
       signal,
     })
   );
-  if (!res.ok) throw await googleError(res, "Gemini search");
+  if (!res.ok) throw await failure(res, "gemini");
 
   const body = (await res.json()) as {
     candidates?: {
@@ -229,13 +321,152 @@ async function searchViaGemini(query: string): Promise<SearchOutcome> {
   };
 }
 
+/**
+ * OpenRouter, searching with the key that already runs his brain.
+ *
+ * OpenRouter runs the search itself and hands back an answer with the pages it
+ * used attached as `url_citation` annotations — the same shape as Gemini's
+ * grounding, arriving by a different road. Two roads, in fact: the server tool
+ * is the current one, and `plugins: [{ id: "web" }]` is the older one it
+ * replaced. Which of them a given account and model accepts is not something
+ * this code can know in advance, so it asks for the current one and falls back
+ * to the old one if that specific request is rejected.
+ *
+ * Unlike the others, this costs credits per search rather than sitting inside a
+ * free tier. Said plainly in Settings, since it is his money.
+ */
+async function searchViaOpenRouter(query: string): Promise<SearchOutcome> {
+  const key = getSetting("OPENROUTER_API_KEY");
+  if (!key) throw noSearchConfigured();
+
+  const messages = [
+    {
+      role: "user",
+      content:
+        `Search the web and answer this factually and concisely, in plain prose: ${query}\n\n` +
+        "Include dates and figures where they matter, and say so if the sources disagree.",
+    },
+  ];
+
+  const send = (extra: Record<string, unknown>) =>
+    withTimeout(SEARCH_TIMEOUT_MS, (signal) =>
+      fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${key}`,
+          "HTTP-Referer": "http://localhost:3000",
+          "X-Title": "Axis",
+        },
+        body: JSON.stringify({ model: getAIModel(), messages, ...extra }),
+        cache: "no-store",
+        signal,
+      })
+    );
+
+  let res = await send({ tools: [{ type: "openrouter:web_search" }] });
+  if (res.status === 400 || res.status === 404 || res.status === 422) {
+    // Only this request shape is in question, not the key — so read the body,
+    // then try the older way in rather than giving up on searching.
+    const first = await failure(res, "openrouter");
+    if (first.keyRefused) throw first;
+    res = await send({ plugins: [{ id: "web" }] });
+  }
+  if (!res.ok) throw await failure(res, "openrouter");
+
+  const body = (await res.json()) as {
+    choices?: {
+      message?: {
+        content?: string | null;
+        annotations?: {
+          type?: string;
+          url_citation?: { url?: string; title?: string; content?: string };
+        }[];
+      };
+    }[];
+  };
+
+  const message = body.choices?.[0]?.message;
+  const answer = (message?.content ?? "").trim();
+
+  const seen = new Set<string>();
+  const results: SearchHit[] = [];
+  for (const annotation of message?.annotations ?? []) {
+    const cited = annotation.url_citation;
+    const url = cited?.url;
+    if (!url || seen.has(url)) continue;
+    seen.add(url);
+    results.push({ title: cited?.title || url, url, snippet: cited?.content });
+  }
+
+  if (!answer && results.length === 0) {
+    throw new SearchError(
+      "openrouter",
+      200,
+      "",
+      "OpenRouter came back with nothing for that, sir."
+    );
+  }
+
+  return {
+    provider: "openrouter",
+    query,
+    answer: answer || undefined,
+    results,
+    note: `Answered from live web sources. ${UNTRUSTED_NOTE}`,
+  };
+}
+
+function runSearch(provider: SearchProvider, query: string, limit: number): Promise<SearchOutcome> {
+  if (provider === "google") return searchViaGoogle(query, limit);
+  if (provider === "openrouter") return searchViaOpenRouter(query);
+  return searchViaGemini(query);
+}
+
+/**
+ * Search, trying each way in until one works.
+ *
+ * Only a refused *key* moves him on to the next one. Everything else stops
+ * here: a timeout or a bad day at one provider is not a reason to spend money
+ * asking a second one the same question. And when the last one has failed, what
+ * he says names the key and what it is for — the error that started all this
+ * said "Gemini search refused that" to somebody who does not use Gemini, which
+ * is true, useless, and alarming in equal measure.
+ */
 export async function searchWeb(query: string, limit = 6): Promise<SearchOutcome> {
   const trimmed = query.trim();
   if (!trimmed) throw new Error("There's nothing there to search for, sir.");
 
-  const provider = searchProvider();
-  if (!provider) throw noSearchConfigured();
-  return provider === "google" ? searchViaGoogle(trimmed, limit) : searchViaGemini(trimmed);
+  const providers = searchProviders();
+  if (providers.length === 0) throw noSearchConfigured();
+
+  const failed: SearchError[] = [];
+  for (const provider of providers) {
+    try {
+      return await runSearch(provider, trimmed, limit);
+    } catch (err) {
+      if (!(err instanceof SearchError) || !err.keyRefused) throw err;
+      // Struck off, so the next search doesn't walk into it again.
+      refused.add(provider);
+      failed.push(err);
+    }
+  }
+
+  // Every key that was tried gets named. Reporting only the last one is how
+  // you end up hearing about a provider you had forgotten you were signed up
+  // to, with no mention of the one you actually use.
+  const keys = failed.map((error) => `your ${KEY_NAMES[error.provider]}`);
+  const named =
+    keys.length > 1
+      ? `${keys.slice(0, -1).join(", ")} and ${keys[keys.length - 1]} were all refused, sir` +
+        `${failed[0].detail ? ` — ${failed[0].detail}` : ""}.`
+      : `${failed[0]?.message ?? "That search failed, sir"}.`;
+
+  throw new Error(
+    `${named} That's every way I had of searching, and those keys are what I ` +
+      `search with — separate from whatever is running my brain. Fix or clear ` +
+      `them under Web search in the Tool Armory and I'll be back on the web.`
+  );
 }
 
 export interface PageOutcome extends ExtractedPage {

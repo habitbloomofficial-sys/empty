@@ -47,9 +47,10 @@ const PROVIDER: Record<string, string> = {
 
 // He can always read a page; searching is the part that needs a key. "READ
 // ONLY" says that in two words rather than implying he is cut off.
-const SEARCH: Record<"google" | "gemini", string> = {
+const SEARCH: Record<"google" | "gemini" | "openrouter", string> = {
   google: "GOOGLE",
   gemini: "GEMINI",
+  openrouter: "OPENROUTER",
 };
 
 const STATE_LABEL: Record<OrbState, string> = {

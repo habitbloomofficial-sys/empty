@@ -52,8 +52,8 @@ export interface IntegrationStatus {
   zaps: string[];
   /** Whether Axis may open or close apps on this machine. */
   desktopControl: boolean;
-  /** How he searches the web, if he can: Gemini grounding or a Google engine. */
-  webSearch: "google" | "gemini" | null;
+  /** How he searches the web, if he can — usually through the brain he runs on. */
+  webSearch: "google" | "gemini" | "openrouter" | null;
   /** How many things he has learned and kept. */
   learned: number;
   /** Whether a YouTube key is available for channel statistics. */
