@@ -232,3 +232,16 @@ export function PhoneIcon({ className }: IconProps) {
     </svg>
   );
 }
+
+export function BoltIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className}>
+      <path
+        d="M13.2 2.5 5.4 13.2h5.1l-.7 8.3 7.8-10.7h-5.1l.7-8.3Z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}

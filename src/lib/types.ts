@@ -48,6 +48,8 @@ export interface IntegrationStatus {
   phoneContacts: string[];
   /** Whether the Google connection includes the calendar. */
   calendar: boolean;
+  /** Named Zapier automations Axis can fire. */
+  zaps: string[];
   /** Whether Axis may open or close apps on this machine. */
   desktopControl: boolean;
   /** Whether a YouTube key is available for channel statistics. */

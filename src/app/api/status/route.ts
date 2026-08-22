@@ -9,6 +9,7 @@ import {
   redirectUri,
 } from "@/lib/gmail";
 import { isPhoneConfigured, savedContacts } from "@/lib/phone";
+import { savedZaps } from "@/lib/zapier";
 import { isWhatsAppConfigured } from "@/lib/whatsapp";
 import { isTranscriptionConfigured } from "@/lib/transcription";
 import { isDesktopControlEnabled } from "@/lib/desktop";
@@ -38,6 +39,7 @@ export async function GET(req: NextRequest) {
     phone: isPhoneConfigured(),
     phoneContacts: isPhoneConfigured() ? savedContacts().map((c) => c.name) : [],
     calendar: isCalendarConfigured(),
+    zaps: savedZaps().map((zap) => zap.name),
     desktopControl: isDesktopControlEnabled(),
     youtube: isYouTubeConfigured(),
     youtubeChannel: configuredChannel() ?? null,

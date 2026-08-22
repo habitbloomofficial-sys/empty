@@ -9,6 +9,7 @@ import {
   FolderIcon,
   MailIcon,
   MemoryIcon,
+  BoltIcon,
   MusicIcon,
   PhoneIcon,
   PlayIcon,
@@ -83,6 +84,26 @@ async function fetchMemories(): Promise<MemoryEntry[]> {
     // The rest of the panel still works without them.
     return [];
   }
+}
+
+/**
+ * A divider between kinds of setting.
+ *
+ * Settings had grown to eleven panels in one undifferentiated column, which is
+ * the point at which a list stops being a list. Four groups: what makes him
+ * himself, what he reaches outside this machine, what he may do on it, and
+ * what he remembers.
+ */
+function GroupHeading({ title, blurb }: { title: string; blurb: string }) {
+  return (
+    <div className="pt-4 first:pt-0">
+      <div className="flex items-center gap-3">
+        <span className="ax-label ax-label-amber whitespace-nowrap">{title}</span>
+        <span className="h-px flex-1 bg-amber-500/[0.13]" />
+      </div>
+      <p className="mt-1.5 text-[11px] leading-relaxed text-sand-600">{blurb}</p>
+    </div>
+  );
 }
 
 function Section({
@@ -438,6 +459,7 @@ export function SettingsModal({
             </div>
           )}
 
+          <GroupHeading title="CORE" blurb="The brain, the voice, and how he speaks to you." />
           <Section
             icon={<BrainIcon className="h-4 w-4" />}
             title="AI brain"
@@ -546,7 +568,6 @@ export function SettingsModal({
               disabled={!draft(brainKey).trim() && !brainKeySet}
             />
           </Section>
-
           <Section
             icon={<ChatIcon className="h-4 w-4" />}
             title="ElevenLabs voice"
@@ -650,7 +671,73 @@ export function SettingsModal({
               </p>
             )}
           </Section>
-
+          <Section
+            icon={<SparkleIcon className="h-4 w-4" />}
+            title="Personality"
+            ok
+          >
+            <p>
+              How Axis speaks to you. Both apply everywhere — spoken replies,
+              typed ones, and the little things he says while he works.
+            </p>
+            <Field
+              label="He calls you"
+              view={views.USER_TITLE}
+              value={draft("USER_TITLE")}
+              onChange={(v) => setDraft("USER_TITLE", v)}
+              placeholder="sir"
+              hint="Anything you like — sir, boss, captain, your name. Leave blank for “sir”."
+            />
+            <div>
+              <span className="mb-1 block text-[11px] font-semibold text-cream">Humour</span>
+              <div className="flex gap-1.5 rounded-full bg-black/30 p-1">
+                {(
+                  [
+                    ["dry", "Dry"],
+                    ["playful", "Playful"],
+                    ["off", "Straight"],
+                  ] as const
+                ).map(([value, label]) => {
+                  const active = (draft("HUMOUR") || status?.humour || "dry") === value;
+                  return (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setDraft("HUMOUR", value)}
+                      className={`flex-1 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                        active
+                          ? "bg-amber-500 text-white shadow-sm"
+                          : "text-sand-500 hover:bg-amber-500/10"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+              <span className="mt-1 block text-[10px] text-sand-600">
+                Playful teases you, gets smug when it pulls something off, and acts
+                mildly put upon before doing exactly as asked. It drops the act when
+                something actually matters.
+              </span>
+            </div>
+            <SaveButton
+              onClick={() =>
+                save("personality", {
+                  USER_TITLE: draft("USER_TITLE"),
+                  HUMOUR: draft("HUMOUR") || "dry",
+                })
+              }
+              busy={busySection === "personality"}
+              saved={savedSection === "personality"}
+            />
+            <p className="text-[10px] text-sand-600">
+              Some things are fixed: say “Hey Axis, daddy&apos;s home” and the
+              answer is always, exactly, “Welcome home,{" "}
+              {draft("USER_TITLE") || status?.title || "sir"}.”
+            </p>
+          </Section>
+          <GroupHeading title="TOOL ARMORY" blurb="Everything he reaches outside this computer. Each one is yours to connect, and he only claims what is actually connected." />
           <Section
             icon={<MailIcon className="h-4 w-4" />}
             title="Gmail & Calendar"
@@ -774,7 +861,6 @@ export function SettingsModal({
               </p>
             )}
           </Section>
-
           <Section
             icon={<WhatsAppIcon className="h-4 w-4" />}
             title="WhatsApp"
@@ -826,45 +912,6 @@ export function SettingsModal({
               checks={checks.whatsapp}
             />
           </Section>
-
-          <Section
-            icon={<MusicIcon className="h-4 w-4" />}
-            title="Apps & websites"
-            ok={Boolean(status?.desktopControl)}
-          >
-            <p>
-              Lets Axis open things on this computer — &quot;open Spotify&quot;,
-              &quot;put on some Bowie&quot;, &quot;open YouTube&quot;, &quot;search
-              YouTube for lo-fi&quot;, or any site you name. Spotify opens to a search;
-              pressing play is still yours.
-            </p>
-            <div className="flex gap-1.5 rounded-full bg-black/30 p-1">
-              {(["on", "off"] as const).map((value) => {
-                const active = (status?.desktopControl ? "on" : "off") === value;
-                return (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => save("desktop", { DESKTOP_CONTROL: value })}
-                    disabled={busySection === "desktop"}
-                    className={`flex-1 rounded-full px-3 py-1.5 text-xs font-semibold transition disabled:opacity-50 ${
-                      active
-                        ? "bg-amber-500 text-white shadow-sm"
-                        : "text-sand-500 hover:bg-amber-500/10"
-                    }`}
-                  >
-                    {value === "on" ? "Allowed" : "Blocked"}
-                  </button>
-                );
-              })}
-            </div>
-            <p className="text-[10px] text-sand-600">
-              This permits opening Spotify, ordinary web pages, and files found by
-              the search below — nothing else. No other protocols, and no general
-              &quot;run a command&quot; ability behind it.
-            </p>
-          </Section>
-
           <Section
             icon={<PlayIcon className="h-4 w-4" />}
             title="YouTube"
@@ -925,107 +972,6 @@ export function SettingsModal({
               impressions live in Studio behind a separate login.
             </p>
           </Section>
-
-          <Section
-            icon={<FolderIcon className="h-4 w-4" />}
-            title="Files"
-            ok={(status?.fileRoots?.length ?? 0) > 0}
-          >
-            <p>
-              Axis can find files in your own folders — ask him &quot;where&apos;s
-              my tax return?&quot; or &quot;find the video I downloaded
-              yesterday&quot; — and open what he finds. He can see where files are,
-              not what is inside them.
-            </p>
-            {status?.fileRoots && status.fileRoots.length > 0 && (
-              <div className="flex flex-wrap gap-1">
-                {status.fileRoots.map((root) => (
-                  <span
-                    key={root}
-                    className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-400"
-                  >
-                    {root}
-                  </span>
-                ))}
-              </div>
-            )}
-            <Field
-              label="Extra folders (optional)"
-              view={views.FILE_SEARCH_ROOTS}
-              value={draft("FILE_SEARCH_ROOTS")}
-              onChange={(v) => setDraft("FILE_SEARCH_ROOTS", v)}
-              placeholder="D:\\Projects; E:\\Archive"
-              hint="Full paths, separated by semicolons. Everything outside these folders and the ones above is invisible to him."
-            />
-            <SaveButton
-              onClick={() => save("files", { FILE_SEARCH_ROOTS: draft("FILE_SEARCH_ROOTS") })}
-              busy={busySection === "files"}
-              saved={savedSection === "files"}
-            />
-            <p className="text-[10px] text-sand-600">
-              Searching follows the Apps &amp; websites switch above — turn that off
-              and file search goes with it.
-            </p>
-          </Section>
-          <Section
-            icon={<MemoryIcon className="h-4 w-4" />}
-            title="Memory"
-            ok={memories.length > 0}
-          >
-            <p>
-              Things Axis has learned about you, kept between sessions. He saves
-              these himself as they come up — names, preferences, how you like things
-              done — and you can ask him to forget any of them.
-            </p>
-
-            {memories.length === 0 ? (
-              <p className="text-[11px] text-sand-600">
-                Nothing yet. He&apos;ll start remembering as you talk.
-              </p>
-            ) : (
-              <ul className="max-h-44 space-y-1 overflow-y-auto">
-                {memories.map((memory) => (
-                  <li
-                    key={memory.id}
-                    className="group flex items-start gap-2 rounded-none bg-black/30 px-2.5 py-1.5"
-                  >
-                    <span className="flex-1 text-[11px] leading-relaxed text-cream">
-                      {memory.text}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        await fetch(`/api/memory?id=${encodeURIComponent(memory.id)}`, {
-                          method: "DELETE",
-                        }).catch(() => null);
-                        await loadMemories();
-                        onSaved();
-                      }}
-                      className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold text-sand-700 hover:bg-rose-500/10 hover:text-rose-400"
-                      aria-label="Forget this"
-                    >
-                      Forget
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-
-            {memories.length > 0 && (
-              <button
-                type="button"
-                onClick={async () => {
-                  await fetch("/api/memory", { method: "DELETE" }).catch(() => null);
-                  await loadMemories();
-                  onSaved();
-                }}
-                className="rounded-full px-3 py-1.5 text-xs font-semibold text-sand-500 hover:bg-white/[0.06]"
-              >
-                Forget everything
-              </button>
-            )}
-          </Section>
-
           <Section
             icon={<PhoneIcon className="h-4 w-4" />}
             title="Phone calls"
@@ -1101,74 +1047,196 @@ export function SettingsModal({
               One call a minute, at most.
             </p>
           </Section>
-
           <Section
-            icon={<SparkleIcon className="h-4 w-4" />}
-            title="Personality"
-            ok
+            icon={<BoltIcon className="h-4 w-4" />}
+            title="Zapier"
+            ok={(status?.zaps?.length ?? 0) > 0}
           >
             <p>
-              How Axis speaks to you. Both apply everywhere — spoken replies,
-              typed ones, and the little things he says while he works.
+              Anything Zapier connects to — thousands of apps — by giving Axis a
+              Zap to pull the trigger on. Say <i>&quot;run my morning
+              routine&quot;</i> and he fires it.
             </p>
+            <ol className="ml-4 list-decimal space-y-1 text-[11px] text-sand-500">
+              <li>
+                In Zapier, make a Zap whose trigger is{" "}
+                <b>Webhooks by Zapier → Catch Hook</b>.
+              </li>
+              <li>Copy the URL it gives you, and build the rest of the Zap.</li>
+              <li>Paste it below with a name you&apos;d actually say out loud.</li>
+            </ol>
             <Field
-              label="He calls you"
-              view={views.USER_TITLE}
-              value={draft("USER_TITLE")}
-              onChange={(v) => setDraft("USER_TITLE", v)}
-              placeholder="sir"
-              hint="Anything you like — sir, boss, captain, your name. Leave blank for “sir”."
-            />
-            <div>
-              <span className="mb-1 block text-[11px] font-semibold text-cream">Humour</span>
-              <div className="flex gap-1.5 rounded-full bg-black/30 p-1">
-                {(
-                  [
-                    ["dry", "Dry"],
-                    ["playful", "Playful"],
-                    ["off", "Straight"],
-                  ] as const
-                ).map(([value, label]) => {
-                  const active = (draft("HUMOUR") || status?.humour || "dry") === value;
-                  return (
-                    <button
-                      key={value}
-                      type="button"
-                      onClick={() => setDraft("HUMOUR", value)}
-                      className={`flex-1 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
-                        active
-                          ? "bg-amber-500 text-white shadow-sm"
-                          : "text-sand-500 hover:bg-amber-500/10"
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
-              <span className="mt-1 block text-[10px] text-sand-600">
-                Playful teases you, gets smug when it pulls something off, and acts
-                mildly put upon before doing exactly as asked. It drops the act when
-                something actually matters.
-              </span>
-            </div>
-            <SaveButton
-              onClick={() =>
-                save("personality", {
-                  USER_TITLE: draft("USER_TITLE"),
-                  HUMOUR: draft("HUMOUR") || "dry",
-                })
+              label="Your Zaps"
+              view={views.ZAPIER_HOOKS}
+              value={draft("ZAPIER_HOOKS")}
+              onChange={(v) => setDraft("ZAPIER_HOOKS", v)}
+              placeholder={
+                "Morning routine = https://hooks.zapier.com/hooks/catch/123456/abcdef/"
               }
-              busy={busySection === "personality"}
-              saved={savedSection === "personality"}
+              hint="One per line, name = URL. Only hooks.zapier.com addresses are accepted."
+              multiline
+            />
+            {status?.zaps && status.zaps.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {status.zaps.map((name) => (
+                  <span
+                    key={name}
+                    className="border border-amber-500/25 px-2 py-0.5 text-[10px] font-medium text-amber-400"
+                  >
+                    {name}
+                  </span>
+                ))}
+              </div>
+            )}
+            <SaveButton
+              onClick={() => save("zapier", { ZAPIER_HOOKS: draft("ZAPIER_HOOKS") })}
+              busy={busySection === "zapier"}
+              saved={savedSection === "zapier"}
             />
             <p className="text-[10px] text-sand-600">
-              Some things are fixed: say “Hey Axis, daddy&apos;s home” and the
-              answer is always, exactly, “Welcome home,{" "}
-              {draft("USER_TITLE") || status?.title || "sir"}.”
+              He fires a Zap by the name you gave it, never by a URL — so a webhook
+              address that turns up in an email or on a page is not something he can
+              call. A Zap runs the moment it&apos;s fired and can&apos;t be recalled.
             </p>
           </Section>
+          <GroupHeading title="THIS COMPUTER" blurb="What he may do on the machine he runs on." />
+          <Section
+            icon={<MusicIcon className="h-4 w-4" />}
+            title="Apps & websites"
+            ok={Boolean(status?.desktopControl)}
+          >
+            <p>
+              Lets Axis open things on this computer — &quot;open Spotify&quot;,
+              &quot;put on some Bowie&quot;, &quot;open YouTube&quot;, &quot;search
+              YouTube for lo-fi&quot;, or any site you name. Spotify opens to a search;
+              pressing play is still yours.
+            </p>
+            <div className="flex gap-1.5 rounded-full bg-black/30 p-1">
+              {(["on", "off"] as const).map((value) => {
+                const active = (status?.desktopControl ? "on" : "off") === value;
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => save("desktop", { DESKTOP_CONTROL: value })}
+                    disabled={busySection === "desktop"}
+                    className={`flex-1 rounded-full px-3 py-1.5 text-xs font-semibold transition disabled:opacity-50 ${
+                      active
+                        ? "bg-amber-500 text-white shadow-sm"
+                        : "text-sand-500 hover:bg-amber-500/10"
+                    }`}
+                  >
+                    {value === "on" ? "Allowed" : "Blocked"}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-[10px] text-sand-600">
+              This permits opening Spotify, ordinary web pages, and files found by
+              the search below — nothing else. No other protocols, and no general
+              &quot;run a command&quot; ability behind it.
+            </p>
+          </Section>
+          <Section
+            icon={<FolderIcon className="h-4 w-4" />}
+            title="Files"
+            ok={(status?.fileRoots?.length ?? 0) > 0}
+          >
+            <p>
+              Axis can find files in your own folders — ask him &quot;where&apos;s
+              my tax return?&quot; or &quot;find the video I downloaded
+              yesterday&quot; — and open what he finds. He can see where files are,
+              not what is inside them.
+            </p>
+            {status?.fileRoots && status.fileRoots.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {status.fileRoots.map((root) => (
+                  <span
+                    key={root}
+                    className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-400"
+                  >
+                    {root}
+                  </span>
+                ))}
+              </div>
+            )}
+            <Field
+              label="Extra folders (optional)"
+              view={views.FILE_SEARCH_ROOTS}
+              value={draft("FILE_SEARCH_ROOTS")}
+              onChange={(v) => setDraft("FILE_SEARCH_ROOTS", v)}
+              placeholder="D:\\Projects; E:\\Archive"
+              hint="Full paths, separated by semicolons. Everything outside these folders and the ones above is invisible to him."
+            />
+            <SaveButton
+              onClick={() => save("files", { FILE_SEARCH_ROOTS: draft("FILE_SEARCH_ROOTS") })}
+              busy={busySection === "files"}
+              saved={savedSection === "files"}
+            />
+            <p className="text-[10px] text-sand-600">
+              Searching follows the Apps &amp; websites switch above — turn that off
+              and file search goes with it.
+            </p>
+          </Section>
+          <GroupHeading title="MEMORY" blurb="What he keeps, and what he did." />
+          <Section
+            icon={<MemoryIcon className="h-4 w-4" />}
+            title="Memory"
+            ok={memories.length > 0}
+          >
+            <p>
+              Things Axis has learned about you, kept between sessions. He saves
+              these himself as they come up — names, preferences, how you like things
+              done — and you can ask him to forget any of them.
+            </p>
 
+            {memories.length === 0 ? (
+              <p className="text-[11px] text-sand-600">
+                Nothing yet. He&apos;ll start remembering as you talk.
+              </p>
+            ) : (
+              <ul className="max-h-44 space-y-1 overflow-y-auto">
+                {memories.map((memory) => (
+                  <li
+                    key={memory.id}
+                    className="group flex items-start gap-2 rounded-none bg-black/30 px-2.5 py-1.5"
+                  >
+                    <span className="flex-1 text-[11px] leading-relaxed text-cream">
+                      {memory.text}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        await fetch(`/api/memory?id=${encodeURIComponent(memory.id)}`, {
+                          method: "DELETE",
+                        }).catch(() => null);
+                        await loadMemories();
+                        onSaved();
+                      }}
+                      className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold text-sand-700 hover:bg-rose-500/10 hover:text-rose-400"
+                      aria-label="Forget this"
+                    >
+                      Forget
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {memories.length > 0 && (
+              <button
+                type="button"
+                onClick={async () => {
+                  await fetch("/api/memory", { method: "DELETE" }).catch(() => null);
+                  await loadMemories();
+                  onSaved();
+                }}
+                className="rounded-full px-3 py-1.5 text-xs font-semibold text-sand-500 hover:bg-white/[0.06]"
+              >
+                Forget everything
+              </button>
+            )}
+          </Section>
           <Section
             icon={<ClockIcon className="h-4 w-4" />}
             title="Sessions & notes"

@@ -273,6 +273,33 @@ calendar permission. It still works perfectly for mail and fails on calendar
 with a bare 403, so Settings says so and asks you to disconnect and connect
 again — the consent screen will include the calendar the second time.
 
+### Zapier (optional — lets Axis reach thousands of other apps)
+
+Say *"run my morning routine"* and he fires a Zap.
+
+This is the door Zapier built for exactly this, so there's no key and no
+account linking:
+
+1. In Zapier, make a Zap whose trigger is **Webhooks by Zapier → Catch Hook**.
+2. Copy the URL it hands you, and build the rest of the Zap as normal.
+3. In **Settings → Tool Armory → Zapier**, paste it as `Name = URL`, one per
+   line, using a name you'd actually say out loud.
+
+Because you built the Zap, it can do anything Zapier connects to — Axis only
+pulls the trigger.
+
+**He fires a Zap by name, never by URL.** A webhook address is a loaded action
+with no confirmation step, so one arriving in an email he read or a page he
+opened must never be something he can call. Only `hooks.zapier.com` addresses
+are accepted at all, and anything else in the list is silently ignored rather
+than half-trusted.
+
+One honest limit: Zapier answers the moment it accepts the trigger and runs the
+Zap afterwards, so "fired" means Zapier has it — not that every step succeeded.
+He says as much rather than claiming more than he knows.
+
+Env equivalent: `ZAPIER_HOOKS`.
+
 ### Phone calls (optional — lets Axis ring a number for you)
 
 Say *"call the pizza place"* and **your** phone rings. Answer it, and you're
@@ -468,6 +495,11 @@ searched on demand rather than carried in every request.
 Headings and `>` blockquotes in the editable files are for whoever opens them
 and are stripped before they reach the prompt, so the instructions in a file
 never get read back to him as though they were facts about you.
+
+Settings is in four groups: **Core** (his brain, voice and personality),
+**Tool Armory** (everything he reaches outside this computer — Gmail and
+Calendar, WhatsApp, YouTube, phone calls, Zapier), **This computer** (apps,
+websites and files) and **Memory**.
 
 **Settings → Memory** lists the facts, with a Forget button on each.
 **Settings → Sessions & notes** shows the session timeline day by day and lets
