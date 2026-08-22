@@ -14,6 +14,7 @@ import { buildSystemPrompt } from "@/lib/systemPrompt";
 import { availableTools, executeTool, TOOL_NAMES } from "@/lib/tools";
 import { normalizeToolName } from "@/lib/toolCalls";
 import { logRecap } from "@/lib/sessions";
+import { describeDevice } from "@/lib/device";
 import { recapLine } from "@/lib/sessionFormat";
 import type { ActionLogEntry } from "@/lib/types";
 
@@ -54,8 +55,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: message }, { status: 503 });
   }
 
+  // Which machine he is reading this on — desktop actions land on the computer
+  // JARVIS runs on, which is not always the one in his hand.
+  const deviceLabel = describeDevice(
+    req.headers.get("user-agent"),
+    !req.headers.get("x-forwarded-for")
+  ).label;
+
   const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
-    { role: "system", content: buildSystemPrompt() },
+    { role: "system", content: buildSystemPrompt(new Date(), deviceLabel) },
     ...incoming.map(
       (m) =>
         ({ role: m.role, content: m.content }) as OpenAI.Chat.Completions.ChatCompletionMessageParam

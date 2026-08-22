@@ -13,6 +13,8 @@ your email and send WhatsApp messages for you.
 - **Music & web** — opens and closes Spotify and Discord, and opens any website
 - **YouTube** — subscribers, views, and how your recent uploads are performing
 - **Files** — finds things in your own folders and opens them
+- **Documents** — writes real Word, PowerPoint, Excel and Markdown files
+- **Anywhere** — installs as an app on your computer, and on your phone over your own Wi-Fi
 - **Hologram v3** — drop in a picture and see it projected as a rotating 3D hologram
 - **Memory** — layered Markdown files and a dated session log; picks up where
   you left off, and survives a crash
@@ -38,6 +40,49 @@ Open http://localhost:3000.
 dev` exists for editing code: it recompiles each page and route the first time
 you hit it, which on Windows can add tens of seconds to your first request and
 makes JARVIS feel far slower than he is.
+
+### Install him as an app
+
+JARVIS is a Progressive Web App, so both Chrome and Edge will offer to install
+him. Start him as usual, then click the **install icon** in the address bar (or
+**⋯ → Apps → Install this site as an app**).
+
+You get a JARVIS icon in your Start menu and on your desktop, and he opens in
+his own window with no address bar, tabs or browser buttons — indistinguishable
+from any other installed program. Pin it to the taskbar and that's the whole
+launch: one click.
+
+The window still needs the server running behind it. Keep using
+`START-JARVIS.bat`, or put a shortcut to it in `shell:startup` so it's always
+there (see below).
+
+### On your phone
+
+Double-click **START-JARVIS-PHONE.bat**. It prints an address like
+`https://192.168.1.42:3443` — open that on your phone, then use **Share → Add to
+Home Screen** (iPhone) or **⋮ → Install app** (Android). You get the same
+JARVIS icon and the same full-screen app.
+
+Both devices have to be on the same Wi-Fi, and the computer has to stay on —
+your phone is a window onto the JARVIS running there, which is what lets it
+reach your files, your apps and the same memory.
+
+**Your phone will warn you about the certificate the first time.** That warning
+is accurate and expected: it means nobody has vouched for it. You made it
+yourself, on your own computer, seconds earlier. Tap **Advanced → Continue**.
+
+The reason for the certificate at all is the microphone: browsers refuse it on
+an insecure connection, with `localhost` as the only exception. Served over
+plain `http`, JARVIS on your phone would be mute with no explanation, so
+`START-JARVIS-PHONE.bat` generates a certificate covering your computer's
+network addresses and serves HTTPS. If Windows Firewall asks whether to allow
+Node.js, say yes for **Private networks** — decline it and your phone can't get
+through.
+
+**He knows which device you're on.** The session log records it, so *"we were on
+the computer this morning"* is something he actually knows. It also changes what
+he says: ask him to open Spotify from your phone and he'll tell you it's opening
+on the computer at home, rather than letting you wonder where it went.
 
 ### JARVIS is yours, and doesn't need anything to stay running
 
@@ -295,6 +340,37 @@ model at all. The *sir* follows the setting above, so it becomes "Welcome home,
 boss." if that's what you've told him to call you. They're a table in `src/lib/catchphrases.ts` if you want to add more.
 
 Env equivalents: `USER_TITLE`, `HUMOUR`.
+
+### Documents (no setup needed)
+
+*"Write me an essay on the fall of Rome"*, *"make a deck for the quarterly
+review"*, *"put my January budget in a spreadsheet"* — and you get a **file**,
+not three screens of chat you then have to copy somewhere.
+
+| You ask for | You get |
+|---|---|
+| an essay, a report, a letter | Word (`.docx`) |
+| slides, a deck, a presentation | PowerPoint (`.pptx`) |
+| a spreadsheet, a table, a budget | Excel (`.xlsx`) |
+| notes, a list | Markdown (`.md`) |
+
+Everything lands in **Documents\JARVIS**, which is already inside the folders he
+can search — so *"open the essay you just wrote"* works immediately. He never
+overwrites: a second document with the same title becomes `(2)`.
+
+Filenames are made safe for Windows first, which is less obvious than it sounds
+— Windows refuses several punctuation characters, silently drops trailing dots,
+and reserves device names, so a document titled "CON" cannot be created at all
+under that name.
+
+Change where they go with `DOCUMENTS_FOLDER`.
+
+> Two of the libraries that write these formats carry published advisories, both
+> denial-of-service in parsers JARVIS never reaches: an image decoder used only
+> when embedding pictures in a deck, which he doesn't do, and a UUID helper
+> reachable only through an argument that isn't passed. In a single-user app on
+> your own machine, where the only input is what you asked for, neither is
+> exploitable — but you should know they're there rather than find out later.
 
 ### Memory (no setup needed)
 

@@ -1,4 +1,5 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { describeDevice, isLoopback } from "@/lib/device";
 import { isAIConfigured, getAIProvider } from "@/lib/ai";
 import { isElevenLabsConfigured } from "@/lib/elevenlabs";
 import {
@@ -20,7 +21,11 @@ import type { IntegrationStatus } from "@/lib/types";
 
 export const runtime = "nodejs";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const forwarded = req.headers.get("x-forwarded-for");
+  const local = !forwarded || isLoopback(forwarded.split(",")[0]);
+  const device = describeDevice(req.headers.get("user-agent"), local);
+
   const status: IntegrationStatus = {
     brain: isAIConfigured(),
     brainProvider: getAIProvider(),
@@ -37,6 +42,7 @@ export async function GET() {
     youtube: isYouTubeConfigured(),
     youtubeChannel: configuredChannel() ?? null,
     fileRoots: isFileSearchEnabled() ? searchRoots().map((root) => root.label) : [],
+    device,
     memories: memoryCount(),
     sessionDays: listSessionDates().length,
     title: userTitle(),

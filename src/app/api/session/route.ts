@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { describeDevice, isLoopback } from "@/lib/device";
 import {
   ensureMemoryFiles,
   listSessionDates,
@@ -43,7 +44,15 @@ export async function POST(req: NextRequest) {
 
   try {
     if (action === "open") {
-      return NextResponse.json(startSession());
+      // Which machine he is on. The address says whether it is this one; the
+      // user agent says what kind of thing it is.
+      const local = isLoopback(
+        req.headers.get("x-forwarded-for")?.split(",")[0] ?? null
+      ) || !req.headers.get("x-forwarded-for");
+      const device = describeDevice(req.headers.get("user-agent"), local);
+
+      const briefing = startSession(new Date(), device.label);
+      return NextResponse.json({ ...briefing, device });
     }
     if (action === "pause" || action === "close") {
       const session = markSession(action === "pause" ? "paused" : "closed");

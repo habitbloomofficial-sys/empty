@@ -206,7 +206,7 @@ export interface SessionBriefing {
  * as in the design this follows: a fresh day, a session being picked up, and
  * one that stopped without saying so.
  */
-export function startSession(now: Date = new Date()): SessionBriefing {
+export function startSession(now: Date = new Date(), device?: string): SessionBriefing {
   const date = sessionKey(now);
   const existing = readSession(date);
   const startCase = detectStartCase(existing, now);
@@ -219,12 +219,13 @@ export function startSession(now: Date = new Date()): SessionBriefing {
     recap: [],
   };
 
+  const where = device ? ` on ${device}` : "";
   const openingLine =
     startCase === "new-day"
-      ? "Session opened (new day)"
+      ? `Session opened (new day)${where}`
       : startCase === "resume"
-        ? "Session resumed"
-        : "Session recovered after an interruption ⚠";
+        ? `Session resumed${where}`
+        : `Session recovered after an interruption ⚠${where}`;
 
   // Reopening within the same minute is one arrival — a refresh, or React
   // remounting the page in development. Recording it twice would make the log
@@ -253,7 +254,10 @@ function buildBriefing(
 ): string {
   if (startCase === "new-day") {
     if (!previous) return "";
-    return `Last time — ${previous.date} — ${summariseSession(previous, 180)}.`;
+    // Named by how long ago rather than by date: "yesterday" is how anyone
+    // actually refers to it, and a bare date makes him sound like a filing
+    // cabinet.
+    return `When we last spoke, ${whenWas(previous.date, today.date)}, ${summariseSession(previous, 260)}.`;
   }
 
   // Both resuming and recovering want the same thing: the last few things that
@@ -271,6 +275,21 @@ function buildBriefing(
   return startCase === "recovery"
     ? `We were interrupted, sir. Before that: ${items}.`
     : `Picking up where we left off — ${items}.`;
+}
+
+/** "yesterday", "on Tuesday", "on the 3rd of March" — whichever fits. */
+export function whenWas(date: string, relativeTo: string): string {
+  const then = new Date(`${date}T12:00:00`);
+  const now = new Date(`${relativeTo}T12:00:00`);
+  const days = Math.round((now.getTime() - then.getTime()) / 86_400_000);
+
+  if (days <= 0) return "earlier today";
+  if (days === 1) return "yesterday";
+  if (days < 7) {
+    return `on ${then.toLocaleDateString(undefined, { weekday: "long" })}`;
+  }
+  if (days < 14) return "last week";
+  return `on ${then.toLocaleDateString(undefined, { day: "numeric", month: "long" })}`;
 }
 
 export interface RecallHit {

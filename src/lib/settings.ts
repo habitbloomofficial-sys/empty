@@ -38,6 +38,7 @@ export const SETTING_KEYS = [
   "YOUTUBE_CHANNEL",
   "DESKTOP_CONTROL",
   "FILE_SEARCH_ROOTS",
+  "DOCUMENTS_FOLDER",
   "USER_TITLE",
   "HUMOUR",
 ] as const;

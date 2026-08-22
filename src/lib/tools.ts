@@ -26,6 +26,7 @@ import {
 } from "./youtube";
 import { isFileSearchEnabled, openFile, searchFiles } from "./files";
 import { isPhoneConfigured, placeCall } from "./phone";
+import { createDocument, outputFolder, type DocumentKind } from "./documents";
 import { createEvent, listEvents } from "./calendar";
 import { isCalendarConfigured } from "./gmail";
 import { normalizeToolName, parseToolArguments } from "./toolCalls";
@@ -510,6 +511,62 @@ export const toolDefinitions: OpenAI.Chat.Completions.ChatCompletionTool[] = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "create_document",
+      description:
+        "Write a real file he can open: a Word document for an essay or a report, a PowerPoint deck for slides, an Excel workbook for a table or budget, or a Markdown file for notes. Use this whenever he asks you to write, draft, or put something in a document, an essay, a presentation or a spreadsheet — write the actual content here rather than saying it in chat and leaving him to copy it. Write it in full: real paragraphs for prose, real figures for a table. It is saved in his Documents folder and you can open it for him afterwards.",
+      parameters: {
+        type: "object",
+        properties: {
+          kind: {
+            type: "string",
+            enum: ["essay", "slides", "spreadsheet", "notes"],
+            description:
+              "essay = Word (.docx) for prose; slides = PowerPoint (.pptx); spreadsheet = Excel (.xlsx); notes = Markdown (.md).",
+          },
+          title: { type: "string", description: "The title. Also becomes the file name." },
+          subtitle: { type: "string" },
+          sections: {
+            type: "array",
+            description:
+              "For essay, slides and notes. One entry per section — and for slides, one entry per slide.",
+            items: {
+              type: "object",
+              properties: {
+                heading: { type: "string", description: "Section heading, or the slide's title." },
+                paragraphs: {
+                  type: "array",
+                  items: { type: "string" },
+                  description: "Prose, one string per paragraph. Write them properly, not as notes.",
+                },
+                bullets: { type: "array", items: { type: "string" } },
+              },
+            },
+          },
+          sheets: {
+            type: "array",
+            description: "For a spreadsheet. Usually one.",
+            items: {
+              type: "object",
+              properties: {
+                name: { type: "string", description: "Tab name." },
+                columns: { type: "array", items: { type: "string" } },
+                rows: {
+                  type: "array",
+                  description: "Each row is an array of cells, in the same order as the columns.",
+                  items: { type: "array", items: {} },
+                },
+              },
+              required: ["columns", "rows"],
+            },
+          },
+        },
+        required: ["kind", "title"],
+      },
+    },
+  },
 ];
 
 /** Every tool name that exists, for validating what comes back off the stream. */
@@ -542,6 +599,8 @@ export function availableTools(): OpenAI.Chat.Completions.ChatCompletionTool[] {
     // Memory needs no configuration and is never worth withholding.
     if (name === "recall" || name === "note_lesson") return true;
     if (name === "search_files" || name === "open_file") return isFileSearchEnabled();
+    // Writing a document needs nothing configured — it is a file on his disk.
+    if (name === "create_document") return true;
     // Hologram v3 is a panel in this app, not an action on the machine, so it
     // isn't gated behind the desktop-control switch.
     if (name === "open_hologram") return true;
@@ -688,6 +747,53 @@ export async function executeTool(
         return {
           result,
           log: { tool: name, summary: `Opened ${result.url}`, ok: true },
+        };
+      }
+      case "create_document": {
+        const kind = (text(args.kind) ?? "essay").toLowerCase() as DocumentKind;
+        const sections = Array.isArray(args.sections)
+          ? (args.sections as Record<string, unknown>[]).map((section) => ({
+              heading: text(section.heading),
+              paragraphs: Array.isArray(section.paragraphs)
+                ? (section.paragraphs as unknown[]).map(String)
+                : undefined,
+              bullets: Array.isArray(section.bullets)
+                ? (section.bullets as unknown[]).map(String)
+                : undefined,
+            }))
+          : undefined;
+        const sheets = Array.isArray(args.sheets)
+          ? (args.sheets as Record<string, unknown>[]).map((sheet) => ({
+              name: text(sheet.name),
+              columns: Array.isArray(sheet.columns)
+                ? (sheet.columns as unknown[]).map(String)
+                : [],
+              rows: Array.isArray(sheet.rows)
+                ? (sheet.rows as unknown[]).map((row) =>
+                    Array.isArray(row) ? (row as unknown[]).map((cell) =>
+                      typeof cell === "number" ? cell : String(cell ?? "")
+                    ) : [String(row ?? "")]
+                  )
+                : [],
+            }))
+          : undefined;
+
+        const written = await createDocument({
+          kind,
+          title: required(args.title, "title"),
+          subtitle: text(args.subtitle),
+          sections,
+          sheets,
+          filename: text(args.filename),
+        });
+
+        return {
+          result: { ...written, note: `Saved in ${outputFolder()}. Ask me to open it and I will.` },
+          log: {
+            tool: name,
+            summary: `Wrote ${written.filename} (${written.size})`,
+            ok: true,
+          },
         };
       }
       case "open_youtube": {

@@ -44,6 +44,7 @@ export default function JarvisApp() {
   // What he remembers of where things stood. undefined until the session has
   // been opened; "" once opened with nothing worth saying.
   const [briefing, setBriefing] = useState<string | undefined>(undefined);
+  const [recap, setRecap] = useState<{ line: string; case: string } | null>(null);
   // Hands-free: pressing the microphone opens it and leaves it open, so a
   // conversation is a conversation rather than a series of button presses.
   const [handsFree, setHandsFree] = useState(false);
@@ -364,8 +365,16 @@ export default function JarvisApp() {
     let cancelled = false;
     (async () => {
       try {
-        const data = await postJson<{ briefing?: string }>("/api/session", { action: "open" });
-        if (!cancelled) setBriefing(typeof data.briefing === "string" ? data.briefing : "");
+        const data = await postJson<{ briefing?: string; case?: string; previous?: { date: string; summary: string } | null }>(
+          "/api/session",
+          { action: "open" }
+        );
+        if (cancelled) return;
+        const line = typeof data.briefing === "string" ? data.briefing : "";
+        setBriefing(line);
+        // Shown as well as spoken. He has remembered this all along; not
+        // putting it on screen was the reason it never felt like it.
+        if (line) setRecap({ line, case: data.case ?? "" });
       } catch {
         // No briefing is a worse greeting, not a broken app — let him speak.
         if (!cancelled) setBriefing("");
@@ -544,6 +553,29 @@ export default function JarvisApp() {
         {(speech.error || error || voiceError) && (
           <div className="glass mt-3 max-w-md rounded-xl px-4 py-2 text-center text-xs text-rose-600">
             {speech.error || error || voiceError}
+          </div>
+        )}
+
+        {recap && (
+          <div className="glass mt-3 w-full max-w-md rounded-xl px-4 py-3 text-left">
+            <div className="mb-1 flex items-center gap-2">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-sky-700/70">
+                {recap.case === "recovery" ? "We were interrupted" : "Where we left off"}
+              </span>
+              {status?.device?.kind && status.device.kind !== "computer" && (
+                <span className="rounded-full bg-sky-500/10 px-2 py-0.5 text-[10px] font-medium text-sky-700">
+                  on {status.device.kind}
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={() => setRecap(null)}
+                className="ml-auto rounded px-1.5 text-[10px] font-semibold text-ink-700/40 hover:bg-slate-500/10"
+              >
+                Dismiss
+              </button>
+            </div>
+            <p className="text-xs leading-relaxed text-ink-900">{recap.line}</p>
           </div>
         )}
 

@@ -56,6 +56,8 @@ export interface IntegrationStatus {
   youtubeChannel: string | null;
   /** The folders JARVIS is allowed to search, by label. */
   fileRoots: string[];
+  /** Which of your machines you're reading this on. */
+  device: { kind: "phone" | "tablet" | "computer"; label: string; remote: boolean };
   /** How many things he currently remembers about you. */
   memories: number;
   /** How many days of session history are on disk. */
