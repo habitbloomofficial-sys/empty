@@ -11,6 +11,7 @@ import {
   MemoryIcon,
   BoltIcon,
   GlobeIcon,
+  LockIcon,
   MusicIcon,
   PhoneIcon,
   PlayIcon,
@@ -389,6 +390,39 @@ export function SettingsModal({
   const draft = (key: string) => drafts[key] ?? "";
   const setDraft = (key: string, value: string) =>
     setDrafts((prev) => ({ ...prev, [key]: value }));
+
+  /**
+   * The passcode has its own endpoint rather than riding along with the other
+   * settings: it is stored hashed, in its own file, and it must never be
+   * returned to the browser — not even masked.
+   */
+  async function savePasscode(passcode: string) {
+    setBusySection("passcode");
+    setSavedSection(null);
+    setError(null);
+    try {
+      await postJson("/api/auth", { passcode }, { method: "PUT" });
+      setDraft("PASSCODE", "");
+      setSavedSection("passcode");
+      setChecks((prev) => ({
+        ...prev,
+        passcode: [
+          {
+            key: "PASSCODE" as never,
+            ok: true,
+            message: passcode
+              ? "Passcode set. Axis will ask for it when he's reached from the internet."
+              : "Passcode removed. Axis will no longer answer from the internet at all.",
+          },
+        ],
+      }));
+      onSaved();
+    } catch (err) {
+      setError(describeClientFetchError(err));
+    } finally {
+      setBusySection(null);
+    }
+  }
 
   async function save(section: string, updates: Record<string, string>) {
     setBusySection(section);
@@ -1283,6 +1317,67 @@ export function SettingsModal({
               page telling him to send something, buy something, or ignore what
               you&apos;ve told him gets reported to you, not obeyed. He also
               won&apos;t fetch addresses on your own network.
+            </p>
+          </Section>
+          <Section
+            icon={<LockIcon className="h-4 w-4" />}
+            title="Remote access"
+            ok={Boolean(status?.passcodeSet)}
+          >
+            <p>
+              Reaching Axis when you&apos;re nowhere near this computer — on a
+              train, on holiday, anywhere with a signal. It needs two things: a
+              passcode here, and a tunnel running on this computer.
+            </p>
+            <div className="rounded-none bg-amber-500/10 px-2.5 py-2 text-amber-300">
+              <p className="mb-1 font-semibold">The passcode is not optional.</p>
+              <p>
+                Axis reads your email, places calls, runs your automations and
+                opens things on this computer. Reachable from the internet
+                without a passcode he is all of that for whoever finds the
+                address — so he refuses to answer the internet at all until one
+                is set. On your own Wi-Fi nothing changes; no passcode is asked
+                for there.
+              </p>
+            </div>
+            <Field
+              label={status?.passcodeSet ? "Change the passcode" : "Set a passcode"}
+              // No view: unlike every other key here, this one is never read
+              // back from the server in any form, so there is nothing to show.
+              view={undefined}
+              value={draft("PASSCODE")}
+              onChange={(v) => setDraft("PASSCODE", v)}
+              placeholder={status?.passcodeSet ? "Type a new one to replace it" : "At least 6 characters"}
+              hint={
+                status?.passcodeSet
+                  ? "A passcode is set. Changing it signs out every phone that knew the old one."
+                  : "Six characters minimum. This is the only thing between the internet and your computer, so make it a phrase rather than a word."
+              }
+            />
+            <SaveButton
+              onClick={() => void savePasscode(draft("PASSCODE"))}
+              busy={busySection === "passcode"}
+              saved={savedSection === "passcode"}
+              disabled={!draft("PASSCODE").trim()}
+              checks={checks.passcode}
+              extra={
+                status?.passcodeSet ? (
+                  <button
+                    type="button"
+                    onClick={() => void savePasscode("")}
+                    className="rounded-full px-3 py-1.5 text-xs font-semibold text-sand-500 hover:bg-white/[0.06]"
+                  >
+                    Remove
+                  </button>
+                ) : undefined
+              }
+            />
+            <p className="text-[10px] text-sand-600">
+              Then run <b>START-AXIS-ANYWHERE.bat</b> on this computer instead of
+              the usual launcher. It gives you a web address that works from
+              anywhere and a QR code to carry it to your phone. The computer has
+              to stay on — your phone is still a window onto the Axis running
+              here.
             </p>
           </Section>
           <GroupHeading title="THIS COMPUTER" blurb="What he may do on the machine he runs on." />

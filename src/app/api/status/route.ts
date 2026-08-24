@@ -18,6 +18,8 @@ import { isFileSearchEnabled, searchRoots } from "@/lib/files";
 import { memoryCount } from "@/lib/memory";
 import { learnedCount } from "@/lib/learned";
 import { searchProvider } from "@/lib/web";
+import { isPasscodeSet } from "@/lib/passcode";
+import { requestZone } from "@/lib/network";
 import { listSessionDates } from "@/lib/sessions";
 import { humour, userTitle } from "@/lib/address";
 import type { IntegrationStatus } from "@/lib/types";
@@ -44,6 +46,8 @@ export async function GET(req: NextRequest) {
     zaps: savedZaps().map((zap) => zap.name),
     desktopControl: isDesktopControlEnabled(),
     webSearch: searchProvider(),
+    passcodeSet: isPasscodeSet(),
+    zone: requestZone(req.headers, local ? "127.0.0.1" : null),
     learned: learnedCount(),
     youtube: isYouTubeConfigured(),
     youtubeChannel: configuredChannel() ?? null,

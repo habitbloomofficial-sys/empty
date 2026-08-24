@@ -54,6 +54,10 @@ export interface IntegrationStatus {
   desktopControl: boolean;
   /** How he searches the web, if he can — usually through the brain he runs on. */
   webSearch: "google" | "gemini" | "openrouter" | "anthropic" | null;
+  /** Whether a passcode exists, which is what makes remote access possible. */
+  passcodeSet: boolean;
+  /** Where this request came from: his own machine, your network, or the internet. */
+  zone: "loopback" | "private" | "public";
   /** How many things he has learned and kept. */
   learned: number;
   /** Whether a YouTube key is available for channel statistics. */

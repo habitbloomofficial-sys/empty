@@ -22,7 +22,8 @@ real.
 - **YouTube** — subscribers, views, and how your recent uploads are performing
 - **Files** — finds things in your own folders and opens them
 - **Documents** — writes real Word, PowerPoint, Excel and Markdown files
-- **Anywhere** — installs as an app on your computer, and on your phone over your own Wi-Fi
+- **Anywhere** — installs as an app on your computer and your phone, on your own
+  Wi-Fi or over the internet through a passcode-locked tunnel
 - **Hologram v3** — drop in a picture and see it projected as a rotating 3D hologram
 - **Memory** — layered Markdown files and a dated session log; picks up where
   you left off, and survives a crash
@@ -118,6 +119,58 @@ he says: ask him to open Spotify from your phone and he'll tell you it's opening
 on the computer at home, rather than letting you wonder where it went. If the
 microphone is ever blocked, the instructions he gives you name your phone's
 actual settings rather than a padlock that isn't there.
+
+### From anywhere (not just your own Wi-Fi)
+
+The phone setup above only reaches Axis while you're on the same network. To
+talk to him from a train, a hotel, or another country, he needs an address on
+the internet — and, before that, a lock on the door.
+
+**Set a passcode first.** In **Settings → Tool Armory → Remote access**, on the
+computer. Six characters minimum; make it a phrase. This is not optional and
+there is no way to switch it off: Axis reads your email, places calls, runs your
+automations and opens things on your desktop, and reachable from the internet
+without a passcode he is all of that for whoever finds the address. **He refuses
+to answer the internet at all until one is set** — the page just says so.
+
+Nothing changes on your own Wi-Fi or at the computer itself. No passcode is
+asked for there.
+
+**Then run START-AXIS-ANYWHERE.bat** instead of the usual launcher. It:
+
+1. Refuses to start if no passcode is set, and tells you where to set one.
+2. Downloads Cloudflare's `cloudflared` once, into `data/` — a single file,
+   nothing installed system-wide, gone when you delete the folder.
+3. Starts Axis and opens a tunnel to him.
+4. Prints a QR code for an address like `https://brave-pilot-fresh.trycloudflare.com`.
+
+Scan it, type the passcode once, and add him to your home screen. He stays
+signed in for 30 days per device.
+
+**What the tunnel is.** `cloudflared` makes an outbound connection from your
+computer to Cloudflare and gets back a public HTTPS address that forwards to
+Axis. **Nothing is opened on your router and no port is forwarded** — the
+connection is made from the inside out, which is why it needs no configuration
+and leaves nothing behind when it stops. The certificate is a real one, so
+unlike the Wi-Fi route there's no browser warning and the microphone works
+immediately.
+
+**Three things worth knowing before you travel:**
+
+- **The address changes every restart.** That's how free quick tunnels work, and
+  on balance it helps: an address nobody has seen before is one nobody is
+  sitting on. Re-scan the QR when you restart.
+- **The computer has to stay awake and online.** Check its sleep settings —
+  a laptop that suspends when you shut the lid takes Axis with it.
+- **Changing the passcode signs out every device.** That is the recovery path
+  if a phone is lost.
+
+**If you'd rather not be on the public internet at all**, install
+[Tailscale](https://tailscale.com/) (free for personal use) on both the computer
+and the phone. It puts them on a private network of your own, wherever they
+are — then use the Wi-Fi instructions above and the phone will reach the
+computer from anywhere. Axis treats a Tailscale address as your own network, so
+it works exactly like being at home.
 
 ### Axis is yours, and doesn't need anything to stay running
 
