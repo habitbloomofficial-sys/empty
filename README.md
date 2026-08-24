@@ -129,6 +129,11 @@ The phone setup above only reaches Axis while you're on the same network. To
 talk to him from a train, a hotel, or another country, he needs an address on
 the internet — and, before that, a lock on the door.
 
+**Nothing to sign up for.** This needs no account of any kind — not Twilio, not
+anything else on this page. Twilio is only for placing phone calls and sending
+WhatsApp messages, and neither has anything to do with reaching Axis from your
+phone. A passcode and the launcher are the whole of it, and both are free.
+
 **Set a passcode first.** In **Settings → Tool Armory → Remote access**, on the
 computer. Six characters minimum; make it a phrase. This is not optional and
 there is no way to switch it off: Axis reads your email, places calls, runs your
@@ -505,6 +510,11 @@ Env equivalent: `ZAPIER_HOOKS`.
 
 ### Phone calls (optional — lets Axis ring a number for you)
 
+> Uses the **same** Twilio Account SID and Auth Token as WhatsApp above — see
+> the note there for where to find them. Twilio bills per minute, on both legs
+> of the call.
+
+
 Say *"call the pizza place"* and **your** phone rings. Answer it, and you're
 connected to them.
 
@@ -551,6 +561,18 @@ Easiest path is Twilio's WhatsApp sandbox:
 
 1. Create a free [Twilio](https://www.twilio.com/) account and open the
    WhatsApp Sandbox under Messaging.
+
+> **Finding your Account SID and Auth Token.** Sign in at
+> [console.twilio.com](https://console.twilio.com) on a computer. Both are on
+> the **first page you land on**, in a panel headed **Account Info**, usually
+> near the bottom. The **Account SID** starts with `AC` and is safe to read off
+> the screen; the **Auth Token** sits beside it, hidden behind a **Show**
+> button, and has no `AC` in front of it. Ignore anything labelled *API key* —
+> those start with `SK` and are a different thing entirely. The Twilio mobile
+> app shows the same account but is built for monitoring rather than setup; the
+> web console is the reliable place to copy from. Axis checks the shape of both
+> as you paste them and says so if you've picked up the wrong string.
+
 2. From your own WhatsApp, send the sandbox's "join <code>" message to the
    sandbox number to opt your number in.
 3. Paste your Account SID and Auth Token into **Settings → WhatsApp**, with the

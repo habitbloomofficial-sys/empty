@@ -23,6 +23,7 @@ import type { IntegrationStatus } from "@/lib/types";
 import { describeClientFetchError, postJson } from "@/lib/clientFetch";
 import { normalizeVoiceId } from "@/lib/voiceId";
 import { MemoryPanel } from "./MemoryPanel";
+import { checkAccountSid, checkAuthToken, checkPhoneNumber } from "@/lib/twilioIds";
 
 interface VoiceOption {
   id: string;
@@ -1008,20 +1009,55 @@ export function SettingsModal({
             title="WhatsApp"
             ok={Boolean(status?.whatsapp)}
           >
-            <p>From your Twilio console — the WhatsApp sandbox works fine to start.</p>
+            <p>
+              Sending WhatsApp messages needs a Twilio account. The sandbox works
+              fine to start and costs nothing to try.
+            </p>
+            <div className="rounded-none bg-amber-500/10 px-2.5 py-2 text-amber-300">
+              <p className="mb-1 font-semibold">Where these two live</p>
+              <ol className="ml-4 list-decimal space-y-0.5">
+                <li>
+                  Sign in at{" "}
+                  <a
+                    href="https://console.twilio.com"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-medium underline"
+                  >
+                    console.twilio.com
+                  </a>{" "}
+                  on a computer.
+                </li>
+                <li>
+                  They are on the <b>first page you land on</b>, in a panel called
+                  <b> Account Info</b>, near the bottom.
+                </li>
+                <li>
+                  <b>Account SID</b> starts with <code>AC</code>. <b>Auth Token</b>
+                  {" "}is hidden until you press <b>Show</b> — it has no AC in front
+                  of it.
+                </li>
+              </ol>
+              <p className="mt-1">
+                Ignore anything labelled <i>API key</i>: those start with SK and
+                are a different thing.
+              </p>
+            </div>
             <Field
               label="Twilio Account SID"
               view={views.TWILIO_ACCOUNT_SID}
               value={draft("TWILIO_ACCOUNT_SID")}
               onChange={(v) => setDraft("TWILIO_ACCOUNT_SID", v)}
               placeholder="AC…"
+              hint={checkAccountSid(draft("TWILIO_ACCOUNT_SID")).message || undefined}
             />
             <Field
               label="Twilio Auth Token"
               view={views.TWILIO_AUTH_TOKEN}
               value={draft("TWILIO_AUTH_TOKEN")}
               onChange={(v) => setDraft("TWILIO_AUTH_TOKEN", v)}
-              placeholder={views.TWILIO_AUTH_TOKEN?.display || ""}
+              placeholder={views.TWILIO_AUTH_TOKEN?.display || "32 letters and numbers"}
+              hint={checkAuthToken(draft("TWILIO_AUTH_TOKEN")).message || undefined}
             />
             <Field
               label="Send from (Twilio number)"
@@ -1122,7 +1158,8 @@ export function SettingsModal({
             <p>
               Say <i>&quot;call the pizza place&quot;</i> and your phone rings — answer
               it and you&apos;re connected. <b>You</b> do the talking; Axis places the
-              call and gets out of the way.
+              call and gets out of the way. Twilio charges per minute for this, on
+              both legs of the call.
             </p>
             <Field
               label="Twilio voice number"
@@ -1130,7 +1167,10 @@ export function SettingsModal({
               value={draft("TWILIO_VOICE_FROM")}
               onChange={(v) => setDraft("TWILIO_VOICE_FROM", v)}
               placeholder="+15551234567"
-              hint="A Twilio number with Voice enabled. Uses the same account SID and auth token as WhatsApp, above."
+              hint={
+                checkPhoneNumber(draft("TWILIO_VOICE_FROM")).message ||
+                "A Twilio number with Voice enabled. Same Account SID and Auth Token as WhatsApp above — set those first."
+              }
             />
             <Field
               label="Your own number"
@@ -1138,7 +1178,10 @@ export function SettingsModal({
               value={draft("MY_PHONE_NUMBER")}
               onChange={(v) => setDraft("MY_PHONE_NUMBER", v)}
               placeholder="+4512345678"
-              hint="The phone that rings. Nothing is dialled until you answer this."
+              hint={
+                checkPhoneNumber(draft("MY_PHONE_NUMBER")).message ||
+                "The phone that rings. Nothing is dialled until you answer this."
+              }
             />
             <Field
               label="Your country code (optional)"
@@ -1329,6 +1372,12 @@ export function SettingsModal({
               Reaching Axis when you&apos;re nowhere near this computer — on a
               train, on holiday, anywhere with a signal. It needs two things: a
               passcode here, and a tunnel running on this computer.
+            </p>
+            <p className="text-[11px] text-sand-600">
+              <b>No account, and nothing to sign up for.</b> This has nothing to do
+              with Twilio, or any of the other connections on this page — Twilio is
+              only for placing calls and sending WhatsApp messages. A passcode and
+              the launcher are the whole of it, and both are free.
             </p>
             <div className="rounded-none bg-amber-500/10 px-2.5 py-2 text-amber-300">
               <p className="mb-1 font-semibold">The passcode is not optional.</p>
