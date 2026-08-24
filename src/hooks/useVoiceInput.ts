@@ -1,5 +1,6 @@
 "use client";
 
+import { micBlockedMessage } from "@/lib/micHelp";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toMonoWav } from "@/lib/audio";
 import { describeClientFetchError } from "@/lib/clientFetch";
@@ -49,7 +50,7 @@ function micErrorMessage(err: unknown): string {
   switch (name) {
     case "NotAllowedError":
     case "SecurityError":
-      return "Microphone access is blocked, sir. Click the padlock icon at the left of the address bar, set Microphone to Allow, then reload the page.";
+      return micBlockedMessage();
     case "NotFoundError":
     case "OverconstrainedError":
       return "I can't find a microphone, sir — check one is plugged in and enabled in Windows sound settings.";
@@ -94,8 +95,9 @@ function getSpeechRecognitionCtor(): SpeechRecognitionConstructor | null {
 }
 
 const SPEECH_API_ERRORS: Record<string, string> = {
-  "not-allowed":
-    "Microphone access is blocked, sir. Click the padlock icon in the address bar, set Microphone to Allow, then reload.",
+  // Filled in at the point of failure, since the right advice depends on the
+  // device this is being read on.
+  "not-allowed": "",
   "service-not-allowed":
     "This browser's speech service refused the request, sir — add a Gemini or ElevenLabs API key in Settings and I'll transcribe it myself instead.",
   "no-speech": "I didn't catch anything, sir — try again a little closer to the mic.",
@@ -347,7 +349,10 @@ export function useVoiceInput(
     recognition.onerror = (event) => {
       setIsListening(false);
       setInterimTranscript("");
-      const message = SPEECH_API_ERRORS[event.error];
+      // A refused microphone is answered where it happens, so the advice can
+      // name the device being held rather than assuming a desktop browser.
+      const message =
+        event.error === "not-allowed" ? micBlockedMessage() : SPEECH_API_ERRORS[event.error];
       if (message) setError(message);
       else if (event.error) setError(`Voice input failed (${event.error}), sir.`);
     };

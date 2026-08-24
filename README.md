@@ -78,31 +78,46 @@ there (see below).
 
 ### On your phone
 
-Double-click **START-Axis-PHONE.bat**. It prints an address like
-`https://192.168.1.42:3443` — open that on your phone, then use **Share → Add to
-Home Screen** (iPhone) or **⋮ → Install app** (Android). You get the same
-Axis icon and the same full-screen app.
+Axis stays on your computer; your phone becomes a second window onto him. That
+is what lets him still reach your files, your apps and the same memory while
+you're holding the phone — and it is why the computer has to stay on.
 
-Both devices have to be on the same Wi-Fi, and the computer has to stay on —
-your phone is a window onto the Axis running there, which is what lets it
-reach your files, your apps and the same memory.
+**Both devices must be on the same Wi-Fi.** Phone data won't work; it has to be
+your home network.
 
-**Your phone will warn you about the certificate the first time.** That warning
-is accurate and expected: it means nobody has vouched for it. You made it
-yourself, on your own computer, seconds earlier. Tap **Advanced → Continue**.
+1. **On the computer**, double-click **START-AXIS-PHONE.bat** instead of the
+   usual one. Leave the black window open — closing it is how you stop him.
+2. **Windows will ask whether to allow Node.js through the firewall.** Say yes,
+   and make sure **Private networks** is ticked. Decline this and your phone
+   cannot reach the computer at all.
+3. **A QR code appears in that window.** Point your phone's camera at it and tap
+   the link that pops up. (If the camera won't, the address is printed
+   underneath — something like `https://192.168.1.42:3443`, typed into your
+   phone's browser.)
+4. **Your phone warns you the connection isn't private. Tap Advanced, then
+   Continue.** This is expected, and this once it is safe: see below.
+5. **Install him.** iPhone: the Share button, then *Add to Home Screen*.
+   Android: the three dots, then *Install app*. You get the Axis icon on your
+   home screen and the same full-screen app, with no browser bars.
 
-The reason for the certificate at all is the microphone: browsers refuse it on
-an insecure connection, with `localhost` as the only exception. Served over
-plain `http`, Axis on your phone would be mute with no explanation, so
-`START-Axis-PHONE.bat` generates a certificate covering your computer's
-network addresses and serves HTTPS. If Windows Firewall asks whether to allow
-Node.js, say yes for **Private networks** — decline it and your phone can't get
-through.
+**About that warning.** Browsers refuse to hand over the microphone on an
+insecure connection — `localhost` is the only exception, and your phone isn't
+localhost. So the launcher makes a certificate on your own computer and serves
+HTTPS with it. The warning means "nobody has vouched for this certificate",
+which is true: you made it yourself, on the machine in front of you, seconds
+earlier. Without it, Axis on your phone would be mute and never say why.
+
+**If the QR code doesn't work**, the window lists every address the computer
+has. The one it picked is its best guess — laptops with Docker, WSL or a VPN
+installed report several, and only one of them is your actual Wi-Fi. Try the
+others.
 
 **He knows which device you're on.** The session log records it, so *"we were on
 the computer this morning"* is something he actually knows. It also changes what
 he says: ask him to open Spotify from your phone and he'll tell you it's opening
-on the computer at home, rather than letting you wonder where it went.
+on the computer at home, rather than letting you wonder where it went. If the
+microphone is ever blocked, the instructions he gives you name your phone's
+actual settings rather than a padlock that isn't there.
 
 ### Axis is yours, and doesn't need anything to stay running
 

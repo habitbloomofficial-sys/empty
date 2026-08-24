@@ -1,5 +1,7 @@
 "use client";
 
+import { micBlockedMessage } from "@/lib/micHelp";
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import { detectWakeWord } from "@/lib/wakeWord";
 
@@ -135,7 +137,7 @@ export function useWakeWord({
       // day; only a refusal is worth telling anyone about.
       if (event.error === "not-allowed" || event.error === "service-not-allowed") {
         setError(
-          "I can't listen for my name — microphone access is blocked. Click the padlock in the address bar and allow it."
+          micBlockedMessage("I can't listen for my name — microphone access is blocked.")
         );
         activeRef.current = false;
       } else if (event.error === "network") {

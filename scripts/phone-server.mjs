@@ -19,6 +19,7 @@ import https from "node:https";
 import os from "node:os";
 import path from "node:path";
 import next from "next";
+import qrcode from "qrcode-terminal";
 import selfsigned from "selfsigned";
 
 const PORT = Number(process.env.PORT || 3443);
@@ -36,6 +37,31 @@ export function localAddresses() {
     }
   }
   return found;
+}
+
+// Adapters that exist on a Windows machine but go nowhere useful. A laptop with
+// Docker, WSL and a VPN installed reports half a dozen addresses, and picking
+// the wrong one costs you ten minutes of a phone that won't connect.
+const VIRTUAL = /vethernet|virtualbox|vmware|hyper-v|docker|wsl|loopback|tailscale|zerotier|tap-|tun/i;
+
+/** Private ranges, best first: home Wi-Fi is almost always 192.168. */
+function rank(entry) {
+  let score = 0;
+  if (entry.address.startsWith("192.168.")) score += 3;
+  else if (entry.address.startsWith("10.")) score += 2;
+  else if (/^172\.(1[6-9]|2\d|3[01])\./.test(entry.address)) score += 1;
+  if (VIRTUAL.test(entry.name)) score -= 10;
+  return score;
+}
+
+/**
+ * The address most likely to be the one your phone can actually reach.
+ *
+ * Exported because it is the one piece of judgement in this file, and judgement
+ * is worth testing.
+ */
+export function preferredAddress(addresses) {
+  return [...addresses].sort((a, b) => rank(b) - rank(a))[0];
 }
 
 /**
@@ -106,21 +132,50 @@ async function main() {
       .on("error", reject);
   });
 
+  const best = preferredAddress(addresses);
+  const url = `https://${best.address}:${PORT}`;
+
   console.log("");
-  console.log("  Axis is on your network. On your phone, open:");
+  console.log("  ================================================");
+  console.log("   AXIS IS ON YOUR NETWORK");
+  console.log("  ================================================");
   console.log("");
-  for (const entry of addresses) {
-    console.log(`      https://${entry.address}:${PORT}      (${entry.name})`);
+  console.log("  1. Point your phone's camera at this square.");
+  console.log("");
+
+  // Typing an IP address and a port on a phone keyboard is the step people
+  // give up at. The camera app reads this and offers the link.
+  await new Promise((resolve) => qrcode.generate(url, { small: true }, (square) => {
+    for (const line of square.split("\n")) console.log(`      ${line}`);
+    resolve();
+  }));
+
+  console.log("");
+  console.log(`     ...or type it in yourself:   ${url}`);
+  console.log("");
+
+  const others = addresses.filter((entry) => entry.address !== best.address);
+  if (others.length > 0) {
+    console.log("     If that one doesn't work, this computer is also reachable at:");
+    for (const entry of others) {
+      console.log(`       https://${entry.address}:${PORT}   (${entry.name})`);
+    }
+    console.log("");
   }
+
+  console.log("  2. Your phone will warn you the connection isn't private.");
+  console.log("     That is expected and it is safe. Tap Advanced, then");
+  console.log("     Continue / Proceed. You made that certificate yourself,");
+  console.log("     on this computer, a moment ago - nobody else has vouched");
+  console.log("     for it, which is all the warning means.");
   console.log("");
-  console.log("  Your phone will warn that the certificate isn't trusted — that's");
-  console.log("  expected. Tap Advanced, then continue. You made this certificate");
-  console.log("  yourself, on this computer, a moment ago.");
+  console.log("  3. Install him as an app:");
+  console.log("       iPhone   - Share button, then Add to Home Screen");
+  console.log("       Android  - the three dots, then Install app");
   console.log("");
-  console.log("  Then use your browser's Share or menu button and choose");
-  console.log('  "Add to Home Screen" to install Axis as an app.');
-  console.log("");
-  console.log("  Both devices have to be on the same Wi-Fi. Ctrl-C stops him.");
+  console.log("  Both devices must be on the same Wi-Fi, and this window has to");
+  console.log("  stay open - your phone is a window onto the Axis running here.");
+  console.log("  Ctrl-C stops him.");
   console.log("");
 }
 
