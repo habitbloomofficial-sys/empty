@@ -81,7 +81,7 @@ export function safeFilename(title: string, extension: string): string {
 }
 
 /** Never overwrite something already there. */
-function uniquePath(folder: string, filename: string): string {
+export function uniquePath(folder: string, filename: string): string {
   const extension = path.extname(filename);
   const stem = path.basename(filename, extension);
 

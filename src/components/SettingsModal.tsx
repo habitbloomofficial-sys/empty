@@ -10,6 +10,7 @@ import {
   MailIcon,
   MemoryIcon,
   BoltIcon,
+  FilmIcon,
   GlobeIcon,
   LockIcon,
   MusicIcon,
@@ -1380,6 +1381,52 @@ export function SettingsModal({
               here.
             </p>
           </Section>
+          <Section
+            icon={<FilmIcon className="h-4 w-4" />}
+            title="Video"
+            ok={draft("VIDEO_GENERATION") === "on"}
+          >
+            <p>
+              <i>&quot;Make a video of a dog running through a field.&quot;</i> He
+              writes it to an .mp4 in your Documents, using Google&apos;s Veo
+              through the same Gemini key that can run his brain.
+            </p>
+            <div className="rounded-none bg-rose-500/10 px-2.5 py-2 text-rose-300">
+              <p className="mb-1 font-semibold">This one costs real money.</p>
+              <p>
+                Roughly <b>$1–$3 for eight seconds</b>, charged every time, with
+                no free tier anywhere — not Google&apos;s, not anyone&apos;s.
+                Your Gemini key also needs billing enabled on it, which the free
+                key does not have. It stays off until you switch it on, he tells
+                you the price before starting, and he won&apos;t make two in the
+                same minute.
+              </p>
+            </div>
+            <div className="flex gap-1.5 rounded-full bg-black/30 p-1">
+              {(["off", "on"] as const).map((value) => {
+                const active = (draft("VIDEO_GENERATION") || "off") === value;
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => {
+                      setDraft("VIDEO_GENERATION", value);
+                      void save("video", { VIDEO_GENERATION: value });
+                    }}
+                    className={`flex-1 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                      active ? "bg-amber-500 text-white" : "text-sand-500 hover:bg-amber-500/10"
+                    }`}
+                  >
+                    {value === "on" ? "Allowed" : "Off"}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-[10px] text-sand-600">
+              Leave the model empty and he picks the cheapest one your key can
+              use. Videos land in Documents\Axis\Videos.
+            </p>
+          </Section>
           <GroupHeading title="THIS COMPUTER" blurb="What he may do on the machine he runs on." />
           <Section
             icon={<MusicIcon className="h-4 w-4" />}
@@ -1392,6 +1439,34 @@ export function SettingsModal({
               YouTube for lo-fi&quot;, or any site you name. Spotify opens to a search;
               pressing play is still yours.
             </p>
+            <label className="block">
+              <span className="mb-1 block text-[11px] font-semibold text-cream">
+                Which browser he opens pages in
+              </span>
+              <select
+                value={draft("BROWSER") || "auto"}
+                onChange={(e) => setDraft("BROWSER", e.target.value)}
+                className="w-full rounded-none border border-amber-500/20 bg-black/40 px-3 py-2 text-xs text-cream focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-400/30"
+              >
+                <option value="auto">Whichever he finds first</option>
+                <option value="chrome">Google Chrome</option>
+                <option value="edge">Microsoft Edge</option>
+                <option value="firefox">Firefox</option>
+                <option value="opera">Opera / Opera GX</option>
+                <option value="brave">Brave</option>
+              </select>
+              <span className="mt-1 block text-[10px] text-sand-600">
+                YouTube, searches, any page he opens — all of it goes here. If the
+                one you pick isn&apos;t installed he falls back to the others
+                rather than doing nothing.
+              </span>
+            </label>
+            <SaveButton
+              onClick={() => save("browser", { BROWSER: draft("BROWSER") || "auto" })}
+              busy={busySection === "browser"}
+              saved={savedSection === "browser"}
+            />
+
             <div className="flex gap-1.5 rounded-full bg-black/30 p-1">
               {(["on", "off"] as const).map((value) => {
                 const active = (status?.desktopControl ? "on" : "off") === value;

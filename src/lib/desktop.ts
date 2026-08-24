@@ -111,6 +111,9 @@ function windowsPaths(...segments: string[][]): string[] {
     appData: process.env.APPDATA,
     localAppData: process.env.LOCALAPPDATA,
     programFiles: process.env.ProgramFiles,
+    // 32-bit installs on a 64-bit Windows, which is where Chrome and Opera
+    // still live on plenty of machines that were set up years ago.
+    programFilesX86: process.env["ProgramFiles(x86)"],
   };
   return segments
     .map(([root, ...rest]) => {
@@ -167,6 +170,7 @@ const APPS: Record<AppId, DesktopApp> = {
       if (process.platform === "win32") {
         return windowsPaths(
           ["programFiles", "Google", "Chrome", "Application", "chrome.exe"],
+          ["programFilesX86", "Google", "Chrome", "Application", "chrome.exe"],
           ["localAppData", "Google", "Chrome", "Application", "chrome.exe"]
         );
       }
@@ -179,7 +183,10 @@ const APPS: Record<AppId, DesktopApp> = {
     processes: { win32: ["msedge.exe"], darwin: ["Microsoft Edge"], linux: ["microsoft-edge"] },
     paths: () => {
       if (process.platform === "win32") {
-        return windowsPaths(["programFiles", "Microsoft", "Edge", "Application", "msedge.exe"]);
+        return windowsPaths(
+          ["programFiles", "Microsoft", "Edge", "Application", "msedge.exe"],
+          ["programFilesX86", "Microsoft", "Edge", "Application", "msedge.exe"]
+        );
       }
       if (process.platform === "darwin") return ["/Applications/Microsoft Edge.app"];
       return ["/usr/bin/microsoft-edge"];
@@ -190,7 +197,10 @@ const APPS: Record<AppId, DesktopApp> = {
     processes: { win32: ["firefox.exe"], darwin: ["firefox"], linux: ["firefox"] },
     paths: () => {
       if (process.platform === "win32") {
-        return windowsPaths(["programFiles", "Mozilla Firefox", "firefox.exe"]);
+        return windowsPaths(
+          ["programFiles", "Mozilla Firefox", "firefox.exe"],
+          ["programFilesX86", "Mozilla Firefox", "firefox.exe"]
+        );
       }
       if (process.platform === "darwin") return ["/Applications/Firefox.app"];
       return ["/usr/bin/firefox", "/snap/bin/firefox"];
@@ -205,7 +215,9 @@ const APPS: Record<AppId, DesktopApp> = {
         return windowsPaths(
           ["localAppData", "Programs", "Opera", "opera.exe"],
           ["localAppData", "Programs", "Opera GX", "opera.exe"],
-          ["programFiles", "Opera", "opera.exe"]
+          ["programFiles", "Opera", "opera.exe"],
+          ["programFiles", "Opera GX", "opera.exe"],
+          ["programFilesX86", "Opera", "opera.exe"]
         );
       }
       if (process.platform === "darwin") return ["/Applications/Opera.app"];
@@ -321,44 +333,78 @@ const DEFAULT_SEARCH = "https://www.google.com/search?q=";
  * one of these, a URL handed to the OS lands as another tab in whatever is
  * already open — which is not what "open me a window" means.
  */
-function browserCommands(): { file: string; args: (url: string) => string[] }[] {
+/** Browsers Axis can hand a page to, in the order he tries them. */
+export const BROWSER_CHOICES = ["chrome", "edge", "firefox", "opera", "brave"] as const;
+export type BrowserChoice = (typeof BROWSER_CHOICES)[number];
+
+/**
+ * Brave isn't in the apps table — it can't be opened or closed by name, only
+ * given a page — so its paths live here rather than there.
+ */
+function bravePaths(): string[] {
   if (process.platform === "win32") {
-    const candidates = [
-      ["programFiles", "Google", "Chrome", "Application", "chrome.exe"],
-      ["programFilesX86", "Google", "Chrome", "Application", "chrome.exe"],
-      ["localAppData", "Google", "Chrome", "Application", "chrome.exe"],
-      ["programFilesX86", "Microsoft", "Edge", "Application", "msedge.exe"],
-      ["programFiles", "Microsoft", "Edge", "Application", "msedge.exe"],
+    return windowsPaths(
       ["programFiles", "BraveSoftware", "Brave-Browser", "Application", "brave.exe"],
-      ["programFiles", "Mozilla Firefox", "firefox.exe"],
-    ];
-    const roots: Record<string, string | undefined> = {
-      programFiles: process.env.ProgramFiles,
-      programFilesX86: process.env["ProgramFiles(x86)"],
-      localAppData: process.env.LOCALAPPDATA,
-    };
-    return candidates
-      .map(([root, ...rest]) => {
-        const base = roots[root];
-        return base ? path.join(base, ...rest) : "";
-      })
-      .filter(Boolean)
-      .map((file) => ({ file, args: (url: string) => ["--new-window", url] }));
+      ["programFilesX86", "BraveSoftware", "Brave-Browser", "Application", "brave.exe"]
+    );
   }
-
-  if (process.platform === "darwin") {
-    return ["Google Chrome", "Microsoft Edge", "Brave Browser", "Firefox"].map((app) => ({
-      file: "open",
-      args: (url: string) => ["-na", app, "--args", "--new-window", url],
-    }));
-  }
-
-  return ["google-chrome", "chromium", "microsoft-edge", "brave-browser", "firefox"].map(
-    (file) => ({ file, args: (url: string) => ["--new-window", url] })
-  );
+  if (process.platform === "darwin") return ["/Applications/Brave Browser.app"];
+  return ["/usr/bin/brave-browser"];
 }
 
-/** Returns false if no browser could be driven directly. */
+function pathsFor(browser: BrowserChoice): string[] {
+  if (browser === "brave") return bravePaths();
+  // Everywhere else, reuse what the apps table already knows: Opera's two
+  // install locations were written down once, for opening Opera itself, and
+  // there is no reason for a second copy of them to drift from the first.
+  return APPS[browser].paths();
+}
+
+/** The browser he's been told to prefer, if it's one he knows. */
+export function preferredBrowser(): BrowserChoice | null {
+  const configured = getSetting("BROWSER")?.trim().toLowerCase();
+  if (!configured || configured === "auto") return null;
+  // "opera gx" and "google chrome" are what people actually type.
+  const normalised = configured.replace(/\s*gx$/, "").replace(/^google\s+/, "").replace(/\s+browser$/, "");
+  return BROWSER_CHOICES.find((name) => name === normalised) ?? null;
+}
+
+/**
+ * Every browser worth trying, best first.
+ *
+ * "Best" means the one you asked for. Before this, the list was fixed and
+ * Chrome was always at the top of it — so an Opera user watched Axis open
+ * YouTube in a browser they don't use, every time, with no way to say
+ * otherwise. A chosen browser goes first; the rest stay as fallbacks, because
+ * a preference that fails silently when the browser is uninstalled is worse
+ * than no preference.
+ */
+function browserCommands(): { file: string; args: (url: string) => string[] }[] {
+  const chosen = preferredBrowser();
+  const order: BrowserChoice[] = chosen
+    ? [chosen, ...BROWSER_CHOICES.filter((name) => name !== chosen)]
+    : [...BROWSER_CHOICES];
+
+  const commands: { file: string; args: (url: string) => string[] }[] = [];
+  for (const browser of order) {
+    for (const file of pathsFor(browser)) {
+      commands.push(
+        process.platform === "darwin"
+          ? {
+              // On macOS the paths are .app bundles, which are opened rather
+              // than executed.
+              file: "open",
+              args: (url: string) => ["-na", file, "--args", "--new-window", url],
+            }
+          : // Chrome, Edge, Opera and Brave are all Chromium underneath, and
+            // Firefox understands --new-window too.
+            { file, args: (url: string) => ["--new-window", url] }
+      );
+    }
+  }
+  return commands;
+}
+
 async function openInNewWindow(url: string): Promise<boolean> {
   for (const { file, args } of browserCommands()) {
     // On Windows and Linux these are real paths or commands; skip missing ones

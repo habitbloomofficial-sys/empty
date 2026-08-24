@@ -269,3 +269,12 @@ export function LockIcon({ className }: IconProps) {
     </svg>
   );
 }
+
+export function FilmIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className}>
+      <rect x="3" y="5" width="18" height="14" rx="1.5" stroke="currentColor" strokeWidth="1.6" />
+      <path d="M8 5v14M16 5v14M3 12h18" stroke="currentColor" strokeWidth="1.3" />
+    </svg>
+  );
+}

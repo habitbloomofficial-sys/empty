@@ -16,12 +16,15 @@ real.
 - **Email & calendar** — Gmail and Google Calendar, via your own Google OAuth app
 - **Phone** — rings your phone and connects you to a number you name
 - **WhatsApp** — Twilio's WhatsApp API
+- **Every app** — opens anything installed on the computer, by name
 - **Music & web** — opens and closes Spotify and Discord, and opens any website
+  in the browser you choose
 - **The open web** — searches it through the brain you already run, reads pages
   on it, and keeps what he learns
 - **YouTube** — subscribers, views, and how your recent uploads are performing
 - **Files** — finds things in your own folders and opens them
 - **Documents** — writes real Word, PowerPoint, Excel and Markdown files
+- **Video** — generates short videos from a description (paid, and off by default)
 - **Anywhere** — installs as an app on your computer and your phone, on your own
   Wi-Fi or over the internet through a passcode-locked tunnel
 - **Hologram v3** — drop in a picture and see it projected as a rotating 3D hologram
@@ -732,6 +735,28 @@ mean shipping hundreds of megabytes of weights, and this runs instantly on any
 machine. Dark parts of a picture project as nothing at all, which is what lets
 the subject float free of its background.
 
+### Every app on this computer (no setup needed)
+
+Axis reads the Start menu and can open **anything installed** by name — games,
+Photoshop, Steam, Word, Blender, a launcher, whatever is there. Say *"open
+Photoshop"* and he opens Photoshop. Ask *"what can you open?"* and he'll tell
+you, or search the list if you're not sure something is installed.
+
+Close is good enough: *"vs code"*, *"photoshop"* without the year, *"open the
+calculator for me"* with all the packaging words. If two things match equally
+well he asks which rather than guessing — opening the wrong program is small,
+but doing it silently teaches you to distrust the right ones.
+
+**Why this is safe.** He never supplies a path or a command. He supplies a
+*name*, which is matched against the list Windows itself produced, and what gets
+launched is the identifier Windows gave that entry. There is no route from a
+sentence in a conversation to an arbitrary program — the worst a mishearing can
+do is open the wrong app. It rides on the same switch as everything else on
+this page: turn desktop control off and this goes with it.
+
+The curated list below still exists on top of it, because those apps can also be
+*closed*, and searched, which needs knowing what they are.
+
 ### Apps and websites (no setup needed)
 
 Axis runs on your own machine, so he can open things on it:
@@ -792,6 +817,27 @@ something, he should mention it rather than act on it.
 Turn the whole capability off in **Settings → Apps & websites**.
 
 Env equivalent: `DESKTOP_CONTROL=off`.
+
+### Video (optional — and the only thing here that costs money per use)
+
+*"Make a video of a dog running through a field."* He generates it with
+Google's Veo through the same Gemini key that can run his brain, waits the
+couple of minutes it takes, and saves an `.mp4` into `Documents\Axis\Videos`.
+
+**Read this part before switching it on.** Video generation costs roughly
+**$1–$3 for eight seconds**, every single time, and there is no free tier for it
+anywhere — not Google's, not anyone's. A free Gemini key cannot do it at all;
+the key needs billing enabled. So:
+
+- It is **off until you switch it on**, in Settings under Video.
+- He states the price and waits for a clear yes before starting, the same rule
+  he follows before dialling a phone number.
+- He won't make two in the same minute, so a misheard sentence can't spend twice.
+- Leave the model empty and he picks the **cheapest** one your key can use —
+  the "fast" and "lite" variants cost a fraction of the standard one, and on an
+  eight-second clip nobody can tell.
+
+Env equivalents: `VIDEO_GENERATION=on`, and `VEO_MODEL` to pin a model.
 
 ### YouTube (optional — lets Axis report on your channel)
 
