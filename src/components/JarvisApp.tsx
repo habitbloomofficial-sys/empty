@@ -552,7 +552,7 @@ export default function AxisApp() {
       <SystemRail status={status} state={orbState} sessionDate={sessionDate} />
 
       <main className="relative flex flex-1 flex-col items-center justify-center px-4 xl:pr-[224px]">
-        <div className="animate-float relative h-[min(60vw,340px)] w-[min(60vw,340px)] sm:h-[380px] sm:w-[380px]">
+        <div className="animate-float relative h-[min(92vw,420px)] w-[min(92vw,420px)] sm:h-[560px] sm:w-[560px]">
           <Orb state={orbState} audioLevel={orbLevel} />
         </div>
 

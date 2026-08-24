@@ -14,6 +14,7 @@ import {
   circuitTraces,
   motes,
   radialSpokes,
+  shardPlates,
   shellRings,
 } from "@/lib/orbGeometry";
 import type { OrbState } from "@/lib/types";
@@ -89,6 +90,9 @@ function Core({ state, audioLevel }: OrbSceneProps) {
   const group = useRef<THREE.Group>(null);
   const spin = useRef<THREE.Group>(null);
   const shell = useRef<THREE.Group>(null);
+  const middle = useRef<THREE.Group>(null);
+  const inner = useRef<THREE.Group>(null);
+  const debris = useRef<THREE.Group>(null);
   const heart = useRef<THREE.Mesh>(null);
 
   // Built once. Regenerating this on a re-render would re-tangle the whole
@@ -100,9 +104,18 @@ function Core({ state, audioLevel }: OrbSceneProps) {
       // sells it is in the shell — the rings and the traces — so there is far
       // more of that than of anything else.
       spokes: lineGeometry(radialSpokes(105, { steps: 8, seed: 11 })),
-      rings: lineGeometry(shellRings(38, { segments: 120, seed: 22 })),
-      traces: lineGeometry(circuitTraces(150, { steps: 12, seed: 33 })),
-      innerTraces: lineGeometry(circuitTraces(70, { radius: 0.6, steps: 9, seed: 44 })),
+      // Three cages at three depths rather than one. You see through the outer
+      // one into the next, which is the difference between a sphere with
+      // detail on it and a sphere with things inside it.
+      outerRings: lineGeometry(shellRings(26, { segments: 120, seed: 22 })),
+      midRings: lineGeometry(shellRings(18, { radius: 0.72, segments: 100, seed: 66 })),
+      innerRings: lineGeometry(shellRings(12, { radius: 0.44, segments: 84, seed: 77 })),
+      outerTraces: lineGeometry(circuitTraces(150, { steps: 12, seed: 33 })),
+      midTraces: lineGeometry(circuitTraces(80, { radius: 0.72, steps: 10, seed: 44 })),
+      innerTraces: lineGeometry(circuitTraces(50, { radius: 0.44, steps: 8, seed: 88 })),
+      // The debris outside the shell — the thing that makes it read as an
+      // object floating in a space rather than a disc on a screen.
+      shards: lineGeometry(shardPlates(80, { seed: 99 })),
       dust: motes(1100, { seed: 55 }),
     }),
     []
@@ -187,6 +200,13 @@ function Core({ state, audioLevel }: OrbSceneProps) {
         depthWrite: false,
         blending: THREE.AdditiveBlending,
       }),
+      shards: new THREE.LineBasicMaterial({
+        vertexColors: true,
+        transparent: true,
+        opacity: 0.45,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+      }),
     }),
     []
   );
@@ -201,6 +221,7 @@ function Core({ state, audioLevel }: OrbSceneProps) {
       sprite.dispose();
       lineMaterials.spokes.dispose();
       lineMaterials.filaments.dispose();
+      lineMaterials.shards.dispose();
     },
     [parts, moteGeometry, moteMaterial, sprite, lineMaterials]
   );
@@ -255,14 +276,41 @@ function Core({ state, audioLevel }: OrbSceneProps) {
     lineMaterials.filaments.opacity = 0.16 + brightness.current * 0.2;
     lineMaterials.spokes.color.copy(tint).multiplyScalar(1.15);
     lineMaterials.filaments.color.copy(tint).multiplyScalar(0.95);
+    lineMaterials.shards.opacity = 0.2 + brightness.current * 0.28;
+    lineMaterials.shards.color.copy(tint).multiplyScalar(1.05);
 
     if (group.current) group.current.scale.setScalar(swell.current);
-    // Three layers turning at different speeds, so the sphere has depth rather
-    // than spinning as one solid thing.
-    if (spin.current) spin.current.rotation.y += delta * spinRate;
+
+    // Five layers, each on its own axis and its own direction, and two of them
+    // reversing on a slow cycle of their own. That is what makes it read as
+    // machinery rather than as one thing on a turntable: at any moment
+    // something is going one way, something else the other, and the two of
+    // them cross.
+    const sway = Math.sin(t * 0.11);
+    const counterSway = Math.sin(t * 0.07 + 1.4);
+
+    if (spin.current) {
+      spin.current.rotation.y += delta * spinRate;
+      spin.current.rotation.z += delta * spinRate * 0.12 * sway;
+    }
     if (shell.current) {
-      shell.current.rotation.y -= delta * spinRate * 0.45;
-      shell.current.rotation.x += delta * spinRate * 0.2;
+      // Against the core, and tipping the other way as the cycle turns over.
+      shell.current.rotation.y -= delta * spinRate * 0.62;
+      shell.current.rotation.x += delta * spinRate * 0.34 * sway;
+    }
+    if (middle.current) {
+      // Crosswise: this one turns about a different axis entirely.
+      middle.current.rotation.z += delta * spinRate * 0.8 * counterSway;
+      middle.current.rotation.x -= delta * spinRate * 0.5;
+    }
+    if (inner.current) {
+      inner.current.rotation.y += delta * spinRate * 1.5;
+      inner.current.rotation.z -= delta * spinRate * 0.7 * sway;
+    }
+    if (debris.current) {
+      // Slowest of all, and against everything: distance reads as slowness.
+      debris.current.rotation.y -= delta * spinRate * 0.28;
+      debris.current.rotation.x += delta * spinRate * 0.16 * counterSway;
     }
     if (heart.current) {
       heart.current.rotation.z += delta * 0.6;
@@ -279,13 +327,26 @@ function Core({ state, audioLevel }: OrbSceneProps) {
     <group ref={group}>
       <group ref={spin}>
         <lineSegments geometry={parts.spokes} material={lineMaterials.spokes} />
-        <lineSegments geometry={parts.innerTraces} material={lineMaterials.filaments} />
         <points geometry={moteGeometry} material={moteMaterial} />
       </group>
 
+      <group ref={inner}>
+        <lineSegments geometry={parts.innerRings} material={lineMaterials.filaments} />
+        <lineSegments geometry={parts.innerTraces} material={lineMaterials.filaments} />
+      </group>
+
+      <group ref={middle}>
+        <lineSegments geometry={parts.midRings} material={lineMaterials.filaments} />
+        <lineSegments geometry={parts.midTraces} material={lineMaterials.filaments} />
+      </group>
+
       <group ref={shell}>
-        <lineSegments geometry={parts.rings} material={lineMaterials.filaments} />
-        <lineSegments geometry={parts.traces} material={lineMaterials.filaments} />
+        <lineSegments geometry={parts.outerRings} material={lineMaterials.filaments} />
+        <lineSegments geometry={parts.outerTraces} material={lineMaterials.filaments} />
+      </group>
+
+      <group ref={debris}>
+        <lineSegments geometry={parts.shards} material={lineMaterials.shards} />
       </group>
 
       {/* The eye at the centre: a bright ring seen edge-on, with a hot bead
@@ -325,21 +386,21 @@ function Core({ state, audioLevel }: OrbSceneProps) {
           side={THREE.BackSide}
         />
       </mesh>
-      {/* The outer haze has to fade out before it reaches the edge of the
-          canvas. At 1.45 it was still faintly lit where the canvas stops,
-          which drew a soft box around the core — a rectangle nobody put there
-          being far more noticeable than the glow it came from. */}
-      <mesh scale={1.15}>
-        <sphereGeometry args={[1, 32, 32]} />
-        <meshBasicMaterial
-          color="#ff7a00"
+      {/* The outer haze, as a sprite rather than a sphere.
+          A back-faced sphere at a flat opacity has a hard silhouette — it drew
+          a faint circle in the air around the core, which is exactly the kind
+          of edge this whole thing is trying not to have. A sprite is a soft
+          gradient with nothing to see the edge of, and it always faces you. */}
+      <sprite scale={[3.4, 3.4, 1]}>
+        <spriteMaterial
+          map={sprite}
+          color="#ff8c1a"
           transparent
-          opacity={0.03}
+          opacity={0.22}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
-          side={THREE.BackSide}
         />
-      </mesh>
+      </sprite>
     </group>
   );
 }
@@ -441,7 +502,13 @@ export default function Orb({ state, audioLevel }: OrbSceneProps) {
 
   return (
     <Canvas
-      camera={{ position: [0, 0, 3.5], fov: 45 }}
+      // Further back than the sphere needs, deliberately. The canvas is square
+      // and everything in it is glowing, so anything still lit where the canvas
+      // stops draws a hard edge across the light. Pulling the camera back and
+      // growing the element instead leaves a margin of darkness all the way
+      // round — the orb ends up bigger on screen and the edge is nowhere near
+      // anything bright.
+      camera={{ position: [0, 0, 5.2], fov: 45 }}
       gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
       // Capped at 2: the mote shader is fill-heavy, and a phone at 3x spends
       // the whole frame budget drawing blur nobody can see.

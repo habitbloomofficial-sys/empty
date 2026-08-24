@@ -294,6 +294,76 @@ export function motes(count: number, { radius = 1, seed = 4 } = {}): PointData {
   return { positions, colors, sizes };
 }
 
+/**
+ * Angular plates floating outside the sphere.
+ *
+ * In the reference these are the fragments hanging in the space around the
+ * core — flat, hard-edged, catching the light at whatever angle they happen to
+ * sit. They are what stops the whole thing reading as one circle with detail
+ * inside it: something has to be *in front of* the shell and *behind* it for
+ * there to be layers at all.
+ *
+ * Each is a wireframe triangle, drawn as three segments. Not filled — a solid
+ * face would block the light behind it, and everything here is additive.
+ */
+export function shardPlates(
+  count: number,
+  { inner = 1.05, outer = 1.55, size = 0.16, seed = 5 } = {}
+): LineData {
+  const random = seededRandom(seed);
+  // Three edges per triangle, two endpoints each.
+  const positions = new Float32Array(count * 3 * 6);
+  const colors = new Float32Array(count * 3 * 6);
+
+  let p = 0;
+  let c = 0;
+
+  for (let i = 0; i < count; i++) {
+    const theta = random() * Math.PI * 2;
+    const phi = Math.acos(2 * random() - 1);
+    const r = inner + random() * (outer - inner);
+    const centre = onSphere(r, theta, phi);
+
+    // Two directions across the plate's own plane, so the triangle is oriented
+    // arbitrarily rather than all of them facing the camera.
+    const spin = random() * Math.PI * 2;
+    const tilt = random() * Math.PI;
+    const scale = size * (0.45 + random() * 1.3);
+
+    const corners: [number, number, number][] = [];
+    for (let k = 0; k < 3; k++) {
+      // A scalene triangle rather than three equal corners: equilateral ones
+      // read as a deliberate pattern, and these should look like debris.
+      const angle = spin + (k * Math.PI * 2) / 3 + (random() - 0.5) * 0.9;
+      const reach = scale * (0.5 + random() * 0.9);
+      const x = Math.cos(angle) * reach;
+      const y = Math.sin(angle) * reach;
+      corners.push([
+        centre[0] + x * Math.cos(tilt),
+        centre[1] + y,
+        centre[2] + x * Math.sin(tilt),
+      ]);
+    }
+
+    // Nearer plates are brighter, which is most of what tells you one is in
+    // front of the shell rather than behind it.
+    const near = 1 - (r - inner) / (outer - inner);
+    const brightness = 0.2 + near * 0.55 + random() * 0.25;
+    const shade = mix(AMBER.dim, AMBER.mid, brightness);
+
+    for (let k = 0; k < 3; k++) {
+      positions.set(corners[k], p);
+      positions.set(corners[(k + 1) % 3], p + 3);
+      colors.set(shade, c);
+      colors.set(shade, c + 3);
+      p += 6;
+      c += 6;
+    }
+  }
+
+  return { positions, colors };
+}
+
 /** Every number that reaches the GPU has to be one. */
 export function isFinite3(array: Float32Array): boolean {
   for (let i = 0; i < array.length; i++) {
