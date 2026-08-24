@@ -156,6 +156,10 @@ you save in the Settings panel takes precedence over the matching env var.
 
 In **Settings → AI brain**, choose a provider and paste the key.
 
+**Two of the four are free**, and they are marked FREE on the buttons. Axis has
+never needed a paid account to run, and still doesn't — if money is the
+question, get a Gemini key and stop reading here.
+
 **Claude** is the strongest, and the one to pick if you want Axis at his best.
 Get a key at
 [console.anthropic.com](https://console.anthropic.com/settings/keys). Unlike

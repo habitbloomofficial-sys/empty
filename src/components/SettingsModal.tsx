@@ -69,6 +69,21 @@ const PROVIDER_KEYS: Record<Provider, string> = {
   openai: "OPENAI_API_KEY",
 };
 
+/**
+ * What each one costs, said on the button itself.
+ *
+ * This matters more than it looks. Three of the four cost nothing to run Axis
+ * on, and the one that does is the one listed first because it is the best —
+ * which is exactly the arrangement that leaves someone assuming the whole app
+ * needs a card on file. It doesn't, and it never has.
+ */
+const PROVIDER_COST: Record<Provider, "free" | "paid"> = {
+  anthropic: "paid",
+  gemini: "free",
+  openrouter: "free",
+  openai: "paid",
+};
+
 const KEY_PLACEHOLDERS: Record<Provider, string> = {
   anthropic: "sk-ant-…",
   gemini: "AIza…",
@@ -486,6 +501,15 @@ export function SettingsModal({
                   }`}
                 >
                   {PROVIDER_LABELS[p]}
+                  {PROVIDER_COST[p] === "free" && (
+                    <span
+                      className={`ml-1 text-[9px] font-bold uppercase tracking-wider ${
+                        provider === p ? "text-white/80" : "text-amber-400/80"
+                      }`}
+                    >
+                      free
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
@@ -581,23 +605,44 @@ export function SettingsModal({
             )}
 
             {provider === "gemini" && (
-              <p>
-                Get a free key at{" "}
+              <>
+                <div className="rounded-none bg-amber-500/10 px-2.5 py-2 text-amber-300">
+                  <p className="mb-1 font-semibold">Free, and the best free option.</p>
+                  <p>
+                    No card, no credit, no trial that runs out. It gives Axis a
+                    brain <i>and</i> the ability to search the web, both on
+                    Google&apos;s free tier. If money is the question, this is the
+                    answer — it takes about thirty seconds.
+                  </p>
+                </div>
+                <p>
+                  Get a free key at{" "}
                 <a
                   href="https://aistudio.google.com/apikey"
                   target="_blank"
                   rel="noreferrer"
                   className="font-medium text-amber-400 underline"
-                >
-                  Google AI Studio
-                </a>
-                .
-              </p>
+                  >
+                    Google AI Studio
+                  </a>
+                  {" "}— sign in with your Google account and press <b>Create API
+                  key</b>.
+                </p>
+              </>
             )}
 
             {provider === "openrouter" && (
-              <p>
-                One key for most of the frontier models — get one at{" "}
+              <>
+                <div className="rounded-none bg-amber-500/10 px-2.5 py-2 text-amber-300">
+                  <p className="mb-1 font-semibold">Free models available.</p>
+                  <p>
+                    The model list below marks free models and sorts them to the
+                    top. Pick one of those and Axis costs nothing to run — you
+                    only ever spend if you deliberately choose a paid model.
+                  </p>
+                </div>
+                <p>
+                  One key for most of the frontier models — get one at{" "}
                 <a
                   href="https://openrouter.ai/keys"
                   target="_blank"
@@ -606,10 +651,11 @@ export function SettingsModal({
                 >
                   openrouter.ai/keys
                 </a>
-                . Only models that can call tools are listed, since Axis needs
-                them to open apps and read email — and the free ones are marked
-                and sorted to the top.
-              </p>
+                  . Only models that can call tools are listed, since Axis needs
+                  them to open apps and read email — and the free ones are marked
+                  and sorted to the top.
+                </p>
+              </>
             )}
 
             <SaveButton

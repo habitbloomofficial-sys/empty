@@ -103,7 +103,7 @@ export function getAI(): OpenAI {
     throw new Error(
       provider
         ? `The AI provider is set to "${provider}", but no ${PROVIDER_LABELS[provider]} API key has been saved yet — add one in Settings.`
-        : "No AI brain configured yet, sir — add a Gemini, OpenRouter, or OpenAI API key in Settings."
+        : "No AI brain configured yet, sir. A free Gemini key from Google AI Studio is the quickest way to give me one — it costs nothing. Settings, under AI brain."
     );
   }
 
