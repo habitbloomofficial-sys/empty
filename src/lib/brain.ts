@@ -41,7 +41,14 @@ export interface Brain {
 
 /** What every brain is handed to start a conversation. */
 export interface BrainInput {
+  /** The whole prompt, for brains that take one string. */
   system: string;
+  /**
+   * The same prompt split at the point where it stops being identical between
+   * requests. Anthropic bills a cached prefix at a tenth of the rate, and the
+   * saving is roughly eightfold on a short exchange — see systemPrompt.ts.
+   */
+  parts?: { stable: string; volatile: string };
   messages: { role: "user" | "assistant"; content: string }[];
   tools: OpenAI.Chat.Completions.ChatCompletionTool[];
 }

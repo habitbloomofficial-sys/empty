@@ -73,7 +73,7 @@ export function readReply(content: Anthropic.ContentBlock[]): BrainReply {
 
 export class AnthropicBrain implements Brain {
   private client: Anthropic;
-  private system: string;
+  private system: Anthropic.TextBlockParam[];
   private tools: ReturnType<typeof toAnthropicTools>;
   private messages: Anthropic.MessageParam[];
   /** Kept so a tool round can be recorded exactly as Claude wrote it. */
@@ -81,7 +81,25 @@ export class AnthropicBrain implements Brain {
 
   constructor(input: BrainInput) {
     this.client = anthropicClient();
-    this.system = input.system;
+    // Two blocks with a cache breakpoint between them. Tools render before the
+    // system prompt, so the breakpoint at the end of the stable block covers
+    // both — which is the whole seven thousand tokens that would otherwise be
+    // re-read, and re-billed, on every single turn.
+    //
+    // An hour rather than the default five minutes: this is an assistant used
+    // in bursts through the day, and five minutes expires between "open
+    // Spotify" and "what's on my calendar".
+    const parts = input.parts;
+    this.system = parts
+      ? [
+          {
+            type: "text",
+            text: parts.stable,
+            cache_control: { type: "ephemeral", ttl: "1h" },
+          },
+          { type: "text", text: parts.volatile },
+        ]
+      : [{ type: "text", text: input.system }];
     this.tools = toAnthropicTools(input.tools);
     this.messages = input.messages.map((message) => ({
       role: message.role,

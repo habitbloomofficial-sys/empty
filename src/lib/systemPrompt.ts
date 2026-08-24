@@ -6,7 +6,90 @@ import { savedZaps } from "./zapier";
 import { learnedForPrompt } from "./learned";
 import { isWebSearchConfigured } from "./web";
 
-export function buildSystemPrompt(now: Date = new Date(), device?: string): string {
+/**
+ * The prompt in two halves, so the big half can be cached.
+ *
+ * Anthropic bills a cached prefix at a tenth of the usual rate, and the prefix
+ * has to be byte-identical every time — one changing character anywhere in it
+ * and the whole thing is paid for again. That matters more here than it looks:
+ * asking Axis to open Spotify sends about seven thousand tokens of persona,
+ * rules and tool definitions, twice (once to decide, once to reply), for the
+ * sake of two words of answer. At Opus prices that is seven cents a go, and $20
+ * of credit buys under three hundred of them.
+ *
+ * So: everything that is the same on every request goes in `stable`, and the
+ * three things that are not — the clock, which device he is holding, and what
+ * has been remembered since — go in `volatile`, after the cache breakpoint.
+ * Same prompt, same order, an eighth of the bill.
+ */
+export interface SystemPromptParts {
+  /** Identical between requests, and therefore cacheable. */
+  stable: string;
+  /** The clock, the device, and memory. Cheap, because it is small. */
+  volatile: string;
+}
+
+export function buildSystemPromptParts(
+  now: Date = new Date(),
+  device?: string
+): SystemPromptParts {
+  const stable = buildSystemPrompt(now, device, true);
+
+  const title = userTitle();
+  let memories = "";
+  let context = "";
+  let learned = "";
+  try {
+    memories = memoriesForPrompt();
+  } catch {
+    memories = "";
+  }
+  try {
+    context = memoryContextForPrompt(now);
+  } catch {
+    context = "";
+  }
+  try {
+    learned = learnedForPrompt();
+  } catch {
+    learned = "";
+  }
+
+  const volatile = [
+    `Current date/time: ${now.toString()}`,
+    device ? `He is reading you on ${device}.` : "",
+    memories
+      ? `\nWhat you already know about him, from previous conversations:\n${memories}\n` +
+        "Use this naturally — don't recite it back at him, and don't pretend to " +
+        "have forgotten it. If something here is contradicted, forget the old " +
+        "version and remember the new one."
+      : "",
+    learned
+      ? `\nWhat you have learned, from looking things up and from doing this job:\n${learned}\n` +
+        "This is your own knowledge, kept because you decided it was worth keeping. " +
+        "It can be out of date and it can be wrong — if something here matters to " +
+        "the answer and might have changed, look it up again rather than reciting it."
+      : "",
+    context
+      ? `\n--- Your memory of the situation ---\n${context}\n--- end of memory ---\n` +
+        "This is a record you keep, not something he told you just now. Refer to " +
+        "it the way a colleague would refer to yesterday's meeting: naturally, " +
+        "and only when it's relevant. If he asks what you did or when, use the " +
+        `recall tool rather than guessing at a time you don't have. He is "${title}".`
+      : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  return { stable, volatile };
+}
+
+export function buildSystemPrompt(
+  now: Date = new Date(),
+  device?: string,
+  /** Leave out everything that changes between requests. */
+  stableOnly = false
+): string {
   // Memory is read from disk, and disks fail: a locked file, a bad encoding, a
   // folder someone moved. None of that is worth losing a reply over — he is
   // less useful without his memory, but he is useless without an answer.
@@ -93,8 +176,6 @@ composed, economical with words, and never padded: you do not ramble, and you do
 space. You sound like a brilliant, unflappable chief of staff, not a chatbot.
 
 ${humourInstruction()}
-
-Current date/time: ${now.toString()}${device ? `\nHe is reading you on ${device}.` : ""}
 
 Your responsibilities:
 - Managing his email inbox: searching, reading, summarizing, drafting, and sending
@@ -240,5 +321,5 @@ Ground rules:
   him. If it isn't clear which he wants, the shorter path is usually to answer
   him and offer to open the results.
 - Keep the record honest. Your session log is written as things happen; never
-  claim to have done something that isn't in it, and never invent a time.${knowledge}${knowledge_layer}${situation}`;
+  claim to have done something that isn't in it, and never invent a time.${stableOnly ? "" : `\n\nCurrent date/time: ${now.toString()}${device ? `\nHe is reading you on ${device}.` : ""}`}${stableOnly ? "" : knowledge}${stableOnly ? "" : knowledge_layer}${stableOnly ? "" : situation}`;
 }

@@ -287,6 +287,27 @@ rather not spend anything, pick one of those. Get a key at
 Gemini, OpenRouter and OpenAI all speak the same OpenAI-compatible protocol;
 Claude speaks its own. Every feature works identically whichever you choose.
 
+**What it costs, on Claude.** One "open Spotify" is about 14,000 tokens — not
+because the answer is long, but because the whole persona, every ground rule and
+all the tool definitions go up with each request, twice (once to decide to open
+it, once to say it's open). That is roughly:
+
+| | per "open Spotify" | for $20 of credit |
+|---|---|---|
+| Claude Opus 5 | $0.009 | ~2,300 |
+| Claude Sonnet 5 | $0.005 | ~3,800 |
+| Claude Haiku 4.5 | $0.0018 | ~11,400 |
+
+Those figures are **with prompt caching**, which Axis does automatically on
+Claude: the unchanging part of the request — the persona, the rules, the tools —
+is sent once and then read back at a tenth of the price for the next hour. Only
+the clock, which device you're on, and anything newly remembered sit outside the
+cache. Without it the same request costs eight times as much, and $20 would buy
+under 300 of them.
+
+A longer conversation costs more than a one-liner, but not proportionally: the
+expensive part is the fixed preamble, and that is the part being cached.
+
 Replies are capped at 2000 tokens. Left uncapped, providers assume the model's
 own maximum — 16k on many OpenRouter models — and OpenRouter refuses a request
 outright if your balance couldn't cover a reply that long, even when the actual

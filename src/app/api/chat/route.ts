@@ -3,7 +3,7 @@ import { getAIProvider } from "@/lib/ai";
 import { AnthropicBrain } from "@/lib/anthropicBrain";
 import { OpenAIBrain } from "@/lib/openAiBrain";
 import { describeModelFailure } from "@/lib/modelErrors";
-import { buildSystemPrompt } from "@/lib/systemPrompt";
+import { buildSystemPrompt, buildSystemPromptParts } from "@/lib/systemPrompt";
 import { availableTools, executeTool } from "@/lib/tools";
 import { logRecap } from "@/lib/sessions";
 import { describeDevice } from "@/lib/device";
@@ -44,8 +44,10 @@ export async function POST(req: NextRequest) {
   // below this line is the same for all of them.
   let brain: Brain;
   try {
+    const now = new Date();
     const input = {
-      system: buildSystemPrompt(new Date(), deviceLabel),
+      system: buildSystemPrompt(now, deviceLabel),
+      parts: buildSystemPromptParts(now, deviceLabel),
       messages: incoming.map((m) => ({ role: m.role, content: m.content })),
       tools: availableTools(),
     };
