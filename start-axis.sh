@@ -22,6 +22,9 @@ if [ ! -d node_modules ] || [ "$(cat data/.deps-stamp 2>/dev/null)" != "$lock_ha
 fi
 
 # Rebuild when anything has changed since the last build.
+# Which page the browser lands on. start-shop.sh sets this before calling here.
+OPEN_URL="${OPEN_URL:-http://127.0.0.1:3000}"
+
 if [ ! -f .next/BUILD_ID ] || [ -n "$(find src public package.json next.config.ts -newer .next/BUILD_ID 2>/dev/null | head -1)" ]; then
   echo "Preparing Axis..."
   npm run build
@@ -30,7 +33,7 @@ fi
 # Already running? Use that one rather than failing to take the port.
 if curl -sf -o /dev/null http://127.0.0.1:3000; then
   echo "Axis is already running - opening it."
-  (xdg-open http://127.0.0.1:3000 2>/dev/null || open http://127.0.0.1:3000 2>/dev/null) &
+  (xdg-open "$OPEN_URL" 2>/dev/null || open "$OPEN_URL" 2>/dev/null) &
   exit 0
 fi
 
@@ -38,7 +41,7 @@ fi
 (
   for _ in $(seq 1 120); do
     if curl -sf -o /dev/null http://127.0.0.1:3000; then
-      (xdg-open http://127.0.0.1:3000 2>/dev/null || open http://127.0.0.1:3000 2>/dev/null) &
+      (xdg-open "$OPEN_URL" 2>/dev/null || open "$OPEN_URL" 2>/dev/null) &
       break
     fi
     sleep 0.5

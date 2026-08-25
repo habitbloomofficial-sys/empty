@@ -3,6 +3,10 @@ setlocal
 title Axis
 cd /d "%~dp0"
 
+rem Which page the browser lands on. START-SHOP.bat sets this before calling
+rem here; run on its own, Axis opens his own front page as he always has.
+if not defined OPEN_URL set "OPEN_URL=http://127.0.0.1:3000"
+
 echo.
 echo   A X I S
 echo   -------
@@ -54,7 +58,7 @@ if not errorlevel 1 (
   if "%NEEDS_BUILD%"=="1" goto stale
   echo   Axis is already running - opening it.
   echo.
-  start "" http://127.0.0.1:3000
+  start "" "%OPEN_URL%"
   exit /b 0
 )
 
@@ -78,7 +82,7 @@ if "%NEEDS_BUILD%"=="1" (
 rem Open the browser only once the server actually answers, so the first thing
 rem seen is Axis rather than a connection error. Runs alongside the server
 rem below, which holds this window.
-start "" powershell -NoProfile -ExecutionPolicy Bypass -Command "for($i=0;$i -lt 120;$i++){try{$null=Invoke-WebRequest -UseBasicParsing 'http://127.0.0.1:3000' -TimeoutSec 2;Start-Process 'http://127.0.0.1:3000';break}catch{Start-Sleep -Milliseconds 500}}"
+start "" powershell -NoProfile -ExecutionPolicy Bypass -Command "for($i=0;$i -lt 120;$i++){try{$null=Invoke-WebRequest -UseBasicParsing 'http://127.0.0.1:3000' -TimeoutSec 2;Start-Process '%OPEN_URL%';break}catch{Start-Sleep -Milliseconds 500}}"
 
 echo   Starting. Your browser will open on its own.
 echo   Closing this window shuts Axis down.
