@@ -15,7 +15,7 @@ import {
   WarehouseScene,
 } from "./Scenes";
 import { ProductArt } from "./ProductArt";
-import { IconArrow, IconBack, IconPause, IconPlay } from "./Icons";
+import { IconArrow, IconBack } from "./Icons";
 
 /*
  * The introduction.
@@ -23,14 +23,27 @@ import { IconArrow, IconBack, IconPause, IconPlay } from "./Icons";
  * A buyer arriving here has been handed a code by a salesperson and has no idea
  * what the range is, what the margins look like, or how ordering works. Rather
  * than drop them into a grid of thirty unfamiliar products, this walks them
- * through it once — eight slides, about a minute — and then gets out of the way
- * for good. It runs on arrival and never again unless asked for by name.
+ * through it once — eight slides — and then gets out of the way for good. It
+ * runs on arrival and never again unless asked for by name.
+ *
+ * The wheel drives it. Nothing advances on a timer, because a buyer reading the
+ * volume breaks and a buyer who has read them before want very different things
+ * from the same slide, and only one of them can be guessed at by a stopwatch.
+ * Position is held as a float, so two slides cross-fade through each other in
+ * step with the scroll rather than cutting at a threshold.
  *
  * Everything numeric on these slides is computed from the catalogue, so the
  * pitch cannot drift out of step with the products behind it.
  */
 
-const SLIDE_MS = 9000;
+// Wheel travel that moves the film on by one slide. A mouse notch is about
+// 100px, so a slide is roughly four notches — far enough that the cross-fade
+// reads as a fade rather than a cut, close enough that eight slides aren't a
+// chore. Touch is scaled separately, below: a thumb drags shorter than a wheel.
+const SCROLL_PER_SLIDE = 420;
+// Milliseconds for the distance still to travel to halve. Low enough that the
+// film feels tied to the hand, high enough to smooth a notchy wheel.
+const GLIDE_HALF_LIFE = 90;
 
 // Whether this reader has asked the operating system for less movement. It is
 // an external system that can change while the page is open, so it is
@@ -215,101 +228,203 @@ const SLIDES: Slide[] = [
   },
 ];
 
-export function Intro({ onEnter }: { onEnter: () => void }) {
-  const [index, setIndex] = useState(0);
-  const [progress, setProgress] = useState(0);
-  const startedAt = useRef<number>(0);
-  const elapsed = useRef<number>(0);
+const LAST = SLIDES.length - 1;
+const clamp = (n: number) => Math.max(0, Math.min(LAST, n));
+/** Smoothstep, clamped — an ease with no corners at either end. */
+const smooth = (t: number) => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t));
 
-  // Someone who has asked for less motion should not have slides moving under
-  // them unprompted — but pressing play is a request, so an explicit choice
-  // outranks the preference in both directions.
+export function Intro({ onEnter }: { onEnter: () => void }) {
+  const stage = useRef<HTMLElement | null>(null);
+
+  // Where the film is, measured in slides. 2.4 means "two fifths of the way
+  // out of slide three and into slide four", which is exactly what the two of
+  // them need to know to cross-fade against each other.
+  const [pos, setPos] = useState(0);
+  const [touched, setTouched] = useState(false);
+  const shown = useRef(0);
+  const wanted = useRef(0);
+  const frame = useRef(0);
+
+  // Someone who has asked the operating system for less movement gets the
+  // slides landed rather than glided. It can change while the page is open, so
+  // it is subscribed to rather than read once.
   const reduceMotion = useSyncExternalStore(subscribeMotion, readMotion, readMotionOnServer);
-  const [choice, setChoice] = useState<boolean | null>(null);
-  const playing = choice ?? !reduceMotion;
-  const setPlaying = useCallback(
-    (next: boolean | ((current: boolean) => boolean)) =>
-      setChoice((current) => {
-        const now = current ?? !readMotion();
-        return typeof next === "function" ? next(now) : next;
-      }),
+
+  // Chase the wanted position instead of jumping to it: one notch of a mouse
+  // wheel then arrives as a glide, and a hard trackpad flick decelerates into
+  // place rather than skipping three slides on a single event.
+  //
+  // The decay is measured in milliseconds, not frames. Easing by a fixed
+  // fraction per frame would make the glide twice as fast on a 120Hz screen as
+  // on a 60Hz one, and crawl to a halt wherever the browser throttles
+  // animation callbacks.
+  const settle = useCallback(() => {
+    if (frame.current) return;
+    let previous = performance.now();
+
+    const tick = (now: number) => {
+      // Clamped, so returning to a stalled tab resumes the glide rather than
+      // teleporting through the slides it missed.
+      const dt = Math.min(64, now - previous);
+      previous = now;
+
+      const gap = wanted.current - shown.current;
+      if (Math.abs(gap) < 0.0005) {
+        shown.current = wanted.current;
+        setPos(shown.current);
+        frame.current = 0;
+        return;
+      }
+      shown.current += gap * (1 - Math.pow(0.5, dt / GLIDE_HALF_LIFE));
+      setPos(shown.current);
+      frame.current = requestAnimationFrame(tick);
+    };
+    frame.current = requestAnimationFrame(tick);
+  }, []);
+
+  useEffect(
+    () => () => {
+      if (frame.current) cancelAnimationFrame(frame.current);
+    },
     []
   );
 
-  const go = useCallback((next: number) => {
-    setIndex((current) => {
-      const target = Math.max(0, Math.min(SLIDES.length - 1, next));
-      if (target !== current) {
-        elapsed.current = 0;
-        setProgress(0);
+  const move = useCallback(
+    (to: number) => {
+      wanted.current = clamp(to);
+      setTouched(true);
+      if (reduceMotion) {
+        // The wheel still accumulates in fractions — only what is drawn snaps,
+        // so it still takes a slide's worth of scrolling to change slide.
+        shown.current = Math.round(wanted.current);
+        setPos(shown.current);
+        return;
       }
-      return target;
-    });
-  }, []);
+      settle();
+    },
+    [reduceMotion, settle]
+  );
 
-  // One rAF loop drives both the progress bar and the advance, so the bar can
-  // never finish at a different moment than the slide it belongs to.
+  /** Scroll by a fraction of a slide. */
+  const nudge = useCallback((by: number) => move(wanted.current + by), [move]);
+  /** Jump a whole slide from wherever the scroll currently sits. */
+  const step = useCallback((by: number) => move(Math.round(wanted.current) + by), [move]);
+
+  // The wheel, the trackpad and the thumb. The film owns all three while it is
+  // on screen: there is nothing behind it to scroll to, so letting the page
+  // move underneath would only ever be a mistake.
   useEffect(() => {
-    if (!playing) return;
-    let frame = 0;
-    startedAt.current = performance.now() - elapsed.current;
+    const el = stage.current;
+    if (!el) return;
 
-    const tick = (now: number) => {
-      const spent = now - startedAt.current;
-      elapsed.current = spent;
-      const ratio = Math.min(1, spent / SLIDE_MS);
-      setProgress(ratio);
-      if (ratio >= 1) {
-        elapsed.current = 0;
-        if (index >= SLIDES.length - 1) {
-          setPlaying(false);
-          setProgress(1);
-          return;
-        }
-        setIndex((current) => current + 1);
-        setProgress(0);
-        startedAt.current = now;
-      }
-      frame = requestAnimationFrame(tick);
+    const pixels = (event: WheelEvent) => {
+      if (event.deltaMode === 1) return event.deltaY * 16; // Firefox reports lines
+      if (event.deltaMode === 2) return event.deltaY * window.innerHeight; // pages
+      return event.deltaY;
     };
 
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
-  }, [playing, index, setPlaying]);
-
-  // Pause while the tab is in the background rather than racing through the
-  // deck to the last slide unseen.
-  useEffect(() => {
-    const onVisibility = () => {
-      if (document.hidden) setPlaying(false);
+    const onWheel = (event: WheelEvent) => {
+      event.preventDefault();
+      // Trackpads report a horizontal component on a diagonal swipe; take
+      // whichever axis the reader meant more of.
+      const dy = pixels(event);
+      const delta = Math.abs(event.deltaX) > Math.abs(dy) ? event.deltaX : dy;
+      nudge(delta / SCROLL_PER_SLIDE);
     };
-    document.addEventListener("visibilitychange", onVisibility);
-    return () => document.removeEventListener("visibilitychange", onVisibility);
-  }, [setPlaying]);
+
+    let lastY = 0;
+    const onTouchStart = (event: TouchEvent) => {
+      lastY = event.touches[0].clientY;
+    };
+    const onTouchMove = (event: TouchEvent) => {
+      event.preventDefault();
+      const y = event.touches[0].clientY;
+      // A thumb travels a shorter distance than a wheel for the same intent.
+      nudge((lastY - y) / (SCROLL_PER_SLIDE * 0.55));
+      lastY = y;
+    };
+
+    el.addEventListener("wheel", onWheel, { passive: false });
+    el.addEventListener("touchstart", onTouchStart, { passive: true });
+    el.addEventListener("touchmove", onTouchMove, { passive: false });
+    return () => {
+      el.removeEventListener("wheel", onWheel);
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchmove", onTouchMove);
+    };
+  }, [nudge]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "ArrowRight") go(index + 1);
-      else if (event.key === "ArrowLeft") go(index - 1);
-      else if (event.key === "Escape") onEnter();
-      else if (event.key === " ") {
-        event.preventDefault();
-        setPlaying((p) => !p);
+      switch (event.key) {
+        case "ArrowRight":
+        case "ArrowDown":
+        case "PageDown":
+        case " ":
+          event.preventDefault();
+          step(1);
+          break;
+        case "ArrowLeft":
+        case "ArrowUp":
+        case "PageUp":
+          event.preventDefault();
+          step(-1);
+          break;
+        case "Home":
+          event.preventDefault();
+          move(0);
+          break;
+        case "End":
+          event.preventDefault();
+          move(LAST);
+          break;
+        case "Escape":
+          onEnter();
+          break;
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [go, index, onEnter, setPlaying]);
+  }, [move, step, onEnter]);
+
+  // The pair currently on screen, and how far between them the reader is. The
+  // outgoing slide is held at full strength underneath while the incoming one
+  // fades in over it, so the dark field never shows through the seam.
+  const base = Math.floor(pos);
+  const frac = pos - base;
+  const index = Math.round(pos);
+  const fade = (i: number) => (i === base ? 1 : i === base + 1 ? frac : 0);
+
+  // Type is handed over rather than dissolved. Two photographs can lie on top
+  // of each other and still look like one picture; two paragraphs cannot — they
+  // just look broken. So the outgoing words are gone by the time the incoming
+  // ones start, and the artwork cross-fades through the gap on its own.
+  const copyFade = (i: number) =>
+    i === base ? 1 - smooth(frac / 0.42) : i === base + 1 ? smooth((frac - 0.58) / 0.42) : 0;
 
   return (
-    <section className="au-intro" aria-label={`${BRAND.full} introduction`}>
+    <section
+      className="au-intro"
+      aria-label={`${BRAND.full} introduction`}
+      aria-roledescription="carousel"
+      ref={stage}
+    >
       <div className="au-intro__stage">
-        {SLIDES.map((slide, i) => (
-          <article key={slide.id} className="au-slide" data-active={i === index} aria-hidden={i !== index}>
+        {SLIDES.map((slide, i) => {
+          const opacity = fade(i);
+          return (
+          <article
+            key={slide.id}
+            className="au-slide"
+            data-visible={opacity > 0}
+            data-active={i === index}
+            aria-hidden={i !== index}
+            style={{ opacity, zIndex: i }}
+          >
             <div className="au-slide__art">{slide.scene}</div>
             <div className="au-slide__scrim" />
             <div className="au-slide__body">
-              <div className="au-slide__copy">
+              <div className="au-slide__copy" style={{ opacity: copyFade(i) }}>
                 <div className="au-kicker au-slide__kicker au-anim">{slide.kicker}</div>
                 <h2 className="au-anim">{slide.headline}</h2>
                 <p className="au-slide__lede au-anim">{slide.lede}</p>
@@ -368,7 +483,7 @@ export function Intro({ onEnter }: { onEnter: () => void }) {
                     <button className="au-btn au-btn--gold" type="button" onClick={onEnter}>
                       Enter the shop <IconArrow />
                     </button>
-                    <button className="au-btn au-btn--dark" type="button" onClick={() => go(0)}>
+                    <button className="au-btn au-btn--dark" type="button" onClick={() => move(0)}>
                       Watch again
                     </button>
                   </div>
@@ -376,7 +491,17 @@ export function Intro({ onEnter }: { onEnter: () => void }) {
               </div>
             </div>
           </article>
-        ))}
+          );
+        })}
+      </div>
+
+      {/* Said once, then out of the way: it is only useful before the first
+        * turn of the wheel, and patronising after it. */}
+      <div className="au-scrollcue" data-gone={touched} aria-hidden="true">
+        <span className="au-scrollcue__wheel">
+          <i />
+        </span>
+        <span className="au-scrollcue__text">Scroll to play</span>
       </div>
 
       <header className="au-intro__top">
@@ -401,9 +526,9 @@ export function Intro({ onEnter }: { onEnter: () => void }) {
               role="tab"
               aria-selected={i === index}
               aria-label={`Slide ${i + 1}: ${slide.kicker}`}
-              data-state={i < index ? "done" : i === index ? "active" : "todo"}
-              style={i === index ? ({ "--au-progress": progress } as React.CSSProperties) : undefined}
-              onClick={() => go(i)}
+              data-state={i < base ? "done" : i === base ? "active" : "todo"}
+              style={i === base ? ({ "--au-progress": frac } as React.CSSProperties) : undefined}
+              onClick={() => move(i)}
               type="button"
             >
               <span />
@@ -419,16 +544,8 @@ export function Intro({ onEnter }: { onEnter: () => void }) {
           <button
             className="au-iconbtn"
             type="button"
-            onClick={() => setPlaying((p) => !p)}
-            aria-label={playing ? "Pause" : "Play"}
-          >
-            {playing ? <IconPause /> : <IconPlay />}
-          </button>
-          <button
-            className="au-iconbtn"
-            type="button"
-            onClick={() => go(index - 1)}
-            disabled={index === 0}
+            onClick={() => step(-1)}
+            disabled={pos < 0.02}
             aria-label="Previous slide"
           >
             <IconBack size={15} />
@@ -436,8 +553,8 @@ export function Intro({ onEnter }: { onEnter: () => void }) {
           <button
             className="au-iconbtn"
             type="button"
-            onClick={() => (index === SLIDES.length - 1 ? onEnter() : go(index + 1))}
-            aria-label={index === SLIDES.length - 1 ? "Enter the shop" : "Next slide"}
+            onClick={() => (pos > LAST - 0.02 ? onEnter() : step(1))}
+            aria-label={pos > LAST - 0.02 ? "Enter the shop" : "Next slide"}
           >
             <IconArrow size={15} />
           </button>

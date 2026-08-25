@@ -12,41 +12,57 @@
  * ======================================================================== */
 
 .au-root {
-  /* Light — the shop */
-  --paper: #faf8f4;
-  --paper-2: #f3f0e9;
-  --paper-3: #ece8df;
-  --card: #ffffff;
-  --ink: #14161a;
-  --ink-soft: #565d67;
-  --ink-faint: #8a919b;
-  --line: rgba(20, 22, 26, 0.11);
-  --line-soft: rgba(20, 22, 26, 0.06);
+  /* Light — the shop.
+   * Not paper. A cool sky lit warm from one corner: pale blue field with gold
+   * blooming through it. Surfaces above it are panes rather than sheets, so the
+   * field carries under everything and the tool reads as one room. */
+  --paper: #e8eefb;
+  --paper-2: #dde6f7;
+  --paper-3: #cfdaf0;
+  --card: rgba(255, 255, 255, 0.86);
+  --card-solid: #fbfcff;
+  --ink: #101a2f;
+  --ink-soft: #4a5670;
+  --ink-faint: #79849c;
+  --line: rgba(16, 26, 47, 0.12);
+  --line-soft: rgba(16, 26, 47, 0.06);
+
+  /* Frosted panes — the header, the drawer, the rail. */
+  --glass: rgba(255, 255, 255, 0.72);
+  --glass-strong: rgba(255, 255, 255, 0.9);
+  --glass-line: rgba(255, 255, 255, 0.6);
 
   /* Gold — the accent, and the whole point of the business */
-  --gold: #96751f;
-  --gold-bright: #c9a227;
-  --gold-pale: #f2e6c2;
-  --gold-wash: rgba(201, 162, 39, 0.12);
+  --gold: #8d6b16;
+  --gold-bright: #d8ab2c;
+  --gold-pale: #f6e9c0;
+  --gold-wash: rgba(216, 171, 44, 0.14);
 
-  /* Dark — the gate and the introduction */
-  --night: #08090d;
-  --night-2: #10131a;
-  --night-3: #191d26;
-  --night-line: rgba(255, 255, 255, 0.1);
-  --bone: #f1ece1;
-  --bone-soft: rgba(241, 236, 225, 0.66);
-  --bone-faint: rgba(241, 236, 225, 0.4);
+  /* Blue — the cold half of the pair. The field, the calm states, the links. */
+  --azure: #3d6ad9;
+  --azure-bright: #6f9bff;
+  --azure-deep: #1d3480;
+  --azure-wash: rgba(61, 106, 217, 0.11);
+  --violet: #7b6bd6;
 
-  --good: #2f7d54;
-  --warn: #a8681c;
-  --bad: #b03636;
+  /* Dark — the gate and the introduction. The same sky after nightfall. */
+  --night: #050915;
+  --night-2: #0c1428;
+  --night-3: #16203c;
+  --night-line: rgba(180, 205, 255, 0.13);
+  --bone: #eef2fb;
+  --bone-soft: rgba(238, 242, 251, 0.68);
+  --bone-faint: rgba(238, 242, 251, 0.42);
+
+  --good: #1f7a55;
+  --warn: #9a6414;
+  --bad: #b03650;
 
   --radius: 14px;
   --radius-sm: 9px;
-  --shadow-sm: 0 1px 2px rgba(20, 22, 26, 0.05), 0 4px 14px rgba(20, 22, 26, 0.05);
-  --shadow-md: 0 2px 6px rgba(20, 22, 26, 0.06), 0 18px 44px rgba(20, 22, 26, 0.11);
-  --shadow-lg: 0 30px 90px rgba(8, 9, 13, 0.4);
+  --shadow-sm: 0 1px 2px rgba(16, 26, 47, 0.05), 0 4px 14px rgba(16, 26, 47, 0.06);
+  --shadow-md: 0 2px 6px rgba(16, 26, 47, 0.07), 0 18px 44px rgba(16, 26, 47, 0.12);
+  --shadow-lg: 0 30px 90px rgba(5, 9, 21, 0.45);
 
   --header-h: 66px;
 
@@ -59,6 +75,131 @@
   isolation: isolate;
 }
 
+/* ---------------------------------------------------------------------------
+ * The field.
+ *
+ * One sky under the whole portal — gate, film and shop alike — so nothing
+ * changes hue when a buyer moves between them; only the hour of the day does.
+ * It is fixed rather than scrolled, so the goods travel across a background
+ * that stays where it is.
+ * ------------------------------------------------------------------------ */
+.au-root::before {
+  content: "";
+  position: fixed;
+  inset: -10%;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    radial-gradient(1200px 820px at 6% -12%, rgba(252, 233, 176, 0.98), transparent 58%),
+    radial-gradient(1040px 780px at 94% 0%, rgba(126, 168, 252, 0.72), transparent 56%),
+    radial-gradient(1150px 940px at 82% 102%, rgba(122, 104, 224, 0.4), transparent 58%),
+    radial-gradient(880px 700px at 10% 98%, rgba(226, 178, 46, 0.34), transparent 56%),
+    radial-gradient(700px 700px at 48% 42%, rgba(154, 214, 226, 0.26), transparent 62%),
+    linear-gradient(158deg, #eef3fd 0%, #dee8fa 46%, #ccdbf5 100%);
+  transition: opacity 0.8s ease;
+}
+
+/* Nightfall. Same sky, same two lights, the ground taken out from under it. */
+.au-root.au-dark::before {
+  background:
+    radial-gradient(1100px 780px at 12% -8%, rgba(120, 96, 30, 0.5), transparent 58%),
+    radial-gradient(1000px 820px at 88% 6%, rgba(38, 66, 150, 0.55), transparent 58%),
+    radial-gradient(1200px 900px at 74% 104%, rgba(74, 54, 140, 0.42), transparent 60%),
+    radial-gradient(700px 560px at 22% 88%, rgba(180, 140, 40, 0.16), transparent 58%),
+    linear-gradient(162deg, #070c1c 0%, #050915 52%, #04070f 100%);
+}
+
+/* Dust: stars over the dark, a fine tooth over the light. Two tiles at
+ * different sizes so the grain never lines up into a visible lattice. */
+.au-root::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.5;
+  background-image:
+    radial-gradient(1.4px 1.4px at 34px 22px, rgba(16, 26, 47, 0.2), transparent),
+    radial-gradient(1.2px 1.2px at 128px 96px, rgba(16, 26, 47, 0.16), transparent),
+    radial-gradient(1px 1px at 208px 44px, rgba(61, 106, 217, 0.22), transparent),
+    radial-gradient(1.3px 1.3px at 82px 186px, rgba(16, 26, 47, 0.14), transparent),
+    radial-gradient(1px 1px at 244px 224px, rgba(141, 107, 22, 0.2), transparent);
+  background-size: 280px 280px;
+}
+
+.au-root.au-dark::after {
+  opacity: 1;
+  background-image:
+    radial-gradient(1.5px 1.5px at 34px 22px, rgba(255, 255, 255, 0.9), transparent),
+    radial-gradient(1.2px 1.2px at 128px 96px, rgba(214, 231, 255, 0.7), transparent),
+    radial-gradient(1.8px 1.8px at 208px 44px, rgba(255, 240, 200, 0.75), transparent),
+    radial-gradient(1px 1px at 82px 186px, rgba(255, 255, 255, 0.55), transparent),
+    radial-gradient(1.4px 1.4px at 244px 224px, rgba(190, 214, 255, 0.6), transparent),
+    radial-gradient(1px 1px at 158px 258px, rgba(255, 255, 255, 0.45), transparent);
+  background-size: 300px 300px;
+}
+
+/* Two slow drifts of colour across the field. Transform-only, so they cost a
+ * compositor layer and nothing else. */
+.au-aurora {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
+  contain: strict;
+}
+.au-aurora span {
+  position: absolute;
+  display: block;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.72;
+  will-change: transform;
+}
+.au-aurora span:nth-child(1) {
+  width: 46vw;
+  height: 46vw;
+  top: -12vw;
+  left: -8vw;
+  background: radial-gradient(circle, rgba(216, 171, 44, 0.5), transparent 68%);
+  animation: au-drift-a 34s ease-in-out infinite alternate;
+}
+.au-aurora span:nth-child(2) {
+  width: 52vw;
+  height: 52vw;
+  bottom: -18vw;
+  right: -12vw;
+  background: radial-gradient(circle, rgba(61, 106, 217, 0.45), transparent 68%);
+  animation: au-drift-b 42s ease-in-out infinite alternate;
+}
+.au-aurora span:nth-child(3) {
+  width: 38vw;
+  height: 38vw;
+  top: 34%;
+  left: 52%;
+  background: radial-gradient(circle, rgba(123, 107, 214, 0.35), transparent 70%);
+  animation: au-drift-c 50s ease-in-out infinite alternate;
+}
+.au-dark .au-aurora span { opacity: 0.42; }
+
+@keyframes au-drift-a {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to { transform: translate3d(7vw, 5vw, 0) scale(1.14); }
+}
+@keyframes au-drift-b {
+  from { transform: translate3d(0, 0, 0) scale(1.08); }
+  to { transform: translate3d(-8vw, -6vw, 0) scale(1); }
+}
+@keyframes au-drift-c {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to { transform: translate3d(-6vw, 7vw, 0) scale(1.2); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .au-aurora span { animation: none; }
+}
+
 /* The host app paints an amber room onto <body>. Not in here. */
 body:has(.au-root)::before,
 body:has(.au-root)::after {
@@ -69,7 +210,7 @@ body:has(.au-root) {
   overflow-x: hidden;
 }
 body:has(.au-root.au-dark) {
-  background: #08090d;
+  background: #050915;
 }
 
 .au-root *,
@@ -195,7 +336,8 @@ body:has(.au-root.au-dark) {
   min-height: 100dvh;
   display: grid;
   grid-template-columns: 1.15fr 0.85fr;
-  background: var(--night);
+  /* Transparent: the night field behind it is the background here. */
+  background: transparent;
   color: var(--bone);
 }
 
@@ -217,7 +359,7 @@ body:has(.au-root.au-dark) {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(100deg, rgba(8, 9, 13, 0.72) 0%, rgba(8, 9, 13, 0.15) 55%, rgba(8, 9, 13, 0.75) 100%);
+  background: linear-gradient(100deg, rgba(5, 9, 21, 0.74) 0%, rgba(5, 9, 21, 0.16) 55%, rgba(5, 9, 21, 0.76) 100%);
 }
 .au-gate__artcopy {
   position: relative;
@@ -338,7 +480,7 @@ body:has(.au-root.au-dark) {
   transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
 }
 .au-codeinput::placeholder {
-  color: rgba(241, 236, 225, 0.22);
+  color: rgba(238, 242, 251, 0.22);
   letter-spacing: 0.36em;
 }
 .au-codeinput:focus {
@@ -358,7 +500,7 @@ body:has(.au-root.au-dark) {
   display: flex;
   gap: 9px;
   align-items: flex-start;
-  color: #f0a3a3;
+  color: #f2a8b6;
   font-size: 13px;
   line-height: 1.5;
   margin: 4px 0 16px;
@@ -427,7 +569,7 @@ body:has(.au-root.au-dark) {
   background: var(--ink);
   color: #fff;
 }
-.au-btn--ink:hover:not([disabled]) { background: #2a2f37; transform: translateY(-1px); }
+.au-btn--ink:hover:not([disabled]) { background: #1e2b47; transform: translateY(-1px); }
 
 .au-btn--ghost {
   border: 1px solid var(--line);
@@ -483,11 +625,16 @@ body:has(.au-root.au-dark) {
   position: fixed;
   inset: 0;
   z-index: 60;
-  background: var(--night);
+  /* Transparent, so the night field and its stars carry behind the slides
+   * wherever the artwork does not reach. */
+  background: transparent;
   color: var(--bone);
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  /* The film takes the wheel and the thumb; neither should reach the page. */
+  overscroll-behavior: contain;
+  touch-action: none;
 }
 
 .au-intro__stage {
@@ -499,10 +646,12 @@ body:has(.au-root.au-dark) {
   inset: 0;
   opacity: 0;
   visibility: hidden;
-  transition: opacity 0.85s ease, visibility 0.85s;
+  /* No transition on opacity: the wheel sets it every frame, and a transition
+   * would only ever be chasing a value that has already moved on. Visibility
+   * still steps, to keep spent slides out of the accessibility tree. */
+  will-change: opacity;
 }
-.au-slide[data-active="true"] {
-  opacity: 1;
+.au-slide[data-visible="true"] {
   visibility: visible;
 }
 .au-slide__art {
@@ -517,12 +666,15 @@ body:has(.au-root.au-dark) {
 .au-slide[data-active="true"] .au-slide__art svg {
   animation: au-drift 15s ease-out both;
 }
+@media (prefers-reduced-motion: reduce) {
+  .au-slide[data-active="true"] .au-slide__art svg { animation: none; }
+}
 .au-slide__scrim {
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(85deg, rgba(8, 9, 13, 0.94) 0%, rgba(8, 9, 13, 0.7) 38%, rgba(8, 9, 13, 0.28) 66%, rgba(8, 9, 13, 0.62) 100%),
-    linear-gradient(0deg, rgba(8, 9, 13, 0.85) 0%, transparent 42%);
+    linear-gradient(85deg, rgba(5, 9, 21, 0.94) 0%, rgba(5, 9, 21, 0.72) 38%, rgba(5, 9, 21, 0.3) 66%, rgba(5, 9, 21, 0.64) 100%),
+    linear-gradient(0deg, rgba(5, 9, 21, 0.86) 0%, transparent 42%);
 }
 
 .au-slide__body {
@@ -645,6 +797,62 @@ body:has(.au-root.au-dark) {
 
 /* --- chrome -------------------------------------------------------------- */
 
+/* The cue. A mouse with a wheel that falls, said once and then never again —
+ * it earns its place only for the seconds before the reader's first scroll. */
+.au-scrollcue {
+  position: absolute;
+  left: 50%;
+  bottom: 104px;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transform: translateX(-50%);
+  color: var(--bone-soft);
+  pointer-events: none;
+  transition: opacity 0.55s ease, transform 0.55s ease;
+}
+.au-scrollcue[data-gone="true"] {
+  opacity: 0;
+  transform: translate(-50%, 12px);
+}
+.au-scrollcue__wheel {
+  position: relative;
+  width: 23px;
+  height: 37px;
+  border: 1.5px solid var(--bone-faint);
+  border-radius: 12px;
+  flex: none;
+}
+.au-scrollcue__wheel i {
+  position: absolute;
+  top: 7px;
+  left: 50%;
+  width: 3px;
+  height: 7px;
+  margin-left: -1.5px;
+  border-radius: 2px;
+  background: var(--gold-bright);
+  animation: au-wheel 1.9s ease-in-out infinite;
+}
+.au-scrollcue__text {
+  font-size: 11.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-family: var(--font-plex-mono), ui-monospace, monospace;
+}
+@keyframes au-wheel {
+  0%, 100% { transform: translateY(0); opacity: 1; }
+  50% { transform: translateY(11px); opacity: 0.25; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .au-scrollcue__wheel i { animation: none; }
+}
+@media (max-width: 720px) {
+  .au-scrollcue { bottom: 130px; }
+  .au-scrollcue__text { font-size: 10.5px; }
+}
+
 .au-intro__top {
   position: relative;
   z-index: 4;
@@ -737,7 +945,7 @@ body:has(.au-root.au-dark) {
  * The shop
  * ======================================================================== */
 
-.au-shop { background: var(--paper); min-height: 100dvh; display: flex; flex-direction: column; }
+.au-shop { background: transparent; min-height: 100dvh; display: flex; flex-direction: column; }
 
 .au-topline {
   background: var(--ink);
@@ -763,7 +971,9 @@ body:has(.au-root.au-dark) {
   position: sticky;
   top: 0;
   z-index: 30;
-  background: rgba(250, 248, 244, 0.9);
+  background: var(--glass);
+  backdrop-filter: saturate(1.5) blur(14px);
+  -webkit-backdrop-filter: saturate(1.5) blur(14px);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   border-bottom: 1px solid var(--line);
@@ -859,7 +1069,7 @@ body:has(.au-root.au-dark) {
   font-weight: 500;
   transition: background 0.18s, transform 0.18s;
 }
-.au-cartbtn:hover { background: #2b3038; transform: translateY(-1px); }
+.au-cartbtn:hover { background: #1e2b47; transform: translateY(-1px); }
 .au-cartbtn__count {
   min-width: 25px;
   height: 25px;
@@ -879,7 +1089,9 @@ body:has(.au-root.au-dark) {
 
 .au-rail {
   border-bottom: 1px solid var(--line);
-  background: var(--card);
+  background: var(--glass);
+  backdrop-filter: saturate(1.5) blur(14px);
+  -webkit-backdrop-filter: saturate(1.5) blur(14px);
   position: sticky;
   top: var(--header-h);
   z-index: 25;
@@ -1091,7 +1303,8 @@ body:has(.au-root.au-dark) {
   display: flex;
   flex-direction: column;
   background: var(--card);
-  border: 1px solid var(--line);
+  border: 1px solid var(--glass-line);
+  box-shadow: var(--shadow-sm);
   border-radius: var(--radius);
   overflow: hidden;
   transition: transform 0.24s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.24s, border-color 0.24s;
@@ -1100,7 +1313,7 @@ body:has(.au-root.au-dark) {
 .au-card:hover {
   transform: translateY(-4px);
   box-shadow: var(--shadow-md);
-  border-color: rgba(20, 22, 26, 0.16);
+  border-color: rgba(16, 26, 47, 0.16);
 }
 .au-card__art {
   position: relative;
@@ -1139,8 +1352,8 @@ body:has(.au-root.au-dark) {
 }
 .au-badge--bestseller { background: var(--ink); color: #fff; }
 .au-badge--new { background: var(--gold-bright); color: #241c04; }
-.au-badge--limited { background: #7c2d2d; color: #fff; }
-.au-badge--restocked { background: #24503a; color: #fff; }
+.au-badge--limited { background: #8d3050; color: #fff; }
+.au-badge--restocked { background: #1c5147; color: #fff; }
 
 .au-card__quick {
   position: absolute;
@@ -1291,7 +1504,7 @@ body:has(.au-root.au-dark) {
   position: fixed;
   inset: 0;
   z-index: 50;
-  background: rgba(10, 11, 15, 0.52);
+  background: rgba(5, 9, 21, 0.58);
   backdrop-filter: blur(3px);
   animation: au-fade 0.24s ease both;
 }
@@ -1303,7 +1516,9 @@ body:has(.au-root.au-dark) {
   bottom: 0;
   z-index: 51;
   width: min(452px, 100vw);
-  background: var(--paper);
+  background: var(--glass-strong);
+  backdrop-filter: saturate(1.4) blur(20px);
+  -webkit-backdrop-filter: saturate(1.4) blur(20px);
   display: flex;
   flex-direction: column;
   box-shadow: var(--shadow-lg);
@@ -1553,7 +1768,7 @@ body:has(.au-root.au-dark) {
   gap: 10px;
   align-items: flex-start;
 }
-.au-alert--bad { background: rgba(176, 54, 54, 0.09); color: #8d2c2c; }
+.au-alert--bad { background: rgba(176, 54, 84, 0.1); color: #8d2c46; }
 .au-alert--info { background: var(--gold-wash); color: var(--gold); }
 
 .au-summary { position: sticky; top: 24px; }

@@ -45,6 +45,13 @@ export function ShopExperience({
   return (
     <div className={`au-root${dark ? " au-dark" : ""}`}>
       <ArtDefs />
+      {/* The drifting half of the field. Purely decorative, and the same three
+       * lights in every room, so the gate, the film and the shop are lit alike. */}
+      <div className="au-aurora" aria-hidden="true">
+        <span />
+        <span />
+        <span />
+      </div>
       {stage === "gate" && <AccessGate onOpen={() => setStage("intro")} />}
       {stage === "intro" && <Intro onEnter={finishIntro} />}
       {stage === "shop" && <Shop onReplayIntro={() => setStage("intro")} />}
