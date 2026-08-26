@@ -43,6 +43,60 @@ if errorlevel 1 (
   if errorlevel 1 goto failed
 )
 
+rem --------------------------------------------------------------------------
+rem Windows Firewall. The reason for "it just doesn't work".
+rem
+rem Axis listens on every address on this machine, and always has. What stops
+rem the phone is Windows deciding nothing from outside may reach the port -
+rem which is the default, and which is also what happens for ever after if the
+rem "Allow Node.js to communicate on this network?" box was ever cancelled.
+rem There is no error anywhere. The phone just spins.
+rem
+rem So: look before starting, and if the way isn't clear, ask Windows for
+rem permission to clear it. One port, on private networks only.
+rem --------------------------------------------------------------------------
+call :checkfirewall
+if "%FWSTATE%"=="clear" goto firewall_ok
+if "%FWSTATE%"=="unknown" goto firewall_ok
+if "%FWSTATE%"=="public" goto firewall_public
+
+echo.
+echo   Windows is blocking your phone from reaching this computer.
+echo.
+echo   I can fix that: one rule, for one port, on your own home network
+echo   only. Windows will ask you to approve it - click Yes.
+echo.
+pause
+powershell -NoProfile -ExecutionPolicy Bypass -File "scripts\firewall-elevate.ps1" -Port 3443
+
+call :checkfirewall
+if "%FWSTATE%"=="clear" goto firewall_ok
+if "%FWSTATE%"=="unknown" goto firewall_ok
+if "%FWSTATE%"=="public" goto firewall_public
+
+echo.
+echo   That didn't go through - most likely the permission box was declined.
+echo.
+echo   Starting anyway. If your phone can't connect, close this window and
+echo   right-click START-AXIS-PHONE.bat, then Run as administrator.
+echo.
+pause
+goto firewall_ok
+
+:firewall_public
+echo.
+echo   Windows has this Wi-Fi marked as Public, which means "hide this
+echo   computer from everything else on this network" - your own phone
+echo   included. On a home network that is the wrong setting.
+echo.
+set "MAKEPRIVATE="
+set /p MAKEPRIVATE=  Set it to Private? Type Y and press Enter (or just Enter to skip): 
+if /i not "%MAKEPRIVATE%"=="Y" goto firewall_ok
+powershell -NoProfile -ExecutionPolicy Bypass -File "scripts\firewall-elevate.ps1" -Port 3443 -Private
+goto firewall_ok
+
+:firewall_ok
+
 node scripts\phone-server.mjs
 if errorlevel 1 goto failed
 
@@ -51,13 +105,22 @@ echo   Axis has stopped.
 pause
 exit /b 0
 
+rem Ask firewall.ps1 what is in the way and turn its exit code into a word,
+rem because "if errorlevel N" means "N or higher" and reads backwards.
+:checkfirewall
+powershell -NoProfile -ExecutionPolicy Bypass -File "scripts\firewall.ps1" -Port 3443
+if errorlevel 3 (set "FWSTATE=public" & exit /b 0)
+if errorlevel 2 (set "FWSTATE=unknown" & exit /b 0)
+if errorlevel 1 (set "FWSTATE=blocked" & exit /b 0)
+set "FWSTATE=clear"
+exit /b 0
+
 :failed
 echo.
 echo   That didn't work. The error is above.
 echo.
-echo   If Windows Firewall asked whether to allow Node.js and you said no,
-echo   your phone will not be able to reach this computer. Allow it on
-echo   Private networks and run this again.
+echo   If it mentions a port already being in use, Axis is already running
+echo   in another window - close that one first.
 echo.
 pause
 exit /b 1

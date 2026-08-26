@@ -23,26 +23,12 @@ if errorlevel 1 (
 if not exist "data" mkdir "data"
 
 rem --------------------------------------------------------------------------
-rem The passcode comes first, before anything is exposed.
-rem
-rem Axis reads mail, places calls and opens things on this computer. Putting
-rem that on the internet unlocked is not a setting anyone should be able to
-rem leave switched off by accident, so this refuses to start without one. He
-rem would refuse to answer anyway - this just says so before you have carried
-rem the address to your phone and wondered why it doesn't work.
+rem The passcode is asked for further down, once Axis is running - see
+rem scripts\anywhere.mjs. It used to be checked here, which meant this window
+rem closed and sent you off to find a settings page before anything happened.
+rem Nothing goes on the internet without one either way; the difference is only
+rem that you are now asked rather than dismissed.
 rem --------------------------------------------------------------------------
-if not exist "data\auth.json" (
-  echo   No passcode is set yet.
-  echo.
-  echo   Open Axis on this computer with START-AXIS.bat, go to
-  echo   Settings, then Remote access, and set one. Then run this again.
-  echo.
-  echo   It only takes a moment, and it is the only thing standing between
-  echo   your computer and whoever finds the address.
-  echo.
-  pause
-  exit /b 1
-)
 
 rem Same install/build rules as the other launchers.
 powershell -NoProfile -ExecutionPolicy Bypass -Command "$h=(Get-FileHash 'package-lock.json' -Algorithm SHA256).Hash; $s='data\.deps-stamp'; if((Test-Path 'node_modules') -and (Test-Path $s) -and ((Get-Content $s -Raw).Trim() -eq $h)){exit 0} else {exit 1}"

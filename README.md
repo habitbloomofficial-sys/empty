@@ -92,9 +92,11 @@ your home network.
 
 1. **On the computer**, double-click **START-AXIS-PHONE.bat** instead of the
    usual one. Leave the black window open — closing it is how you stop him.
-2. **Windows will ask whether to allow Node.js through the firewall.** Say yes,
-   and make sure **Private networks** is ticked. Decline this and your phone
-   cannot reach the computer at all.
+2. **If Windows is in the way, it says so and offers to move it.** A permission
+   box may appear: click **Yes**. That adds one rule, for one port, on your own
+   home network only. (This step used to be a Windows prompt you had to catch
+   and answer correctly the first time; miss it, or click Cancel, and phone
+   access silently never worked again. Now it is checked every start.)
 3. **A QR code appears in that window.** Point your phone's camera at it and tap
    the link that pops up. (If the camera won't, the address is printed
    underneath — something like `https://192.168.1.42:3443`, typed into your
@@ -104,6 +106,23 @@ your home network.
 5. **Install him.** iPhone: the Share button, then *Add to Home Screen*.
    Android: the three dots, then *Install app*. You get the Axis icon on your
    home screen and the same full-screen app, with no browser bars.
+
+**The window tells you what your phone is doing.** This is the part worth
+knowing, because "it doesn't work" used to look identical from the computer's
+side whatever the cause. Three things can happen after you scan, and it says
+which:
+
+| What the window says | What it means | What to do |
+| --- | --- | --- |
+| `>> Your phone is in.` | Done. | Nothing. |
+| `>> A device reached Axis, then stopped.` | Your phone found the computer and is showing you the certificate warning. The hard part already worked. | On the phone: **Advanced → Continue**. |
+| `Nothing has reached this computer yet.` | Your phone never got here at all. | It prints the three causes in order — firewall, wrong Wi-Fi, router isolation — with what to check for each. |
+
+It also prints which network the computer is on (`192.168.1.x`) so you can check
+your phone's Wi-Fi address begins with the same numbers. If it doesn't, the two
+are on different networks and nothing else matters until that's fixed — phones
+switch to mobile data without telling you, and a guest network is a separate
+network.
 
 **About that warning.** Browsers refuse to hand over the microphone on an
 insecure connection — `localhost` is the only exception, and your phone isn't
@@ -135,22 +154,23 @@ anything else on this page. Twilio is only for placing phone calls and sending
 WhatsApp messages, and neither has anything to do with reaching Axis from your
 phone. A passcode and the launcher are the whole of it, and both are free.
 
-**Set a passcode first.** In **Settings → Tool Armory → Remote access**, on the
-computer. Six characters minimum; make it a phrase. This is not optional and
-there is no way to switch it off: Axis reads your email, places calls, runs your
-automations and opens things on your desktop, and reachable from the internet
-without a passcode he is all of that for whoever finds the address. **He refuses
-to answer the internet at all until one is set** — the page just says so.
+**The launcher asks you for a passcode.** Right there in the window, the first
+time you run it — you don't have to go and set one somewhere else first. Six
+characters minimum; make it a phrase. This is not optional and there is no way
+to switch it off: Axis reads your email, places calls, runs your automations and
+opens things on your desktop, and reachable from the internet without a passcode
+he is all of that for whoever finds the address. You can change it later in
+**Settings → Tool Armory → Remote access**.
 
 Nothing changes on your own Wi-Fi or at the computer itself. No passcode is
 asked for there.
 
 **Then run START-AXIS-ANYWHERE.bat** instead of the usual launcher. It:
 
-1. Refuses to start if no passcode is set, and tells you where to set one.
-2. Downloads Cloudflare's `cloudflared` once, into `data/` — a single file,
+1. Downloads Cloudflare's `cloudflared` once, into `data/` — a single file,
    nothing installed system-wide, gone when you delete the folder.
-3. Starts Axis and opens a tunnel to him.
+2. Starts Axis, and asks you to set a passcode if there isn't one yet.
+3. Opens a tunnel to him.
 4. Prints a QR code for an address like `https://brave-pilot-fresh.trycloudflare.com`.
 
 Scan it, type the passcode once, and add him to your home screen. He stays
@@ -173,6 +193,13 @@ immediately.
   a laptop that suspends when you shut the lid takes Axis with it.
 - **Changing the passcode signs out every device.** That is the recovery path
   if a phone is lost.
+
+**This one also works while you're sitting at home**, and it is the answer when
+the Wi-Fi route won't behave. It goes out to the internet and back, so it
+doesn't care what your router permits, there is no firewall rule to add, and the
+certificate is a real one so there's no warning to tap through. The costs are
+that the computer needs an internet connection and that the address is public
+until you close the window — which is what the passcode is for.
 
 **If you'd rather not be on the public internet at all**, install
 [Tailscale](https://tailscale.com/) (free for personal use) on both the computer
