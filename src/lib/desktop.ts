@@ -14,8 +14,16 @@ import { findWebsite, looksLikeDomain } from "./websites";
 
 const run = promisify(execFile);
 
-/** After encoding, a launch target may contain only these characters. */
-const SAFE_URI = /^[A-Za-z0-9:%._~-]+$/;
+/**
+ * After encoding, a launch target may contain only these characters.
+ *
+ * The unreserved set, plus the two pieces of URI structure: `:` for the scheme
+ * and `/` for a path, which discord://-/channels/… needs. Everything a URI can
+ * carry that a Windows protocol handler might act on — quotes, spaces,
+ * ampersands, backslashes — is already percent-encoded by the time it gets
+ * here, and anything that isn't is refused rather than launched.
+ */
+const SAFE_URI = /^[A-Za-z0-9:/%._~-]+$/;
 
 export function isDesktopControlEnabled(): boolean {
   // On by default: the only thing it can do is open Spotify.
@@ -48,7 +56,7 @@ function strictEncode(value: string): string {
  */
 export async function openUri(uri: string): Promise<void> {
   if (!SAFE_URI.test(uri)) {
-    throw new Error("Refusing to open that — it isn't a recognised Spotify link.");
+    throw new Error("Refusing to open that — it isn't a link I recognise.");
   }
   await launch(uri);
 }
@@ -647,20 +655,29 @@ export async function closeApp(id: AppId): Promise<AppActionResult> {
  * ever sees it and nothing in a filename can become a command.
  */
 /**
- * Whether the Spotify desktop app is actually here.
+ * Whether one of these apps is actually installed here.
  *
- * A `spotify:` URI is the nicer way in when the app exists and a dead end when
- * it doesn't — Windows answers with "no app is associated with this link",
- * which reads as Axis being broken. So the choice is made by looking.
+ * A `spotify:` or `discord:` URI is the nicer way in when the app exists and a
+ * dead end when it doesn't — Windows answers with "no app is associated with
+ * this link", which reads as Axis being broken. So the choice is made by
+ * looking rather than hoping.
  */
-export function isSpotifyInstalled(): boolean {
-  return APPS.spotify.paths().some((candidate) => {
+export function isAppInstalled(id: AppId): boolean {
+  return APPS[id].paths().some((candidate) => {
     try {
       return fs.existsSync(candidate);
     } catch {
       return false;
     }
   });
+}
+
+export function isSpotifyInstalled(): boolean {
+  return isAppInstalled("spotify");
+}
+
+export function isDiscordInstalled(): boolean {
+  return isAppInstalled("discord");
 }
 
 export async function openLocalPath(target: string): Promise<void> {

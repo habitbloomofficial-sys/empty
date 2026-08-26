@@ -15,6 +15,7 @@ import {
   isKnownApp,
   isDesktopControlEnabled,
   isSpotifyInstalled,
+  isDiscordInstalled,
   openUri,
 } from "./desktop";
 import { forget, remember } from "./memory";
@@ -36,6 +37,7 @@ import { launchApp, listInstalledApps, rankApps } from "./installedApps";
 import { generateVideo, isVideoEnabled } from "./video";
 import { channelDestination } from "./youtubeChannel";
 import { playlistDestination } from "./spotify";
+import { serverDestination } from "./discord";
 import { createEvent, listEvents } from "./calendar";
 import { isCalendarConfigured } from "./gmail";
 import { normalizeToolName, parseToolArguments } from "./toolCalls";
@@ -292,6 +294,25 @@ export const toolDefinitions: OpenAI.Chat.Completions.ChatCompletionTool[] = [
             type: "string",
             description:
               "What he called it, as he said it. A Spotify link or URI works too, if he read one out.",
+          },
+        },
+        required: ["name"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "open_discord_server",
+      description:
+        "Open a Discord server by name — \"open the study group server\", \"take me to Mythic Guild\". Servers he has saved by name in Settings open straight to that server, in the Discord app if it's installed and the browser otherwise. A Discord server is private, so there is nothing to search: if he hasn't saved that name, this opens Discord itself and the result says so — tell him plainly, and that pasting the server's invite or address-bar link into Settings makes the name work from then on. Never claim to have opened a server you didn't.",
+      parameters: {
+        type: "object",
+        properties: {
+          name: {
+            type: "string",
+            description:
+              "What he called it, as he said it. A Discord invite or channel link works too, if he read one out.",
           },
         },
         required: ["name"],
@@ -786,6 +807,7 @@ export function availableTools(): OpenAI.Chat.Completions.ChatCompletionTool[] {
       return isDesktopControlEnabled();
     }
     if (name === "open_playlist") return isDesktopControlEnabled();
+    if (name === "open_discord_server") return isDesktopControlEnabled();
     if (name === "list_calendar_events" || name === "create_calendar_event") {
       return isCalendarConfigured();
     }
@@ -1105,6 +1127,44 @@ export async function executeTool(
             summary: destination.exact
               ? `Opened ${destination.name ?? "a playlist"} ${where}`
               : `Searched Spotify for "${wanted}"`,
+            ok: true,
+          },
+        };
+      }
+      case "open_discord_server": {
+        const wanted = required(args.name, "server");
+        const destination = serverDestination(wanted);
+        if (!destination) throw new Error("Which server, sir?");
+
+        // The app when it's here, the browser when it isn't. A discord: URI on
+        // a machine without Discord is a dead end that reads as a bug.
+        const useApp = Boolean(destination.uri) && isDiscordInstalled();
+        if (useApp && destination.uri) {
+          await openUri(destination.uri);
+        } else {
+          await openWebsite({ url: destination.url, newWindow: args.new_window !== false });
+        }
+
+        const where = useApp ? "in the Discord app" : "in his browser";
+        const invite =
+          destination.kind === "invite"
+            ? " That link is an invite, so if he isn't a member yet it will ask him to join rather than dropping him straight in."
+            : "";
+        return {
+          result: {
+            opened: true,
+            exact: destination.exact,
+            server: destination.name,
+            url: destination.url,
+            note: destination.exact
+              ? `Opened ${destination.name ?? "the server"} ${where}.${invite}`
+              : `He hasn't saved a server by that name, and Discord servers are private — there's nothing to search. So this is Discord itself ${where}, nothing more. Say so. To have the name work next time, he can open that server, copy its invite link or the address bar, and paste it into Settings under Discord servers.`,
+          },
+          log: {
+            tool: name,
+            summary: destination.exact
+              ? `Opened ${destination.name ?? "a Discord server"} ${where}`
+              : `Opened Discord — nothing saved for "${wanted}"`,
             ok: true,
           },
         };

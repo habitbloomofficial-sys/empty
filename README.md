@@ -831,6 +831,32 @@ worse than being told it's a search.
 **He opens it; he doesn't press play.** That last press is still yours, and he
 won't claim otherwise.
 
+### Discord servers by name (a link each, pasted once)
+
+*"Open the study group server"*, *"take me to Mythic Guild"* — he opens that
+server, in the Discord app when it's installed and the browser when it isn't.
+
+**Why this one needs setup too, and always will.** A Discord server is private.
+It has no address anyone can guess, no search that reaches it, and no API that
+will name it without a bot token and an invitation — which is the entire point
+of Discord. What every server does have is a link: the invite you joined by, or
+the URL in the address bar while you're looking at it.
+
+So: in Discord, right-click the server → **Invite People** → **Copy Link**, or
+just copy the address bar. Paste it into **Settings → Apps & websites → Discord
+servers** as `Name = link`, one per line — the same format as the playlists, the
+phone contacts and the Zaps. Then say the name.
+
+Every form works: `discord.gg/abc123`, `discord.com/invite/abc123`, the
+`discord.com/channels/…` address bar with or without a particular channel, the
+old `discordapp.com` domain, and the desktop client's own `discord://` link. A
+channel link goes straight in; an invite link may ask you to join first, and he
+says so rather than letting you find out.
+
+**A name you haven't saved opens Discord itself, and nothing more** — he tells
+you that's all he did. There's no honest search to fall back on here, and a
+guessed URL that lands on an error page is a worse answer than an admission.
+
 ### Websites by name (no setup needed)
 
 Say the name and he opens it: *"open OneDrive"*, *"pull up Google Docs"*, *"go

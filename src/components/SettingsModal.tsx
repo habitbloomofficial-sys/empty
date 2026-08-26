@@ -1514,6 +1514,31 @@ export function SettingsModal({
               saved={savedSection === "playlists"}
             />
 
+            <Field
+              label="Discord servers"
+              view={views.DISCORD_SERVERS}
+              value={draft("DISCORD_SERVERS")}
+              onChange={(v) => setDraft("DISCORD_SERVERS", v)}
+              placeholder={
+                "Study group = https://discord.gg/abc123\nMythic Guild = https://discord.com/channels/123456789012345678"
+              }
+              hint="One per line, name = link. Then just say the name — “open the study group server”."
+              multiline
+            />
+            <p className="text-[10px] text-sand-600">
+              In Discord, right-click the server → <b>Invite People</b> →{" "}
+              <b>Copy Link</b>, or just copy the address bar while you&apos;re
+              looking at it. A Discord server is private — nothing can find one
+              by name without an invitation, which is rather the point — so a
+              saved link is the only way in. Without one he opens Discord itself
+              and says that&apos;s all he did.
+            </p>
+            <SaveButton
+              onClick={() => save("servers", { DISCORD_SERVERS: draft("DISCORD_SERVERS") })}
+              busy={busySection === "servers"}
+              saved={savedSection === "servers"}
+            />
+
             <label className="block">
               <span className="mb-1 block text-[11px] font-semibold text-cream">
                 Which browser he opens pages in

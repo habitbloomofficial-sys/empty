@@ -4,6 +4,7 @@ import { humourInstruction, userTitle } from "./address";
 import { isPhoneConfigured, savedContacts } from "./phone";
 import { savedZaps } from "./zapier";
 import { savedPlaylists } from "./spotify";
+import { savedServers } from "./discord";
 import { learnedForPrompt } from "./learned";
 import { isWebSearchConfigured } from "./web";
 
@@ -114,6 +115,15 @@ export function buildSystemPrompt(
     if (names.length > 0) playlists = names.join(", ");
   } catch {
     playlists = "";
+  }
+
+  // The Discord servers he has saved, so he can ask for one by name.
+  let servers = "";
+  try {
+    const names = savedServers().map((server) => server.name);
+    if (names.length > 0) servers = names.join(", ");
+  } catch {
+    servers = "";
   }
 
   // The automations he has built and named, so he can ask for one by name.
@@ -327,6 +337,14 @@ Ground rules:
   than being told it's a search. If he asks for one he hasn't saved, mention
   once that pasting its link into Settings makes it exact from then on.${
     playlists ? `\n  Playlists he has saved, openable by name: ${playlists}.` : ""
+  }
+- Discord servers by name, when he has saved them — in the Discord app when
+  it's installed, the browser otherwise. A server is private: there is no
+  search that reaches one, so a name he hasn't saved only opens Discord itself,
+  and you must say that plainly rather than implying you found it. Mention once
+  that copying the server's invite link, or the address bar while he's looking
+  at it, into Settings makes the name work from then on.${
+    servers ? `\n  Servers he has saved, openable by name: ${servers}.` : ""
   }
 - Look it up rather than guess. If the answer turns on something that changes —
   news, prices, scores, hours, releases, what is current — search first and
