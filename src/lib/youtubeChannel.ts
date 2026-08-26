@@ -68,3 +68,58 @@ export function describeChannelRef(ref: ChannelRef): string {
   if (ref.kind === "handle") return `@${ref.value}`;
   return ref.value;
 }
+
+/**
+ * Where to send a browser for a channel, without an API key.
+ *
+ * Opening a channel used to need a YouTube key, which meant that for anyone
+ * without one it simply didn't work. It doesn't need one: a handle is a public
+ * URL, and YouTube's own search takes a filter that shows nothing but channels.
+ *
+ * The distinction that matters is exactness. Given "@MrBeast" we know precisely
+ * where to go. Given "Mr Beast" we do not — the temptation is to squash the
+ * spaces and guess at youtube.com/@mrbeast, and when the guess is wrong you
+ * land on a 404 having been told you were being taken to a channel. So a name
+ * opens YouTube's channel results instead, where the right one is almost
+ * always first and the wrong one is at least visible. `exact` says which of
+ * those happened, so he can say so rather than overclaiming.
+ */
+export interface ChannelDestination {
+  url: string;
+  /** True when this is the channel itself rather than a page of candidates. */
+  exact: boolean;
+}
+
+/**
+ * `sp` is YouTube's search-filter token; this value is the "Channels" filter
+ * from its own UI, so the results page contains channels and nothing else.
+ */
+const CHANNELS_ONLY = "EgIQAg%3D%3D";
+
+export function channelDestination(query: string): ChannelDestination | null {
+  const ref = parseChannelInput(query);
+  if (!ref) return null;
+
+  if (ref.kind === "id") {
+    return { url: `https://www.youtube.com/channel/${ref.value}`, exact: true };
+  }
+  if (ref.kind === "handle") {
+    return { url: `https://www.youtube.com/@${encodeURIComponent(ref.value)}`, exact: true };
+  }
+  if (ref.kind === "username") {
+    return { url: `https://www.youtube.com/user/${encodeURIComponent(ref.value)}`, exact: true };
+  }
+
+  // A name. Strip the words people put around it — "open the X channel" — so
+  // the search is for the channel and not for the sentence.
+  const cleaned = ref.value
+    .replace(/\b(the|a|an|channel|youtube|open|go|to|pull|up|please|show|me)\b/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const terms = cleaned || ref.value;
+
+  return {
+    url: `https://www.youtube.com/results?search_query=${encodeURIComponent(terms)}&sp=${CHANNELS_ONLY}`,
+    exact: false,
+  };
+}

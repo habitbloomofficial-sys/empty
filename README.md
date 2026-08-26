@@ -21,7 +21,8 @@ real.
   by name in the browser you choose
 - **The open web** — searches it through the brain you already run, reads pages
   on it, and keeps what he learns
-- **YouTube** — subscribers, views, and how your recent uploads are performing
+- **YouTube** — opens channels and videos by name; subscribers, views, and how
+  your recent uploads are performing
 - **Files** — finds things in your own folders and opens them
 - **Documents** — writes real Word, PowerPoint, Excel and Markdown files
 - **Video** — generates short videos from a description (paid, and off by default)
@@ -909,7 +910,28 @@ the key needs billing enabled. So:
 
 Env equivalents: `VIDEO_GENERATION=on`, and `VEO_MODEL` to pin a model.
 
-### YouTube (optional — lets Axis report on your channel)
+### YouTube channels by name (no setup needed)
+
+*"Open the Veritasium channel"*, *"go to MrBeast's YouTube"*, *"@kurzgesagt"* —
+he opens the channel rather than a page of results.
+
+This works **with or without a YouTube key**, which it didn't before:
+
+- An **@handle** or a channel URL goes straight there. No key involved; a handle
+  is just a public address.
+- A **plain name**, with no key, opens YouTube's own results *filtered to
+  channels only*, where the right one is nearly always first. He tells you
+  that's what he did rather than claiming to have opened the channel — the
+  temptation is to squash "Mr Beast" into `youtube.com/@mrbeast` and hope, and
+  when that guess is wrong you land on a 404 having been told otherwise.
+- **With a key** he searches properly and reads back the subscriber count, which
+  is how you tell the real channel from the impersonations sitting directly
+  under it.
+
+Finding a particular *video* by title still needs the key — there's no way to
+search for one without it — and he says so rather than failing quietly.
+
+### YouTube statistics (optional — lets Axis report on your channel)
 
 Ask *"how's the channel doing?"*, *"how did my last video do?"*, or *"what's my
 best upload this month?"* and he'll go and look.

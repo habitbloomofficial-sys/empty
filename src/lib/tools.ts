@@ -32,6 +32,7 @@ import { isWebSearchConfigured, readPage, searchWeb } from "./web";
 import { learn, unlearn } from "./learned";
 import { launchApp, listInstalledApps, rankApps } from "./installedApps";
 import { generateVideo, isVideoEnabled } from "./video";
+import { channelDestination } from "./youtubeChannel";
 import { createEvent, listEvents } from "./calendar";
 import { isCalendarConfigured } from "./gmail";
 import { normalizeToolName, parseToolArguments } from "./toolCalls";
@@ -552,7 +553,7 @@ export const toolDefinitions: OpenAI.Chat.Completions.ChatCompletionTool[] = [
     function: {
       name: "open_youtube",
       description:
-        "Find one particular video or channel on YouTube and open it — the video itself, not a page of search results. Use this whenever he names something specific: \"pull up <title> on YouTube\", \"open <channel>'s channel\", or when he gives a link. Use open_website with a query instead only when he wants to browse results rather than watch one thing.",
+        "Find one particular video or channel on YouTube and open it — the thing itself, not a page of search results. Use this whenever he names something specific: \"pull up <title> on YouTube\", \"open the <name> channel\", \"go to <someone>'s YouTube\", or when he gives a link or an @handle. Set kind to \"channel\" whenever he means the channel rather than a video — that path works with or without a YouTube key, and with a key it also tells you the subscriber count, which is how you tell the real channel from the impersonations sitting under it in any search. Use open_website with a query instead only when he wants to browse results rather than go to one thing.",
       parameters: {
         type: "object",
         properties: {
@@ -745,7 +746,12 @@ export function availableTools(): OpenAI.Chat.Completions.ChatCompletionTool[] {
     if (name === "open_app" || name === "close_app" || name === "open_website") {
       return isDesktopControlEnabled();
     }
-    if (name === "youtube_stats" || name === "open_youtube") return isYouTubeConfigured();
+    // Statistics need the API; opening a channel or a video does not. A
+    // handle is a public URL and YouTube's own search takes a channel filter,
+    // so gating the opening on a key meant it simply didn't work for anyone
+    // without one.
+    if (name === "youtube_stats") return isYouTubeConfigured();
+    if (name === "open_youtube") return isDesktopControlEnabled();
     if (name === "call_number") return isPhoneConfigured();
     if (name === "run_zap") return isZapierConfigured();
     if (name === "search_web") return isWebSearchConfigured();
@@ -967,6 +973,40 @@ export async function executeTool(
         const query = required(args.query, "title");
         const wantsChannel = text(args.kind)?.toLowerCase() === "channel";
         const shouldOpen = args.open !== false;
+
+        // Without a key there is nothing to search with, but a channel can
+        // still be opened: see channelDestination.
+        if (!isYouTubeConfigured()) {
+          if (!wantsChannel) {
+            throw new Error(
+              "Finding a particular video needs a YouTube key, sir — without one I can open YouTube and search it in the browser instead."
+            );
+          }
+          const destination = channelDestination(query);
+          if (!destination) throw new Error("Which channel, sir?");
+
+          const openedWithoutKey = await openWebsite({
+            url: destination.url,
+            newWindow: args.new_window !== false,
+          });
+          return {
+            result: {
+              opened: true,
+              url: openedWithoutKey.url,
+              exact: destination.exact,
+              note: destination.exact
+                ? "Opened the channel itself."
+                : `Opened YouTube's channel results for "${query}" — without a YouTube key I can't tell which is the real one, so the choice is his. It's usually the first.`,
+            },
+            log: {
+              tool: name,
+              summary: destination.exact
+                ? `Opened the ${query} channel`
+                : `Opened channel results for "${query}"`,
+              ok: true,
+            },
+          };
+        }
 
         const matches = wantsChannel ? await findChannels(query) : await findVideos(query);
         if (matches.length === 0) {
