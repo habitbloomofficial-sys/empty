@@ -1,4 +1,7 @@
 # Batch files are read by cmd.exe, which needs CRLF. Everything else stays as
 # it is so a checkout on any platform produces a working launcher.
 *.bat text eol=crlf
+# PowerShell copes with either, but Windows tools that read these expect CRLF
+# and a mixed-ending file is a needless thing to have to think about.
+*.ps1 text eol=crlf
 *.sh text eol=lf
