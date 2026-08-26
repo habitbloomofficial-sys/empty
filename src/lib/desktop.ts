@@ -4,6 +4,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { getSetting } from "./settings";
 import { normalizeWebUrl } from "./webUrl";
+import { findWebsite, looksLikeDomain } from "./websites";
 
 // Axis runs on your own machine, so he can open desktop apps on it. That is
 // also why this file is deliberately narrow: the model can ask for exactly the
@@ -303,29 +304,6 @@ async function tryRun(file: string, args: string[]): Promise<CommandResult> {
 // Sites worth knowing by name, so "search YouTube for X" lands on results
 // rather than a home page. Anything not listed still works — the model passes
 // a URL instead — this is just for accuracy on the common ones.
-const KNOWN_SITES: Record<string, { home: string; search?: string }> = {
-  youtube: { home: "https://www.youtube.com", search: "https://www.youtube.com/results?search_query=" },
-  google: { home: "https://www.google.com", search: "https://www.google.com/search?q=" },
-  maps: { home: "https://www.google.com/maps", search: "https://www.google.com/maps/search/" },
-  gmail: { home: "https://mail.google.com" },
-  drive: { home: "https://drive.google.com" },
-  calendar: { home: "https://calendar.google.com" },
-  wikipedia: { home: "https://en.wikipedia.org", search: "https://en.wikipedia.org/w/index.php?search=" },
-  github: { home: "https://github.com", search: "https://github.com/search?q=" },
-  reddit: { home: "https://www.reddit.com", search: "https://www.reddit.com/search/?q=" },
-  x: { home: "https://x.com", search: "https://x.com/search?q=" },
-  twitter: { home: "https://x.com", search: "https://x.com/search?q=" },
-  linkedin: { home: "https://www.linkedin.com", search: "https://www.linkedin.com/search/results/all/?keywords=" },
-  netflix: { home: "https://www.netflix.com", search: "https://www.netflix.com/search?q=" },
-  imdb: { home: "https://www.imdb.com", search: "https://www.imdb.com/find/?q=" },
-  amazon: { home: "https://www.amazon.com", search: "https://www.amazon.com/s?k=" },
-  spotify: { home: "https://open.spotify.com", search: "https://open.spotify.com/search/" },
-  chatgpt: { home: "https://chatgpt.com" },
-  claude: { home: "https://claude.ai" },
-  dr: { home: "https://www.dr.dk" },
-  translate: { home: "https://translate.google.com", search: "https://translate.google.com/?text=" },
-};
-
 const DEFAULT_SEARCH = "https://www.google.com/search?q=";
 
 /**
@@ -432,7 +410,58 @@ export interface OpenWebsiteParams {
 export interface OpenWebsiteResult {
   opened: boolean;
   url: string;
+  /** The site's proper name, when it was one he recognised. */
+  site?: string;
   note: string;
+}
+
+/**
+ * Which address a request actually resolves to, and what to call it.
+ *
+ * Separated from the opening because this is the part with judgement in it —
+ * recognising a name, choosing between a site's front page and a search within
+ * it, deciding whether something unknown is an address or a thing to look up —
+ * and judgement is what deserves a test. Launching a browser does not.
+ */
+export interface WebsiteTarget {
+  target: string;
+  /** The site's proper name, when it was recognised. */
+  label?: string;
+  /** True when we gave up on a name and searched the web for it instead. */
+  searched: boolean;
+}
+
+export function resolveWebsiteTarget(params: OpenWebsiteParams): WebsiteTarget {
+  const query = params.query?.trim();
+  const spoken = params.site?.trim();
+  // Recognised by name, however it was said: "chat gpt", "one drive", "the
+  // Wikipedia website" all land on the right place. See websites.ts.
+  const known = spoken ? findWebsite(spoken) : null;
+
+  let target: string;
+  let label: string | undefined;
+
+  if (known) {
+    target = query && known.search ? `${known.search}${strictEncode(query)}` : known.home;
+    label = known.name;
+  } else if (params.url?.trim()) {
+    const url = params.url.trim();
+    // A URL might still name something known — "open docs.google.com".
+    const recognised = findWebsite(url);
+    target = url;
+    label = recognised?.name;
+  } else if (spoken) {
+    // Not in the directory. An address is opened as one; a name we don't know
+    // is searched for rather than guessed at, because guessing at a domain is
+    // how you end up on somebody's parked typo of the site you wanted.
+    target = looksLikeDomain(spoken) ? spoken : `${DEFAULT_SEARCH}${strictEncode(spoken)}`;
+  } else if (query) {
+    target = `${DEFAULT_SEARCH}${strictEncode(query)}`;
+  } else {
+    throw new Error("Which website would you like open, sir?");
+  }
+
+  return { target, label, searched: target.startsWith(DEFAULT_SEARCH) };
 }
 
 export async function openWebsite(params: OpenWebsiteParams): Promise<OpenWebsiteResult> {
@@ -442,28 +471,9 @@ export async function openWebsite(params: OpenWebsiteParams): Promise<OpenWebsit
     );
   }
 
+  const { target, label } = resolveWebsiteTarget(params);
+  const known = params.site ? findWebsite(params.site) : null;
   const query = params.query?.trim();
-  const siteKey = params.site?.trim().toLowerCase().replace(/^www\./, "").replace(/\.com$/, "");
-  const known = siteKey ? KNOWN_SITES[siteKey] : undefined;
-
-  let target: string;
-  if (known) {
-    target =
-      query && known.search
-        ? `${known.search}${strictEncode(query)}`
-        : known.home;
-  } else if (params.url?.trim()) {
-    target = params.url.trim();
-  } else if (params.site?.trim()) {
-    // An unknown site name: treat it as a domain if it looks like one,
-    // otherwise search the web for it.
-    const site = params.site.trim();
-    target = /\.[a-z]{2,}$/i.test(site) ? site : `${DEFAULT_SEARCH}${strictEncode(site)}`;
-  } else if (query) {
-    target = `${DEFAULT_SEARCH}${strictEncode(query)}`;
-  } else {
-    throw new Error("Which website would you like open, sir?");
-  }
 
   const url = normalizeWebUrl(target);
 
@@ -475,7 +485,10 @@ export async function openWebsite(params: OpenWebsiteParams): Promise<OpenWebsit
   return {
     opened: true,
     url,
-    note: `Opened ${url} in ${inWindow ? "a new browser window" : "your browser"}.`,
+    site: label,
+    note: `Opened ${label ?? url}${query && known?.search ? ` on a search for "${query}"` : ""} in ${
+      inWindow ? "a new browser window" : "your browser"
+    }.`,
   };
 }
 

@@ -17,8 +17,8 @@ real.
 - **Phone** — rings your phone and connects you to a number you name
 - **WhatsApp** — Twilio's WhatsApp API
 - **Every app** — opens anything installed on the computer, by name
-- **Music & web** — opens and closes Spotify and Discord, and opens any website
-  in the browser you choose
+- **Music & web** — opens and closes Spotify and Discord, and opens ~80 websites
+  by name in the browser you choose
 - **The open web** — searches it through the brain you already run, reads pages
   on it, and keeps what he learns
 - **YouTube** — subscribers, views, and how your recent uploads are performing
@@ -799,6 +799,33 @@ this page: turn desktop control off and this goes with it.
 
 The curated list below still exists on top of it, because those apps can also be
 *closed*, and searched, which needs knowing what they are.
+
+### Websites by name (no setup needed)
+
+Say the name and he opens it: *"open OneDrive"*, *"pull up Google Docs"*, *"go
+to chat GPT"*, *"the Wikipedia website"*. He knows about eighty sites — Google's
+lot (Docs, Sheets, Slides, Drive, Calendar, Photos, Meet, Keep, Classroom),
+Microsoft's (OneDrive, Outlook, Teams, Office), iCloud, the AI sites, the video
+and music ones, the socials, GitHub and Notion and Figma and Canva, the shops,
+the games, the news, the learning ones.
+
+**It's built for speech.** A transcriber writes "chat gpt", "one drive", "you
+tube", "sound cloud" and "duck duck go" as two words each, and the site is
+called the other thing — so both forms match, along with the words people put
+around a name (*"can you open the Wikipedia website please"*). Old names work
+too: **twitter** finds X, **hotmail** finds Outlook, **bard** finds Gemini.
+
+Specific beats general, so *"google docs"* is never answered by Google, and
+`docs.google.com` is recognised as Docs rather than as Google — the words in an
+address run the other way round from speech, and both orders are matched.
+
+**Sites that are also apps.** Spotify, Discord and Word exist both ways. *"Open
+Spotify"* means the app; *"open the Spotify website"* or *"Spotify online"*
+means the browser. He says which one he opened.
+
+Anything he doesn't recognise: an address is opened as an address, and a name he
+doesn't know is **searched for** rather than guessed at — guessing at a domain
+is how you land on somebody's parked typo of the site you wanted.
 
 ### Apps and websites (no setup needed)
 
