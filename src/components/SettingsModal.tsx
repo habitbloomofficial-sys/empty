@@ -1488,6 +1488,32 @@ export function SettingsModal({
               YouTube for lo-fi&quot;, or any site you name. Spotify opens to a search;
               pressing play is still yours.
             </p>
+            <Field
+              label="Spotify playlists"
+              view={views.SPOTIFY_PLAYLISTS}
+              value={draft("SPOTIFY_PLAYLISTS")}
+              onChange={(v) => setDraft("SPOTIFY_PLAYLISTS", v)}
+              placeholder={
+                "Workout = https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M\nDeep focus = https://open.spotify.com/playlist/…"
+              }
+              hint="One per line, name = link. Then just say the name — “put my workout playlist on”."
+              multiline
+            />
+            <p className="text-[10px] text-sand-600">
+              In Spotify, right-click a playlist → <b>Share</b> → <b>Copy link to
+              playlist</b>, and paste it here with a name you&apos;d say out loud.
+              This is the only way to open <i>your own</i> playlists by name —
+              Spotify won&apos;t let anything find them without you logging in to
+              a developer account, and a link costs nothing. Without a saved
+              name he opens a Spotify search instead, and says that&apos;s what
+              he did.
+            </p>
+            <SaveButton
+              onClick={() => save("playlists", { SPOTIFY_PLAYLISTS: draft("SPOTIFY_PLAYLISTS") })}
+              busy={busySection === "playlists"}
+              saved={savedSection === "playlists"}
+            />
+
             <label className="block">
               <span className="mb-1 block text-[11px] font-semibold text-cream">
                 Which browser he opens pages in

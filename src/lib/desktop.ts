@@ -38,7 +38,15 @@ function strictEncode(value: string): string {
     .join("");
 }
 
-async function openUri(uri: string): Promise<void> {
+/**
+ * Hand a URI to the operating system for whichever app claims the scheme.
+ *
+ * The character check is the whole safety story here: a URI reaches a
+ * registered protocol handler, and some of those on Windows will do far more
+ * than open a window if you can get punctuation into them. Everything that
+ * gets this far has already been percent-encoded.
+ */
+export async function openUri(uri: string): Promise<void> {
   if (!SAFE_URI.test(uri)) {
     throw new Error("Refusing to open that — it isn't a recognised Spotify link.");
   }
@@ -638,6 +646,23 @@ export async function closeApp(id: AppId): Promise<AppActionResult> {
  * is that the path stays one argument — execFile takes an array, so no shell
  * ever sees it and nothing in a filename can become a command.
  */
+/**
+ * Whether the Spotify desktop app is actually here.
+ *
+ * A `spotify:` URI is the nicer way in when the app exists and a dead end when
+ * it doesn't — Windows answers with "no app is associated with this link",
+ * which reads as Axis being broken. So the choice is made by looking.
+ */
+export function isSpotifyInstalled(): boolean {
+  return APPS.spotify.paths().some((candidate) => {
+    try {
+      return fs.existsSync(candidate);
+    } catch {
+      return false;
+    }
+  });
+}
+
 export async function openLocalPath(target: string): Promise<void> {
   requireDesktopControl();
   await launch(target);

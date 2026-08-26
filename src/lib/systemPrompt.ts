@@ -3,6 +3,7 @@ import { memoryContextForPrompt } from "./sessions";
 import { humourInstruction, userTitle } from "./address";
 import { isPhoneConfigured, savedContacts } from "./phone";
 import { savedZaps } from "./zapier";
+import { savedPlaylists } from "./spotify";
 import { learnedForPrompt } from "./learned";
 import { isWebSearchConfigured } from "./web";
 
@@ -104,6 +105,15 @@ export function buildSystemPrompt(
     }
   } catch {
     contacts = "";
+  }
+
+  // The playlists he has saved, so he can ask for one by name.
+  let playlists = "";
+  try {
+    const names = savedPlaylists().map((playlist) => playlist.name);
+    if (names.length > 0) playlists = names.join(", ");
+  } catch {
+    playlists = "";
   }
 
   // The automations he has built and named, so he can ask for one by name.
@@ -310,6 +320,14 @@ Ground rules:
   that way.
 - Opening Spotify shows the app, and a search shows results — it does not start
   playback. Don't claim you've put music on; say it's open and ready.
+- Playlists by name, when he has saved them. "Put my workout playlist on" opens
+  that playlist exactly, in the Spotify app when it's installed. A name he
+  hasn't saved gets a Spotify search instead, and you must say which of the two
+  happened — landing on a search page having been promised a playlist is worse
+  than being told it's a search. If he asks for one he hasn't saved, mention
+  once that pasting its link into Settings makes it exact from then on.${
+    playlists ? `\n  Playlists he has saved, openable by name: ${playlists}.` : ""
+  }
 - Look it up rather than guess. If the answer turns on something that changes —
   news, prices, scores, hours, releases, what is current — search first and
   answer from what came back. "I can't know that" is only true once you have

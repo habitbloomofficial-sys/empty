@@ -14,6 +14,8 @@ import {
   openWebsite,
   isKnownApp,
   isDesktopControlEnabled,
+  isSpotifyInstalled,
+  openUri,
 } from "./desktop";
 import { forget, remember } from "./memory";
 import { noteLesson, searchSessions } from "./sessions";
@@ -33,6 +35,7 @@ import { learn, unlearn } from "./learned";
 import { launchApp, listInstalledApps, rankApps } from "./installedApps";
 import { generateVideo, isVideoEnabled } from "./video";
 import { channelDestination } from "./youtubeChannel";
+import { playlistDestination } from "./spotify";
 import { createEvent, listEvents } from "./calendar";
 import { isCalendarConfigured } from "./gmail";
 import { normalizeToolName, parseToolArguments } from "./toolCalls";
@@ -273,6 +276,25 @@ export const toolDefinitions: OpenAI.Chat.Completions.ChatCompletionTool[] = [
           },
         },
         required: ["prompt"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "open_playlist",
+      description:
+        "Open a Spotify playlist by name — \"put my workout playlist on\", \"open Deep Focus\". Playlists he has saved by name in Settings open exactly, in the Spotify app if it's installed and the web player otherwise. Anything else opens a Spotify search for it, and the result says which of the two happened, so tell him: landing on a search page having been promised a playlist is worse than being told it's a search. Note that this opens the playlist; it does not press play, and you should not claim it did.",
+      parameters: {
+        type: "object",
+        properties: {
+          name: {
+            type: "string",
+            description:
+              "What he called it, as he said it. A Spotify link or URI works too, if he read one out.",
+          },
+        },
+        required: ["name"],
       },
     },
   },
@@ -763,6 +785,7 @@ export function availableTools(): OpenAI.Chat.Completions.ChatCompletionTool[] {
     if (name === "open_installed_app" || name === "list_installed_apps") {
       return isDesktopControlEnabled();
     }
+    if (name === "open_playlist") return isDesktopControlEnabled();
     if (name === "list_calendar_events" || name === "create_calendar_event") {
       return isCalendarConfigured();
     }
@@ -1050,6 +1073,40 @@ export async function executeTool(
         return {
           result: video,
           log: { tool: name, summary: `Made a video: ${prompt.slice(0, 60)}`, ok: true },
+        };
+      }
+      case "open_playlist": {
+        const wanted = required(args.name, "playlist");
+        const destination = playlistDestination(wanted);
+        if (!destination) throw new Error("Which playlist, sir?");
+
+        // The app when it's here, the web player when it isn't. A spotify:
+        // URI on a machine without Spotify is a dead end that reads as a bug.
+        const useApp = Boolean(destination.uri) && isSpotifyInstalled();
+        if (useApp && destination.uri) {
+          await openUri(destination.uri);
+        } else {
+          await openWebsite({ url: destination.url, newWindow: args.new_window !== false });
+        }
+
+        const where = useApp ? "in Spotify" : "in the web player";
+        return {
+          result: {
+            opened: true,
+            exact: destination.exact,
+            playlist: destination.name,
+            url: destination.url,
+            note: destination.exact
+              ? `Opened ${destination.name ?? "the playlist"} ${where}. It's open, not playing — that last press is his.`
+              : `He hasn't saved a playlist by that name, so this is a Spotify search for it ${where}. Say so. To have it open exactly next time, he can paste its link into Settings under Spotify playlists.`,
+          },
+          log: {
+            tool: name,
+            summary: destination.exact
+              ? `Opened ${destination.name ?? "a playlist"} ${where}`
+              : `Searched Spotify for "${wanted}"`,
+            ok: true,
+          },
         };
       }
       case "open_installed_app": {

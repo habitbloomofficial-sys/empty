@@ -801,6 +801,36 @@ this page: turn desktop control off and this goes with it.
 The curated list below still exists on top of it, because those apps can also be
 *closed*, and searched, which needs knowing what they are.
 
+### Spotify playlists by name (a link each, pasted once)
+
+*"Put my workout playlist on"*, *"open Deep Focus"* — he opens the playlist
+itself, in the Spotify app when it's installed and the web player when it isn't.
+
+**Why this one needs setup when the others don't.** There is no free, key-free
+way to look a playlist up by name. Spotify's search needs a developer app, and
+*your own* playlists can't be found by anything at all without you logging in to
+one. What there is, and what costs nothing, is the link — every playlist has
+one, it's two taps to copy, and once Axis has it he goes straight there for ever
+after.
+
+So: in Spotify, right-click a playlist → **Share** → **Copy link to playlist**,
+and paste it into **Settings → Apps & websites → Spotify playlists** as
+`Name = link`, one per line — the same format as the phone contacts and the
+Zaps. Then say the name.
+
+Speech is handled: *"put my workout playlist on"* has one word in it that
+identifies anything, and that's the word he matches on. Links pasted in any of
+the forms Spotify hands out all work — the share URL with its tracking
+parameter, the `spotify:playlist:` URI, the older one with a username in the
+middle.
+
+**A name you haven't saved opens a Spotify search for it instead**, and he says
+that's what he did. Landing on a search page having been promised a playlist is
+worse than being told it's a search.
+
+**He opens it; he doesn't press play.** That last press is still yours, and he
+won't claim otherwise.
+
 ### Websites by name (no setup needed)
 
 Say the name and he opens it: *"open OneDrive"*, *"pull up Google Docs"*, *"go
