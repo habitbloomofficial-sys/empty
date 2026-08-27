@@ -704,9 +704,14 @@ function setupMic() {
     recogniser.onerror = (event) => {
       listening = false;
       micBtn.classList.remove("live");
-      setState(event.error === "not-allowed"
-        ? "The microphone is blocked — allow it in your browser's site settings."
-        : "Didn't catch that.");
+      if (event.error !== "not-allowed") { setState("Didn't catch that."); return; }
+      // A page opened straight from the phone's storage has no web address, and
+      // a browser will not grant a microphone to something it can't name. There
+      // is no setting to change for it either, so saying "check your settings"
+      // would send him looking for something that isn't there.
+      setState(location.protocol === "file:"
+        ? "No microphone from a saved file, I'm afraid — type to me instead."
+        : "The microphone is blocked — allow it in your browser's site settings.");
     };
     recogniser.onend = () => {
       listening = false;
