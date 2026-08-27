@@ -52,6 +52,8 @@ export interface IntegrationStatus {
   zaps: string[];
   /** Whether Axis may open or close apps on this machine. */
   desktopControl: boolean;
+  /** A Honcho key is saved. Stored only — see the Settings panel. */
+  honcho: boolean;
   /** How he searches the web, if he can — usually through the brain he runs on. */
   webSearch: "google" | "gemini" | "openrouter" | "anthropic" | null;
   /** Whether a passcode exists, which is what makes remote access possible. */

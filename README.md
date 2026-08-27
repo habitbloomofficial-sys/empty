@@ -98,8 +98,30 @@ Axis on your computer acting *on* your computer, and a web page on a phone has
 no route to it. What's left — a conversation, a memory, a voice and the web — is
 most of what you want when you're not at home anyway.
 
-Settings has **"Save a copy with my key already in it"**, which writes a fresh
-copy of the file with your key and preferences baked in. Keep that one: it opens
+**He knows which Axis he is.** The badge in the corner reads `ON HIS OWN` or
+`AT HOME`, and he greets you accordingly — he'll say he can see you're on your
+phone, and offer what's actually on the table rather than a menu of things he'd
+have to refuse.
+
+**Connected to the computer, he is the real thing.** Put the address from
+START-AXIS-ANYWHERE.bat and your passcode into Settings and the phone stops
+being a substitute: your questions go to the Axis at home, with his email, his
+folders, his memory and every tool he has at the desk. What he does shows up as
+he does it. Lose the connection and he notices, says so, and carries on by
+himself rather than pretending.
+
+**His real voice.** Paste your ElevenLabs key — the same one as on the computer
+— and he speaks with it instead of the phone's robot. He reads the voices off
+your own account rather than guessing at one. Without a key, or if ElevenLabs
+refuses, the phone's own voice takes over and he tells you it did.
+
+**Gemini or Claude.** Free or sharp, switchable in Settings. On Claude there's a
+**how hard he thinks** control running from Low to Maximum; it defaults to High,
+which is Anthropic's own default, so nothing is held back unless you choose to
+hold it back.
+
+Settings has **"Save a copy with my keys already in it"**, which writes a fresh
+copy of the file with everything baked in. Keep that one: it opens
 ready, which matters because some phones won't let a file opened from storage
 remember anything between opens.
 

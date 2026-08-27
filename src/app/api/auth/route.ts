@@ -61,8 +61,19 @@ export async function POST(req: NextRequest) {
   }
 
   clearFailures(key);
-  const response = NextResponse.json({ ok: true });
-  response.cookies.set(COOKIE_NAME, issueToken(), {
+
+  // A cross-origin caller — Axis on a phone, opened from the phone's own
+  // storage — cannot be given a cookie: its origin is `null`, and the CORS
+  // rules that let it call at all forbid credentials. So it is handed the same
+  // signed token to carry in an Authorization header instead. Only ever to a
+  // caller from another origin, so the app in a browser keeps its httpOnly
+  // cookie and nothing that used to be out of reach of a script becomes
+  // reachable by one.
+  const token = issueToken();
+  const crossOrigin = Boolean(req.headers.get("origin")) &&
+    req.headers.get("origin") !== req.nextUrl.origin;
+  const response = NextResponse.json(crossOrigin ? { ok: true, token } : { ok: true });
+  response.cookies.set(COOKIE_NAME, token, {
     httpOnly: true,
     sameSite: "lax",
     // Remote access is HTTPS by definition — a tunnel terminates TLS for us —

@@ -35,7 +35,10 @@ export function anthropicEffort(): "low" | "medium" | "high" | "xhigh" | "max" {
   const configured = getSetting("ANTHROPIC_EFFORT")?.toLowerCase();
   const allowed = ["low", "medium", "high", "xhigh", "max"] as const;
   const match = allowed.find((level) => level === configured);
-  return match ?? "low";
+  // "high" is the API's own default — i.e. not held back. Anything lower is a
+  // deliberate choice to make him think less, and that is his to make, not a
+  // default to inherit silently.
+  return match ?? "high";
 }
 
 /**
@@ -168,11 +171,15 @@ export function isUnsupportedParameter(error: unknown, parameter: string): boole
  * Without one, providers assume the model's own maximum — 16k tokens on many
  * OpenRouter models — and OpenRouter refuses the request outright if your
  * balance couldn't cover a reply that long, even though the actual reply would
- * be three sentences. It also stops a runaway answer costing real money.
- * Axis is spoken aloud; a couple of thousand tokens is already far more than
- * anyone wants read to them.
+ * be three sentences.
+ *
+ * It is a ceiling, not a budget — you pay for the tokens written, not the ones
+ * allowed — so it should sit well above any real answer and only ever catch a
+ * runaway. Two thousand was under that line: it truncated him mid-thought on
+ * anything that needed working through, which is a limit you feel without ever
+ * being told about it.
  */
-const DEFAULT_MAX_TOKENS = 2000;
+const DEFAULT_MAX_TOKENS = 8000;
 
 /** Lowered at runtime when a provider tells us what the balance can afford. */
 let learnedMaxTokens: number | null = null;

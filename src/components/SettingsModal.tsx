@@ -609,6 +609,33 @@ export function SettingsModal({
                     much and is quicker, if most of what you ask him is simple.
                   </span>
                 </label>
+                <label className="block">
+                  <span className="mb-1 block text-[11px] font-semibold text-cream">
+                    How hard he thinks
+                  </span>
+                  <select
+                    value={draft("ANTHROPIC_EFFORT") || "high"}
+                    onChange={(e) => {
+                      setDraft("ANTHROPIC_EFFORT", e.target.value);
+                      void save("brain", { ANTHROPIC_EFFORT: e.target.value });
+                    }}
+                    className="w-full rounded-none border border-amber-500/20 bg-black/40 px-3 py-2 text-xs text-cream focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-400/30"
+                  >
+                    <option value="low">Low — quick and cheap</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High — the normal setting</option>
+                    <option value="xhigh">Very high</option>
+                    <option value="max">Maximum — nothing held back</option>
+                  </select>
+                  <span className="mt-1 block text-[10px] text-sand-600">
+                    How long Claude is allowed to think before answering. High is
+                    Anthropic&apos;s own default and what he uses unless you say
+                    otherwise. Above it he reasons further and costs more per
+                    question; <b>Maximum</b> is for when being right matters more
+                    than what it costs. Nothing here makes him worse at anything
+                    — lower settings only make him quicker and cheaper.
+                  </span>
+                </label>
                 <p>
                   Get a key at{" "}
                   <a
@@ -1635,6 +1662,39 @@ export function SettingsModal({
             </p>
           </Section>
           <GroupHeading title="MEMORY" blurb="What he keeps, and what he did." />
+          <Section
+            icon={<MemoryIcon className="h-4 w-4" />}
+            title="Honcho — memory that outlives this computer"
+            ok={Boolean(status?.honcho)}
+          >
+            <p>
+              Axis&apos;s own memory below lives in a file on this machine. Honcho
+              is a service that keeps a longer, richer picture of you — one that
+              would follow him onto your phone and survive a reinstall.
+            </p>
+            <Field
+              label="Honcho API key"
+              view={views.HONCHO_API_KEY}
+              value={draft("HONCHO_API_KEY")}
+              onChange={(v) => setDraft("HONCHO_API_KEY", v)}
+              placeholder={views.HONCHO_API_KEY?.display || "your Honcho key"}
+            />
+            <SaveButton
+              onClick={() => save("honcho", { HONCHO_API_KEY: draft("HONCHO_API_KEY") })}
+              busy={busySection === "honcho"}
+              saved={savedSection === "honcho"}
+            />
+            <div className="rounded-none bg-amber-500/10 px-2.5 py-2 text-amber-300">
+              <p className="mb-1 font-semibold">The key is saved; he isn&apos;t using it yet.</p>
+              <p>
+                Honcho&apos;s API reference wasn&apos;t reachable from where this
+                was built, and guessing at the shape of an API is how you get code
+                that fails quietly months later. The key is stored and ready.
+                Send me a page of their API docs — or a single example request —
+                and wiring it up is short work.
+              </p>
+            </div>
+          </Section>
           <Section
             icon={<MemoryIcon className="h-4 w-4" />}
             title="Memory"

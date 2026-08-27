@@ -12,21 +12,23 @@
 <!--
   A X I S  -  the whole thing, in one file.
 
-  This is Axis without the computer. Send this file to your phone by any means
-  you like - WhatsApp, Discord, email, a cable - open it, and he is there. There
-  is no server, no install, no build step and nothing to keep running at home.
+  Send this file to your phone by any means you like - WhatsApp, Discord,
+  email, a cable - open it, and he is there. No server, no install, no build.
 
-  What he can do here: talk, think, remember this conversation, listen to you
-  and speak back, and look things up on the web.
+  He works in two modes, and he tells you which one he is in.
 
-  What he cannot do here, and says so plainly rather than pretending: open apps,
-  read your email, play your playlists, or touch your computer in any way. Those
-  live on the machine at home, and a web page on your phone has no route to it.
-  That is not a limitation I can code around; it is what a phone is.
+  ON HIS OWN. He thinks with Google's Gemini or with Claude, straight from your
+  phone. He can talk, remember, listen, speak, and search the web. He cannot
+  touch your computer, and says so rather than pretending.
 
-  He talks to Google's Gemini directly from your phone. Your key is typed in
-  once and stays on the phone - it goes to Google and nowhere else. There is no
-  middle-man server in this file, because there is no server in this file.
+  CONNECTED TO HOME. If the computer is running START-AXIS-ANYWHERE.bat, put
+  its address and passcode into Settings and he talks to the real Axis instead:
+  your email, your folders, your playlists, everything he can do at his desk.
+  The phone becomes a window rather than a substitute.
+
+  Your keys stay on this phone. They go to Google, to Anthropic, to ElevenLabs
+  and to your own computer - and nowhere else. There is no middle-man server in
+  this file, because there is no server in this file.
 -->
 
 <style>
@@ -46,6 +48,12 @@
 
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
+  /* A class that sets `display` beats the browser's own rule for [hidden], so
+     anything hidden while also being a flex or grid item stays stubbornly
+     visible. That is how the microphone button came to be offered on phones
+     that cannot dictate. */
+  [hidden] { display: none !important; }
+
   html, body {
     margin: 0;
     height: 100%;
@@ -63,9 +71,20 @@
   }
 
   button { font: inherit; color: inherit; cursor: pointer; }
-  button:focus-visible, input:focus-visible, textarea:focus-visible {
+  button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {
     outline: 2px solid var(--amber);
     outline-offset: 2px;
+  }
+
+  input, select {
+    width: 100%;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    color: var(--cream);
+    padding: 0.75rem 0.85rem;
+    font-size: 1rem;
+    border-radius: 4px;
+    font-family: inherit;
   }
 
   /* ---------------------------------------------------------------- setup */
@@ -75,7 +94,7 @@
     display: flex;
     flex-direction: column;
     justify-content: center;
-    gap: 1.1rem;
+    gap: 1rem;
     padding: 1.6rem 1.4rem;
     max-width: 30rem;
     margin: 0 auto;
@@ -89,17 +108,35 @@
     margin: 0;
     color: var(--amber);
   }
-  #setup p { margin: 0; color: var(--sand); font-size: 0.95rem; line-height: 1.55; }
+  #setup p { margin: 0; color: var(--sand); font-size: 0.94rem; line-height: 1.55; }
   #setup a { color: var(--amber); }
-  #setup input {
-    width: 100%;
+
+  .field { display: flex; flex-direction: column; gap: 0.35rem; }
+  .field > span {
+    font-size: 0.7rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--amber-dim);
+    font-weight: 700;
+  }
+  .field small { color: var(--sand-dim); font-size: 0.78rem; line-height: 1.45; }
+
+  .choice { display: flex; gap: 0.5rem; }
+  .choice button {
+    flex: 1;
     background: var(--panel);
     border: 1px solid var(--line);
-    color: var(--cream);
-    padding: 0.85rem 0.9rem;
-    font-size: 1rem;
+    color: var(--sand);
+    padding: 0.7rem 0.5rem;
     border-radius: 4px;
+    font-size: 0.9rem;
   }
+  .choice button[aria-pressed="true"] {
+    border-color: var(--amber);
+    color: var(--amber);
+    background: var(--panel-2);
+  }
+
   .primary {
     background: var(--amber);
     color: #1a1207;
@@ -114,10 +151,9 @@
     border-left: 2px solid var(--amber-dim);
     padding-left: 0.85rem;
     color: var(--sand);
-    font-size: 0.88rem;
+    font-size: 0.86rem;
     line-height: 1.5;
   }
-  .error { color: var(--danger); font-size: 0.9rem; }
 
   /* ----------------------------------------------------------------- app */
 
@@ -139,7 +175,20 @@
     letter-spacing: 0.28em;
     color: var(--amber);
     font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
   }
+  .link {
+    font-size: 0.55rem;
+    letter-spacing: 0.1em;
+    padding: 0.1rem 0.35rem;
+    border-radius: 2px;
+    border: 1px solid var(--line);
+    color: var(--sand-dim);
+    font-weight: 700;
+  }
+  .link.home { color: var(--ok); border-color: var(--ok); }
   header .state {
     font-size: 0.7rem;
     color: var(--sand-dim);
@@ -192,6 +241,26 @@
   .sources { font-size: 0.75rem; color: var(--sand-dim); margin-top: 0.4rem; }
   .sources a { color: var(--amber-dim); }
 
+  /* What he actually did, when he is connected to the computer. */
+  .did {
+    align-self: flex-start;
+    font-size: 0.75rem;
+    color: var(--sand-dim);
+    border-left: 2px solid var(--amber-dim);
+    padding-left: 0.6rem;
+  }
+  .did.failed { border-color: var(--danger); color: var(--danger); }
+
+  .hear {
+    align-self: flex-start;
+    background: transparent;
+    border: 1px solid var(--amber-dim);
+    color: var(--amber);
+    border-radius: 14px;
+    padding: 0.3rem 0.8rem;
+    font-size: 0.8rem;
+  }
+
   .thinking { display: flex; gap: 0.28rem; align-self: flex-start; padding: 0.4rem 0; }
   .thinking i {
     width: 6px; height: 6px; border-radius: 50%;
@@ -222,6 +291,7 @@
     resize: none;
     max-height: 7.5rem;
     line-height: 1.4;
+    font-family: inherit;
   }
   .send {
     background: var(--amber);
@@ -242,27 +312,25 @@
   #panel {
     position: fixed;
     inset: 0;
-    background: rgba(6, 5, 3, 0.94);
+    background: var(--bg);
     display: none;
     flex-direction: column;
     padding: 1.3rem 1.2rem calc(1.3rem + env(safe-area-inset-bottom));
-    gap: 1rem;
+    gap: 1.1rem;
     overflow-y: auto;
     z-index: 10;
   }
   #panel.on { display: flex; }
-  #panel h2 { margin: 0; font-size: 0.8rem; letter-spacing: 0.24em; color: var(--amber); }
-  #panel label { display: flex; align-items: center; gap: 0.7rem; color: var(--sand); font-size: 0.93rem; }
-  #panel input[type="checkbox"] { width: 1.15rem; height: 1.15rem; accent-color: var(--amber); }
-  #panel input[type="text"], #panel input[type="password"] {
-    width: 100%;
-    background: var(--panel);
-    border: 1px solid var(--line);
-    color: var(--cream);
-    padding: 0.7rem 0.8rem;
-    border-radius: 4px;
-    font-size: 0.95rem;
+  #panel h2 {
+    margin: 0;
+    font-size: 0.72rem;
+    letter-spacing: 0.24em;
+    color: var(--amber);
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 0.5rem;
   }
+  #panel label.check { display: flex; align-items: center; gap: 0.7rem; color: var(--sand); font-size: 0.93rem; }
+  #panel input[type="checkbox"] { width: 1.15rem; height: 1.15rem; accent-color: var(--amber); flex: none; }
   .ghost {
     background: transparent;
     border: 1px solid var(--line);
@@ -271,10 +339,12 @@
     border-radius: 4px;
     width: 100%;
   }
-  .hint { color: var(--sand-dim); font-size: 0.8rem; line-height: 1.5; margin: 0; }
+  .hint { color: var(--sand-dim); font-size: 0.79rem; line-height: 1.5; margin: 0; }
+  .status { font-size: 0.82rem; margin: 0; }
+  .status.good { color: var(--ok); }
+  .status.bad { color: var(--danger); }
+  .group { display: flex; flex-direction: column; gap: 0.7rem; }
   .cant { border: 1px solid var(--line); border-radius: 4px; padding: 0.8rem; }
-  .cant p { margin: 0 0 0.4rem; }
-  .cant p:last-child { margin-bottom: 0; }
 </style>
 </head>
 <body>
@@ -282,26 +352,43 @@
 <!-- ------------------------------------------------------------- setup -->
 <section id="setup">
   <h1>AXIS</h1>
-  <p><strong>One key and he's awake.</strong> Axis needs a Google Gemini key to
-  think with. It's free, it takes about a minute, and no card is asked for.</p>
-  <p><a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Get one here</a>
-  — sign in with Google, press <em>Create API key</em>, copy it, paste it below.</p>
+  <p><strong>One key and he's awake.</strong> Pick what he thinks with, and paste
+  its key. Everything else is optional and lives in Settings afterwards.</p>
 
-  <input id="key" type="password" inputmode="text" autocomplete="off"
-         autocapitalize="off" autocorrect="off" spellcheck="false"
-         placeholder="AIza…" aria-label="Your Gemini API key">
+  <div class="field">
+    <span>His brain</span>
+    <div class="choice" id="brainChoice">
+      <button type="button" data-brain="gemini" aria-pressed="true">Gemini (free)</button>
+      <button type="button" data-brain="claude" aria-pressed="false">Claude (paid)</button>
+    </div>
+    <small id="brainHelp"></small>
+  </div>
+
+  <div class="field">
+    <span id="keyLabel">Gemini key</span>
+    <input id="key" type="password" inputmode="text" autocomplete="off"
+           autocapitalize="off" autocorrect="off" spellcheck="false"
+           placeholder="AIza…" aria-label="API key">
+  </div>
+
+  <div class="field">
+    <span>ElevenLabs key — optional</span>
+    <input id="elevenKey" type="password" autocomplete="off" autocapitalize="off"
+           autocorrect="off" spellcheck="false" placeholder="sk_… (leave empty for the phone's own voice)"
+           aria-label="ElevenLabs API key">
+    <small>Gives him a real voice instead of the phone's robot one. It's the same
+    key you have on the computer. Without it he still speaks, just less well.</small>
+  </div>
+
   <button id="begin" class="primary" disabled>Wake him up</button>
-  <p id="setupError" class="error" hidden></p>
 
   <div class="note">
-    <p style="margin:0 0 .5rem"><strong>Your key stays on this phone.</strong>
-    It's sent to Google when he answers you, and to nowhere else. There is no
-    server in this file — it's the whole app, and it's talking straight to
-    Google from your hand.</p>
-    <p style="margin:0">This Axis can talk, think, remember, listen, speak, and
-    search the web. He <em>can't</em> open apps, read your email or touch your
-    computer — that Axis lives on the machine at home and a web page can't
-    reach into it.</p>
+    <p style="margin:0 0 .5rem"><strong>Your keys stay on this phone.</strong>
+    They're sent to Google, Anthropic or ElevenLabs when he answers you, and to
+    nowhere else. There's no server in this file — it <em>is</em> the whole app.</p>
+    <p style="margin:0">On his own he can talk, think, remember, listen, speak
+    and search the web. To reach your <em>email, folders and computer</em> he has
+    to connect to the Axis at home — there's a place for that in Settings.</p>
   </div>
 </section>
 
@@ -310,7 +397,7 @@
   <header>
     <canvas id="orb" width="68" height="68" aria-hidden="true"></canvas>
     <div class="who">
-      <div class="name">AXIS</div>
+      <div class="name">AXIS <span class="link" id="linkBadge">ON HIS OWN</span></div>
       <div class="state" id="state">Ready.</div>
     </div>
     <button class="icon" id="speakBtn" aria-pressed="true" title="Speak replies aloud" aria-label="Speak replies aloud">♪</button>
@@ -320,7 +407,7 @@
   <div id="log" role="log" aria-live="polite"></div>
 
   <form id="form">
-    <button type="button" class="icon mic" id="micBtn" title="Hold to speak" aria-label="Speak" hidden>●</button>
+    <button type="button" class="icon mic" id="micBtn" title="Speak" aria-label="Speak" hidden>●</button>
     <textarea id="input" rows="1" placeholder="Say something to Axis…"
               aria-label="Message" autocapitalize="sentences"></textarea>
     <button type="submit" class="send" aria-label="Send">↑</button>
@@ -329,35 +416,82 @@
 
 <!-- ------------------------------------------------------------- panel -->
 <div id="panel">
-  <h2>SETTINGS</h2>
 
-  <label><input type="checkbox" id="optSpeak" checked> Speak his replies aloud</label>
-  <label><input type="checkbox" id="optSearch" checked> Let him search the web</label>
-
-  <div>
-    <h2 style="margin-bottom:.5rem">WHAT HE CALLS YOU</h2>
-    <input type="text" id="optTitle" placeholder="sir" maxlength="24" aria-label="What Axis calls you">
+  <h2>HIS BRAIN</h2>
+  <div class="group">
+    <div class="choice" id="optBrain">
+      <button type="button" data-brain="gemini" aria-pressed="true">Gemini</button>
+      <button type="button" data-brain="claude" aria-pressed="false">Claude</button>
+    </div>
+    <label class="field"><span id="optKeyLabel">Key</span>
+      <input type="password" id="optKey" autocomplete="off" aria-label="API key"></label>
+    <label class="field"><span>Model</span>
+      <input type="text" id="optModel" autocomplete="off" spellcheck="false" aria-label="Model"></label>
+    <label class="field" id="effortField"><span>How hard he thinks</span>
+      <select id="optEffort" aria-label="How hard he thinks">
+        <option value="low">Low — quick and cheap</option>
+        <option value="medium">Medium</option>
+        <option value="high">High — the normal setting</option>
+        <option value="xhigh">Very high</option>
+        <option value="max">Maximum — nothing held back</option>
+      </select>
+      <small>How long Claude may think before answering. High is Anthropic's own
+      default. Above it he reasons further and each question costs more; nothing
+      here makes him worse — lower settings only make him quicker and cheaper.</small>
+    </label>
+    <p class="hint" id="brainNote"></p>
   </div>
 
-  <div>
-    <h2 style="margin-bottom:.5rem">GEMINI KEY</h2>
-    <input type="password" id="optKey" placeholder="AIza…" autocomplete="off" aria-label="Gemini API key">
-    <p class="hint" id="modelNote"></p>
+  <h2>HIS VOICE</h2>
+  <div class="group">
+    <label class="check"><input type="checkbox" id="optSpeak" checked> Speak his replies aloud</label>
+    <label class="field"><span>ElevenLabs key</span>
+      <input type="password" id="optEleven" autocomplete="off" placeholder="sk_…" aria-label="ElevenLabs key"></label>
+    <label class="field"><span>Which voice</span>
+      <select id="optVoice" aria-label="ElevenLabs voice"><option value="">The phone's own voice</option></select></label>
+    <button class="ghost" id="loadVoices">Load my ElevenLabs voices</button>
+    <p class="status" id="voiceStatus"></p>
   </div>
 
-  <button class="ghost" id="saveCopy">Save a copy with my key already in it</button>
-  <p class="hint">Makes a fresh <strong>AXIS-PHONE.html</strong> with your key
-  and settings baked in. Keep that one and it opens ready — useful if this phone
-  won't remember settings between opens.</p>
+  <h2>HIS COMPUTER AT HOME</h2>
+  <div class="group">
+    <p class="hint">Run <strong>START-AXIS-ANYWHERE.bat</strong> on the computer,
+    then put the address it prints here. Connected, he can read your email, sort
+    through your folders, open things — everything he can do at his desk.
+    Not connected, he says so rather than pretending.</p>
+    <label class="field"><span>Address</span>
+      <input type="text" id="optHome" inputmode="url" autocapitalize="off" autocorrect="off"
+             spellcheck="false" placeholder="https://something.trycloudflare.com" aria-label="Home address"></label>
+    <label class="field"><span>Passcode</span>
+      <input type="password" id="optPass" autocomplete="off" aria-label="Home passcode"></label>
+    <button class="ghost" id="connectHome">Connect to the computer</button>
+    <p class="status" id="homeStatus"></p>
+  </div>
 
-  <button class="ghost" id="wipe">Forget this conversation</button>
+  <h2>ODDS AND ENDS</h2>
+  <div class="group">
+    <label class="check"><input type="checkbox" id="optSearch" checked> Let him search the web himself</label>
+    <label class="field"><span>What he calls you</span>
+      <input type="text" id="optTitle" placeholder="sir" maxlength="24" aria-label="What Axis calls you"></label>
+    <label class="field"><span>Honcho key — memory that follows him</span>
+      <input type="password" id="optHoncho" autocomplete="off" placeholder="your Honcho key"
+             aria-label="Honcho API key">
+      <small><strong>Saved, but not in use yet.</strong> Honcho's API reference
+      wasn't reachable from where this was built, and guessing at an API is how
+      you get code that fails quietly. Send me their docs and it's short work.</small>
+    </label>
+    <button class="ghost" id="saveCopy">Save a copy with my keys already in it</button>
+    <p class="hint">Writes a fresh <strong>AXIS-PHONE.html</strong> with everything
+    filled in. Keep that one and it opens ready — useful if this phone won't
+    remember settings between opens.</p>
+    <button class="ghost" id="wipe">Forget this conversation</button>
+  </div>
 
   <div class="cant">
-    <p style="color:var(--sand)"><strong>What he can't do from here</strong></p>
-    <p class="hint">Open Spotify, read your Gmail, run your automations, open
-    websites on your PC, place calls. All of that is the Axis on your computer
-    doing things <em>to</em> your computer. This one is a conversation, a
-    memory, a voice and the web — which is most of what you want on a train.</p>
+    <p class="hint" style="color:var(--sand)"><strong>On his own, he can't reach your computer.</strong></p>
+    <p class="hint">Opening apps, reading Gmail, going through folders — those are
+    the computer's Axis acting on the computer. Connect him above and they all
+    work. Until then he'll tell you so instead of pretending.</p>
   </div>
 
   <button class="primary" id="closePanel">Done</button>
@@ -366,14 +500,23 @@
 <script>
 "use strict";
 
-// The page exactly as it was delivered, captured before anything is drawn into
-// it. "Save a copy" rewrites this, not the live DOM - otherwise the copy would
-// carry your whole conversation inside it.
+// The page exactly as delivered, captured before anything is drawn into it.
+// "Save a copy" rewrites this rather than the live DOM - otherwise the copy
+// would carry the whole conversation inside it.
 const PRISTINE = document.documentElement.outerHTML;
 
-// Replaced with real values by "Save a copy with my key already in it".
+// Replaced with real values by "Save a copy with my keys already in it".
 const BAKED = {
+  brain: "",
   key: "",
+  claudeKey: "",
+  model: "",
+  effort: "",
+  honcho: "",
+  eleven: "",
+  voice: "",
+  home: "",
+  pass: "",
   title: "",
   speak: null,
   search: null
@@ -381,9 +524,9 @@ const BAKED = {
 
 /* ---------------------------------------------------------------- storage */
 
-// localStorage is not always there: some phones refuse it for files opened
-// from storage rather than from a website. Everything below works either way -
-// it just forgets when it can't remember, and says so instead of breaking.
+// Not every phone allows storage to a file opened from its own downloads.
+// Everything below works either way: it forgets when it can't remember, and
+// says so rather than breaking.
 const store = (() => {
   let ok = true;
   try {
@@ -408,15 +551,38 @@ const store = (() => {
   };
 })();
 
+const pick = (baked, saved, fallback) =>
+  (baked !== "" && baked !== null && baked !== undefined) ? baked : (saved ?? fallback);
+
 const settings = {
-  key:    BAKED.key || store.get("axis.key") || "",
-  title:  BAKED.title || store.get("axis.title") || "sir",
-  speak:  BAKED.speak !== null ? BAKED.speak : store.get("axis.speak") !== "off",
-  search: BAKED.search !== null ? BAKED.search : store.get("axis.search") !== "off",
-  model:  store.get("axis.model") || "gemini-3.6-flash"
+  brain:     pick(BAKED.brain, store.get("axis.brain"), "gemini"),
+  key:       pick(BAKED.key, store.get("axis.key"), ""),
+  claudeKey: pick(BAKED.claudeKey, store.get("axis.claudeKey"), ""),
+  model:     pick(BAKED.model, store.get("axis.model"), ""),
+  effort:    pick(BAKED.effort, store.get("axis.effort"), "high"),
+  honcho:    pick(BAKED.honcho, store.get("axis.honcho"), ""),
+  eleven:    pick(BAKED.eleven, store.get("axis.eleven"), ""),
+  voice:     pick(BAKED.voice, store.get("axis.voice"), ""),
+  home:      pick(BAKED.home, store.get("axis.home"), ""),
+  pass:      pick(BAKED.pass, store.get("axis.pass"), ""),
+  title:     pick(BAKED.title, store.get("axis.title"), "sir"),
+  speak:     BAKED.speak !== null ? BAKED.speak : store.get("axis.speak") !== "off",
+  search:    BAKED.search !== null ? BAKED.search : store.get("axis.search") !== "off",
+  token:     store.get("axis.token") || ""
 };
 
-/* ------------------------------------------------------------ the persona */
+// Google and Anthropic both retire models on their own schedule. A file sent
+// over WhatsApp cannot be updated, so the default is soft and a rejection is
+// taken as instruction - see adoptReplacement below.
+const DEFAULT_MODEL = { gemini: "gemini-3.6-flash", claude: "claude-opus-5" };
+const modelName = () => settings.model || DEFAULT_MODEL[settings.brain];
+const brainKey = () => (settings.brain === "claude" ? settings.claudeKey : settings.key);
+
+/* ---------------------------------------------------------- the persona */
+
+// Whether the computer at home is answering right now. Everything about what
+// he may claim to be able to do hangs off this one fact.
+let home = { connected: false, checkedAt: 0 };
 
 function systemPrompt() {
   const title = settings.title || "sir";
@@ -427,34 +593,30 @@ Your tone is composed, economical, and never padded. You do not ramble and you d
 space. You sound like a brilliant, unflappable chief of staff, not a chatbot. A dry, spare wit
 is welcome where it costs nothing; it never comes at the expense of an answer.
 
-Where you are: he is holding his phone, and you are running inside a single file on it. This
-matters, because the Axis he knows also lives on his computer at home and can open apps, read
-his email, play his playlists and open websites in his browser. You cannot do any of that from
-here — there is no route from a web page on a phone to a machine somewhere else. If he asks for
-one of those things, say plainly that this is the phone Axis and it can't reach the computer,
-tell him what you can do instead, and move on. Never pretend to have opened or sent anything.
-One sentence, not an apology.
+WHERE HE IS. He is holding his phone, and you are running inside a single file on it. Say so
+naturally when it matters — what you can do for him differs from what you can do at his desk,
+and he should never have to guess which Axis he is talking to.
 
-What you can do here: talk, think, remember this conversation, and look things up on the web.
+WHAT YOU CAN DO RIGHT NOW. Talk, think, remember this conversation, and look things up on the
+web. You are not connected to his computer, so you cannot open apps, read his email, go through
+his folders, play a playlist or do anything else that touches the machine at home. If he asks
+for one of those, tell him plainly in one sentence that you are the phone Axis and not connected
+to the computer, that the computer needs START-AXIS-ANYWHERE.bat running and its address in
+Settings, and then get on with whatever you *can* do. Never claim to have opened, read or sent
+anything. No apology, no paragraph about it.
 
-Answering:
+ANSWERING.
 - Short questions get short answers. Do not write five sentences where one is true.
 - If the answer turns on anything current — news, prices, scores, schedules, what is open, what
   has happened — search rather than guess, and say where it came from in a few words.
 - When you don't know, say so in a sentence and say what would settle it.
 - Never invent a fact, a figure, a source or a quotation. An admitted gap is worth more to him
   than a confident invention, always.
-- He is often walking, on a train, or one-handed. Keep it speakable: he may well be hearing this
+- He is often walking, on a train, or one-handed. Keep it speakable: he may be hearing this
   rather than reading it.`;
 }
 
-/* ------------------------------------------------------------------- chat */
-
-let history = [];
-try {
-  const saved = JSON.parse(store.get("axis.history") || "[]");
-  if (Array.isArray(saved)) history = saved.slice(-40);
-} catch { history = []; }
+/* ------------------------------------------------------------------- ui */
 
 const $ = (id) => document.getElementById(id);
 const logEl = $("log");
@@ -471,41 +633,70 @@ function bubble(role, text) {
   return el;
 }
 
+function showDid(log) {
+  const el = document.createElement("div");
+  el.className = "did" + (log && log.ok === false ? " failed" : "");
+  el.textContent = (log && log.summary) || "Did something.";
+  logEl.appendChild(el);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+function setLink() {
+  const badge = $("linkBadge");
+  badge.textContent = home.connected ? "AT HOME" : "ON HIS OWN";
+  badge.classList.toggle("home", home.connected);
+}
+
+/* ------------------------------------------------------------ the chat */
+
+let history = [];
+try {
+  const saved = JSON.parse(store.get("axis.history") || "[]");
+  if (Array.isArray(saved)) history = saved.slice(-40);
+} catch { history = []; }
+
 function saveHistory() {
   try { store.set("axis.history", JSON.stringify(history.slice(-40))); }
   catch { /* a conversation too big to keep is still a conversation */ }
 }
 
-function render() {
-  logEl.textContent = "";
-  for (const turn of history) {
-    bubble(turn.role === "user" ? "me" : "axis", turn.text);
-  }
-  if (history.length === 0) {
-    bubble("axis", `Good to see you, ${settings.title || "sir"}. Ask me anything — I can look things up if it's something that changes.`);
-  }
+/**
+ * What he says when you open him.
+ *
+ * He knows he is on the phone, and he knows whether the computer is answering,
+ * so he offers what is actually on the table rather than a menu of things he
+ * would have to refuse.
+ */
+function greeting() {
+  const title = settings.title || "sir";
+  return home.connected
+    ? `Evening, ${title} — I see you're on your phone, and I have the computer at home. Shall I go through your email, look for something in your folders, or put something on there?`
+    : `I see you're on your phone, ${title}. Ask me anything and I'll look it up if it moves. For your email or your folders I'd need the computer at home awake and its address in Settings — say the word and I'll tell you how.`;
 }
 
-/* ------------------------------------------------------------ the brain */
+function render() {
+  logEl.textContent = "";
+  for (const turn of history) bubble(turn.role === "user" ? "me" : "axis", turn.text);
+  if (history.length === 0) bubble("axis", greeting());
+}
 
-const ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/";
+/* ---------------------------------------------------------- the brains */
 
 /**
- * Google retires models on its own schedule, and a retired one answers every
- * request with 404 — naming its replacement in the message. A file sent over
- * WhatsApp cannot be updated, so it takes Google at its word and adopts the
- * name it is given.
+ * Google names the replacement in the body of a 404, so take it at its word.
+ * A file sent over WhatsApp can never be updated; a model name that goes stale
+ * would otherwise end it.
  */
 function adoptReplacement(message) {
   const match = /(?:use|to)\s+models\/([A-Za-z0-9._-]+)/.exec(message || "");
   const found = match && match[1];
-  if (!found || found === settings.model) return false;
+  if (!found || found === modelName()) return false;
   settings.model = found;
   store.set("axis.model", found);
   return true;
 }
 
-async function callGemini(useSearch) {
+async function askGemini(useSearch) {
   const body = {
     systemInstruction: { parts: [{ text: systemPrompt() }] },
     contents: history.slice(-24).map((turn) => ({
@@ -516,47 +707,218 @@ async function callGemini(useSearch) {
   };
   if (useSearch) body.tools = [{ google_search: {} }];
 
-  const res = await fetch(ENDPOINT + encodeURIComponent(settings.model) + ":generateContent", {
+  const res = await fetch(
+    "https://generativelanguage.googleapis.com/v1beta/models/" +
+      encodeURIComponent(modelName()) + ":generateContent",
+    {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-goog-api-key": settings.key },
+      body: JSON.stringify(body)
+    }
+  );
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err = new Error((data.error && data.error.message) || ("HTTP " + res.status));
+    err.status = res.status;
+    throw err;
+  }
+
+  const candidate = (data.candidates || [])[0] || {};
+  const parts = (candidate.content && candidate.content.parts) || [];
+  const chunks = (candidate.groundingMetadata && candidate.groundingMetadata.groundingChunks) || [];
+  return {
+    text: parts.map((p) => p.text || "").join("").trim(),
+    sources: chunks
+      .map((chunk) => chunk.web)
+      .filter((web) => web && web.uri)
+      .map((web) => ({ title: web.title || web.uri, uri: web.uri }))
+  };
+}
+
+/**
+ * Claude, straight from the phone.
+ *
+ * Anthropic blocks browser calls by default, precisely because it means an API
+ * key living on a device rather than a server. The header below is how you say
+ * you understand that. Here the tradeoff is the whole point: there is no server
+ * to keep the key on, and it is his own key on his own phone.
+ *
+ * How hard he thinks is his to set, and defaults to Anthropic's own default
+ * rather than anything lower. Effort buys reasoning depth and is paid for per
+ * question; nothing here is capped on his behalf.
+ */
+async function askClaude(useSearch) {
+  const body = {
+    model: modelName(),
+    // A ceiling, not a budget — unwritten tokens cost nothing. Set well above
+    // any real answer so it only ever catches a runaway, never a long thought.
+    max_tokens: 16000,
+    system: systemPrompt(),
+    // Thinking is on by default on Opus 5 and stays on. Depth is set here, and
+    // "high" is Anthropic's own default: not held back unless he says so.
+    thinking: { type: "adaptive" },
+    output_config: { effort: settings.effort || "high" },
+    messages: history.slice(-24).map((turn) => ({
+      role: turn.role === "user" ? "user" : "assistant",
+      content: turn.text
+    }))
+  };
+  if (useSearch) body.tools = [{ type: "web_search_20260209", name: "web_search" }];
+
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
-    headers: { "content-type": "application/json", "x-goog-api-key": settings.key },
+    headers: {
+      "content-type": "application/json",
+      "x-api-key": settings.claudeKey,
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-direct-browser-access": "true"
+    },
     body: JSON.stringify(body)
   });
 
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    const err = new Error((data && data.error && data.error.message) || ("HTTP " + res.status));
+    const err = new Error((data.error && data.error.message) || ("HTTP " + res.status));
     err.status = res.status;
     throw err;
   }
-  return data;
-}
 
-function readReply(data) {
-  const candidate = (data.candidates || [])[0] || {};
-  const parts = (candidate.content && candidate.content.parts) || [];
-  const text = parts.map((p) => p.text || "").join("").trim();
-
-  // Where grounding was used, Google names the pages. Worth showing: an answer
-  // about a price or a train time is worth more when you can see where it came
-  // from.
-  const chunks = (candidate.groundingMetadata && candidate.groundingMetadata.groundingChunks) || [];
-  const sources = [];
-  for (const chunk of chunks) {
-    const web = chunk.web || {};
-    if (web.uri) sources.push({ title: web.title || web.uri, uri: web.uri });
+  // Claude may decline a request outright rather than answering it.
+  if (data.stop_reason === "refusal") {
+    return { text: "I'd rather not answer that one, sir.", sources: [] };
   }
-  return { text, sources: sources.slice(0, 4) };
+
+  const blocks = data.content || [];
+  const text = blocks.filter((b) => b.type === "text").map((b) => b.text).join("").trim();
+
+  const sources = [];
+  for (const block of blocks) {
+    if (block.type !== "web_search_tool_result") continue;
+    // A failed server tool returns an object here rather than a list.
+    if (!Array.isArray(block.content)) continue;
+    for (const result of block.content) {
+      if (result && result.url) sources.push({ title: result.title || result.url, uri: result.url });
+    }
+  }
+  return { text, sources };
 }
+
+/* --------------------------------------------------- the computer at home */
+
+const homeBase = () => settings.home.trim().replace(/\/+$/, "");
+
+/** Sign in to the computer and keep the token it hands back. */
+async function signInHome() {
+  const base = homeBase();
+  if (!base) throw new Error("There's no address for the computer yet.");
+
+  const res = await fetch(base + "/api/auth", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ passcode: settings.pass })
+  });
+  const data = await res.json().catch(() => ({}));
+
+  if (!res.ok) throw new Error(data.error || ("The computer said no (HTTP " + res.status + ")."));
+  if (!data.token) throw new Error("The computer let me in but gave me nothing to hold on to.");
+
+  settings.token = data.token;
+  store.set("axis.token", data.token);
+  return true;
+}
+
+/** Is the computer answering right now? Cheap, and never throws. */
+async function checkHome() {
+  const base = homeBase();
+  if (!base || !settings.token) { home.connected = false; setLink(); return false; }
+  try {
+    const res = await fetch(base + "/api/status", {
+      headers: { authorization: "Bearer " + settings.token },
+      signal: AbortSignal.timeout(8000)
+    });
+    home.connected = res.ok;
+  } catch {
+    home.connected = false;
+  }
+  home.checkedAt = Date.now();
+  setLink();
+  return home.connected;
+}
+
+/**
+ * Hand the conversation to the real Axis and read back what he does.
+ *
+ * Nothing is reimplemented here. The computer has the tools, the memory, the
+ * mail and the folders; the phone is a window onto it. The reply arrives as
+ * newline-delimited JSON, one complete event per line.
+ */
+async function askHome(onDelta, onAction) {
+  const res = await fetch(homeBase() + "/api/chat", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      authorization: "Bearer " + settings.token
+    },
+    body: JSON.stringify({
+      messages: history.slice(-24).map((turn) => ({
+        role: turn.role === "user" ? "user" : "assistant",
+        content: turn.text
+      }))
+    })
+  });
+
+  if (res.status === 401) {
+    // The token has run out. One silent retry, because being signed out after
+    // thirty days is not something he should have to diagnose.
+    await signInHome();
+    return askHome(onDelta, onAction);
+  }
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || ("The computer answered with HTTP " + res.status + "."));
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let text = "";
+  let failure = null;
+
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    const lines = buffer.split("\n");
+    buffer = lines.pop() || "";
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      let event;
+      try { event = JSON.parse(line); } catch { continue; }
+
+      if (event.type === "text") { text += event.delta || ""; onDelta(text); }
+      else if (event.type === "action") onAction(event.log);
+      else if (event.type === "done") text = event.reply || text;
+      else if (event.type === "error") failure = event.error;
+    }
+  }
+
+  if (failure && !text) throw new Error(failure);
+  return { text: text.trim(), sources: [] };
+}
+
+/* ------------------------------------------------------------ asking */
 
 let busy = false;
 
-async function ask(text) {
+async function ask(said) {
   if (busy) return;
-  if (!settings.key) { showSetup(); return; }
+  if (!brainKey() && !home.connected) { showSetup(); return; }
 
   busy = true;
-  history.push({ role: "user", text });
-  bubble("me", text);
+  history.push({ role: "user", text: said });
+  bubble("me", said);
   saveHistory();
 
   const waiting = document.createElement("div");
@@ -564,109 +926,153 @@ async function ask(text) {
   waiting.innerHTML = "<i></i><i></i><i></i>";
   logEl.appendChild(waiting);
   logEl.scrollTop = logEl.scrollHeight;
-  setState(settings.search ? "Thinking, and looking things up…" : "Thinking…");
 
+  let live = null;                      // The reply bubble, once text starts.
+  const onDelta = (text) => {
+    if (!live) { waiting.remove(); live = bubble("axis", ""); }
+    live.textContent = text;
+    logEl.scrollTop = logEl.scrollHeight;
+  };
+  const onAction = (log) => { showDid(log); };
+
+  try {
+    let answer;
+
+    if (home.connected) {
+      setState("Asking the computer…");
+      answer = await askHome(onDelta, onAction);
+    } else {
+      setState(settings.search ? "Thinking, and looking things up…" : "Thinking…");
+      answer = await onOwn();
+    }
+
+    waiting.remove();
+    setState("Ready.");
+
+    const reply = (answer.text || "").trim();
+    if (!reply) {
+      bubble("err", "That came back empty. Worth asking again, or a little differently.");
+      return;
+    }
+
+    history.push({ role: "model", text: reply });
+    saveHistory();
+
+    const el = live || bubble("axis", reply);
+    el.textContent = reply;
+    if (answer.sources && answer.sources.length) cite(el, answer.sources.slice(0, 4));
+    logEl.scrollTop = logEl.scrollHeight;
+
+    if (settings.speak) speak(reply);
+  } catch (err) {
+    waiting.remove();
+    setState("Ready.");
+    if (live) live.remove();
+    bubble("err", explain(err));
+    // If the computer dropped out mid-sentence, stop claiming to have it.
+    if (home.connected) checkHome();
+  } finally {
+    busy = false;
+  }
+}
+
+/** Think with whichever brain is configured, working round what it refuses. */
+async function onOwn() {
   let useSearch = settings.search;
-  let data = null;
 
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      data = await callGemini(useSearch);
-      break;
+      return settings.brain === "claude" ? await askClaude(useSearch) : await askGemini(useSearch);
     } catch (err) {
       const message = String(err.message || err);
 
-      // The model moved. Adopt the name Google gave us and try once more.
-      if (err.status === 404 && adoptReplacement(message)) { continue; }
+      // The model moved. Adopt the name we were given and try once more.
+      if (err.status === 404 && adoptReplacement(message)) continue;
 
-      // This model won't take the search tool. Drop it and answer anyway —
-      // a reply without the web beats no reply at all.
-      if (useSearch && /tool|function|google_search|not supported/i.test(message)) {
+      // This model won't take the search tool. Drop it and answer anyway — a
+      // reply without the web beats no reply at all.
+      if (useSearch && /tool|function|web_search|google_search|not supported/i.test(message)) {
         useSearch = false;
         setState("Answering without the web…");
         continue;
       }
-
-      waiting.remove();
-      busy = false;
-      setState("Ready.");
-      bubble("err", explain(err, message));
-      return;
+      throw err;
     }
   }
+  throw new Error("I couldn't get an answer out of that, sir.");
+}
 
-  waiting.remove();
-  setState("Ready.");
-  busy = false;
-
-  if (!data) { bubble("err", "Google didn't answer, " + (settings.title || "sir") + ". Worth trying again in a moment."); return; }
-
-  const { text: reply, sources } = readReply(data);
-  if (!reply) {
-    bubble("err", "That came back empty — usually a question Google's safety filter declined. Try asking it a different way.");
-    return;
-  }
-
-  history.push({ role: "model", text: reply });
-  saveHistory();
-
-  const el = bubble("axis", reply);
-  if (sources.length) {
-    const cite = document.createElement("div");
-    cite.className = "sources";
-    cite.append("Sources: ");
-    sources.forEach((source, i) => {
-      const a = document.createElement("a");
-      a.href = source.uri;
-      a.target = "_blank";
-      a.rel = "noopener noreferrer";
-      a.textContent = source.title;
-      cite.appendChild(a);
-      if (i < sources.length - 1) cite.append(" · ");
-    });
-    el.appendChild(cite);
-  }
-  logEl.scrollTop = logEl.scrollHeight;
-
-  if (settings.speak) speak(reply);
+function cite(el, sources) {
+  const box = document.createElement("div");
+  box.className = "sources";
+  box.append("Sources: ");
+  sources.forEach((source, i) => {
+    const a = document.createElement("a");
+    a.href = source.uri;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    a.textContent = source.title;
+    box.appendChild(a);
+    if (i < sources.length - 1) box.append(" · ");
+  });
+  el.appendChild(box);
 }
 
 /** Say what went wrong in words that suggest what to do about it. */
-function explain(err, message) {
-  if (err.status === 400 && /API key not valid|API_KEY_INVALID/i.test(message)) {
-    return "Google won't accept that key. Check it in Settings — it should start with AIza and have no spaces around it.";
+function explain(err) {
+  const message = String((err && err.message) || err);
+  const status = err && err.status;
+
+  if (status === 400 && /API key not valid|API_KEY_INVALID/i.test(message)) {
+    return "Google won't accept that key. Check it in Settings — it should start with AIza and have no spaces round it.";
   }
-  if (err.status === 429) {
-    return "That's Google's free limit for the minute. Wait about a minute and ask again.";
+  if (status === 401 && settings.brain === "claude") {
+    return "Anthropic won't accept that key. Check it in Settings — it should start with sk-ant.";
   }
-  if (err.status === 403) {
-    return "Google refused the key. Usually that means the Generative Language API isn't switched on for it, or the key is restricted to a different app.";
+  if (status === 429) {
+    return settings.brain === "claude"
+      ? "That's Anthropic's rate limit, or the credit has run out. Check the balance on console.anthropic.com."
+      : "That's Google's free limit for the minute. Wait about a minute and ask again.";
   }
-  if (/Failed to fetch|NetworkError|Load failed/i.test(message)) {
-    return "I can't reach Google — your phone looks to be offline. This needs a connection; it's my thinking that's out there, not your data.";
+  if (status === 403) {
+    return "The key was refused. Usually that means the API isn't switched on for it, or it's restricted to a different app.";
+  }
+  if (/Failed to fetch|NetworkError|Load failed|timed out|aborted/i.test(message)) {
+    return home.connected
+      ? "I've lost the computer at home. It may have gone to sleep, or the window may have been closed. I'll carry on by myself."
+      : "I can't reach the internet — it's my thinking that's out there, not your data.";
   }
   return message;
 }
 
-/* ------------------------------------------------------------ voice out */
+/* ------------------------------------------------------------ his voice */
 
-let voices = [];
-function loadVoices() { try { voices = speechSynthesis.getVoices() || []; } catch { voices = []; } }
+let browserVoices = [];
+function loadBrowserVoices() {
+  try { browserVoices = speechSynthesis.getVoices() || []; } catch { browserVoices = []; }
+}
 if ("speechSynthesis" in window) {
-  loadVoices();
-  speechSynthesis.onvoiceschanged = loadVoices;
+  loadBrowserVoices();
+  speechSynthesis.onvoiceschanged = loadBrowserVoices;
 }
 
-function speak(text) {
+let elevenBroken = false;   // Said once, then we stop nagging.
+let current = null;         // The audio element currently talking.
+
+/** Punctuation is for a page; this is for an ear. */
+function speakable(text) {
+  return text.replace(/[*_`#]/g, "").replace(/\s+/g, " ").trim().slice(0, 2500);
+}
+
+function speakInBrowser(text) {
   if (!("speechSynthesis" in window)) return;
   try {
     speechSynthesis.cancel();
-    // Strip the things that are punctuation on a page and noise in an ear.
-    const spoken = text.replace(/[*_`#]/g, "").replace(/\s+/g, " ").trim();
-    const utter = new SpeechSynthesisUtterance(spoken.slice(0, 3000));
-    const preferred = voices.find((v) => /en-GB/i.test(v.lang) && /male|daniel|arthur|george/i.test(v.name))
-      || voices.find((v) => /en-GB/i.test(v.lang))
-      || voices.find((v) => /^en/i.test(v.lang));
+    const utter = new SpeechSynthesisUtterance(speakable(text));
+    const preferred =
+      browserVoices.find((v) => /en-GB/i.test(v.lang) && /daniel|arthur|george|male/i.test(v.name)) ||
+      browserVoices.find((v) => /en-GB/i.test(v.lang)) ||
+      browserVoices.find((v) => /^en/i.test(v.lang));
     if (preferred) utter.voice = preferred;
     utter.rate = 1.02;
     utter.pitch = 0.95;
@@ -674,11 +1080,116 @@ function speak(text) {
   } catch { /* a silent Axis is still an Axis */ }
 }
 
+/**
+ * His real voice.
+ *
+ * ElevenLabs returns an audio file rather than a stream of words, so the whole
+ * reply is fetched and then played. Two things can go wrong and both are
+ * handled rather than swallowed: the key or voice can be refused, in which case
+ * the phone's own voice takes over and says so once; and the phone can refuse
+ * to play audio it doesn't consider you to have asked for, in which case a
+ * button appears that you have obviously asked for.
+ */
+async function speakWithEleven(text) {
+  const voice = settings.voice || (await firstVoice());
+  if (!voice) throw new Error("no voice");
+
+  const res = await fetch("https://api.elevenlabs.io/v1/text-to-speech/" + encodeURIComponent(voice), {
+    method: "POST",
+    headers: {
+      "xi-api-key": settings.eleven,
+      "content-type": "application/json",
+      accept: "audio/mpeg"
+    },
+    body: JSON.stringify({
+      text: speakable(text),
+      model_id: "eleven_turbo_v2_5",
+      voice_settings: { stability: 0.45, similarity_boost: 0.75 }
+    })
+  });
+
+  if (!res.ok) {
+    let detail = "HTTP " + res.status;
+    try {
+      const body = await res.json();
+      detail = (body.detail && (body.detail.message || body.detail.status)) || detail;
+    } catch { /* not JSON; the status will do */ }
+    const err = new Error(detail);
+    err.status = res.status;
+    throw err;
+  }
+
+  const url = URL.createObjectURL(await res.blob());
+  const audio = new Audio(url);
+  audio.addEventListener("ended", () => URL.revokeObjectURL(url));
+
+  if (current) { try { current.pause(); } catch {} }
+  current = audio;
+
+  try {
+    await audio.play();
+  } catch {
+    // Phones refuse audio they don't believe you asked for. So ask.
+    offerToPlay(audio);
+  }
+}
+
+function offerToPlay(audio) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "hear";
+  button.textContent = "▶  Tap to hear him";
+  button.addEventListener("click", () => {
+    audio.play().catch(() => setState("This phone won't play the audio."));
+    button.remove();
+  });
+  logEl.appendChild(button);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+/** The first voice on his ElevenLabs account, so no voice id has to be guessed. */
+async function firstVoice() {
+  try {
+    const voices = await fetchVoices();
+    if (voices.length === 0) return "";
+    settings.voice = voices[0].id;
+    store.set("axis.voice", settings.voice);
+    return settings.voice;
+  } catch {
+    return "";
+  }
+}
+
+async function fetchVoices() {
+  const res = await fetch("https://api.elevenlabs.io/v1/voices", {
+    headers: { "xi-api-key": settings.eleven }
+  });
+  if (!res.ok) {
+    const err = new Error("HTTP " + res.status);
+    err.status = res.status;
+    throw err;
+  }
+  const data = await res.json();
+  return (data.voices || []).map((v) => ({ id: v.voice_id, name: v.name }));
+}
+
+function speak(text) {
+  if (!settings.eleven || elevenBroken) { speakInBrowser(text); return; }
+  speakWithEleven(text).catch((err) => {
+    elevenBroken = true;
+    setState(
+      err.status === 401
+        ? "ElevenLabs refused that key — using the phone's voice."
+        : "ElevenLabs didn't answer — using the phone's voice."
+    );
+    speakInBrowser(text);
+  });
+}
+
 /* ------------------------------------------------------------- voice in */
 
 const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 let listening = false;
-let recogniser = null;
 
 function setupMic() {
   const micBtn = $("micBtn");
@@ -686,9 +1197,9 @@ function setupMic() {
   micBtn.hidden = false;
 
   micBtn.addEventListener("click", () => {
-    if (listening) { try { recogniser.stop(); } catch {} return; }
+    if (listening) return;
 
-    recogniser = new Recognition();
+    const recogniser = new Recognition();
     recogniser.lang = "en-GB";
     recogniser.interimResults = true;
     recogniser.continuous = false;
@@ -726,7 +1237,7 @@ function setupMic() {
   });
 }
 
-/* ------------------------------------------------------------------- ui */
+/* ---------------------------------------------------------------- shell */
 
 function resize() {
   const box = $("input");
@@ -742,57 +1253,189 @@ function showSetup() {
 function showApp() {
   $("setup").style.display = "none";
   $("app").classList.add("on");
+  setLink();
   render();
-  if (!store.ok) {
-    setState("This phone won't let me remember — see Settings.");
+  if (!store.ok) setState("This phone won't let me remember — see Settings.");
+}
+
+const BRAIN_HELP = {
+  gemini: "Free, and enough for most things. Get a key at aistudio.google.com/apikey — no card asked for.",
+  claude: "Sharper, and you pay per question. Needs credit at console.anthropic.com."
+};
+
+function paintBrainChoice(container, brain) {
+  for (const button of container.querySelectorAll("button[data-brain]")) {
+    button.setAttribute("aria-pressed", String(button.dataset.brain === brain));
   }
 }
 
 function wireSetup() {
   const key = $("key");
   const begin = $("begin");
-  key.addEventListener("input", () => { begin.disabled = key.value.trim().length < 20; });
+  let chosen = settings.brain;
+
+  const paint = () => {
+    paintBrainChoice($("brainChoice"), chosen);
+    $("brainHelp").textContent = BRAIN_HELP[chosen];
+    $("keyLabel").textContent = chosen === "claude" ? "Anthropic key" : "Gemini key";
+    key.placeholder = chosen === "claude" ? "sk-ant-…" : "AIza…";
+    begin.disabled = key.value.trim().length < 20;
+  };
+
+  $("brainChoice").addEventListener("click", (e) => {
+    const button = e.target.closest("button[data-brain]");
+    if (!button) return;
+    chosen = button.dataset.brain;
+    paint();
+  });
+
+  key.addEventListener("input", paint);
+  key.addEventListener("keydown", (e) => { if (e.key === "Enter") begin.click(); });
+
   begin.addEventListener("click", () => {
     const value = key.value.trim();
     if (value.length < 20) return;
-    settings.key = value;
-    store.set("axis.key", value);
-    $("optKey").value = value;
+
+    settings.brain = chosen;
+    store.set("axis.brain", chosen);
+    if (chosen === "claude") { settings.claudeKey = value; store.set("axis.claudeKey", value); }
+    else { settings.key = value; store.set("axis.key", value); }
+
+    const eleven = $("elevenKey").value.trim();
+    if (eleven) { settings.eleven = eleven; store.set("axis.eleven", eleven); }
+
     showApp();
   });
-  key.addEventListener("keydown", (e) => { if (e.key === "Enter") begin.click(); });
+
+  paint();
 }
 
 function wirePanel() {
   const panel = $("panel");
+
+  const paintBrain = () => {
+    paintBrainChoice($("optBrain"), settings.brain);
+    $("optKeyLabel").textContent = settings.brain === "claude" ? "Anthropic key" : "Gemini key";
+    $("optKey").value = brainKey();
+    $("optModel").value = settings.model;
+    $("optModel").placeholder = DEFAULT_MODEL[settings.brain];
+    // Effort is an Anthropic idea; Gemini has no equivalent to show.
+    $("effortField").hidden = settings.brain !== "claude";
+    $("optEffort").value = settings.effort || "high";
+    $("brainNote").textContent = "Thinking with " + modelName() + ". " + BRAIN_HELP[settings.brain];
+  };
+
   $("panelBtn").addEventListener("click", () => {
+    paintBrain();
     $("optSpeak").checked = settings.speak;
     $("optSearch").checked = settings.search;
     $("optTitle").value = settings.title;
-    $("optKey").value = settings.key;
-    $("modelNote").textContent = "Thinking with " + settings.model + "." +
-      (store.ok ? "" : " This phone isn't letting me save settings — use “Save a copy” below.");
+    $("optEleven").value = settings.eleven;
+    $("optHome").value = settings.home;
+    $("optHoncho").value = settings.honcho;
+    $("optPass").value = settings.pass;
+    paintVoices(settings.voice ? [{ id: settings.voice, name: "Saved voice" }] : []);
+    $("homeStatus").textContent = home.connected
+      ? "Connected. He has your email, folders and computer."
+      : (settings.home ? "Not connected." : "");
+    $("homeStatus").className = "status " + (home.connected ? "good" : "");
+    if (!store.ok) $("brainNote").textContent += " This phone isn't saving settings — use “Save a copy” below.";
     panel.classList.add("on");
   });
   $("closePanel").addEventListener("click", () => panel.classList.remove("on"));
+
+  $("optBrain").addEventListener("click", (e) => {
+    const button = e.target.closest("button[data-brain]");
+    if (!button) return;
+    settings.brain = button.dataset.brain;
+    settings.model = "";
+    store.set("axis.brain", settings.brain);
+    store.set("axis.model", "");
+    paintBrain();
+  });
+
+  const bind = (id, apply) => $(id).addEventListener("change", (e) => apply(e.target.value.trim()));
+
+  bind("optKey", (value) => {
+    if (settings.brain === "claude") { settings.claudeKey = value; store.set("axis.claudeKey", value); }
+    else { settings.key = value; store.set("axis.key", value); }
+  });
+  bind("optModel", (value) => { settings.model = value; store.set("axis.model", value); paintBrain(); });
+  bind("optTitle", (value) => {
+    settings.title = value.slice(0, 24) || "sir";
+    store.set("axis.title", settings.title);
+  });
+  bind("optEleven", (value) => {
+    settings.eleven = value;
+    store.set("axis.eleven", value);
+    elevenBroken = false;   // A new key deserves a fresh chance.
+  });
+  bind("optHome", (value) => {
+    settings.home = value;
+    store.set("axis.home", value);
+  });
+  bind("optPass", (value) => { settings.pass = value; store.set("axis.pass", value); });
+  bind("optHoncho", (value) => { settings.honcho = value; store.set("axis.honcho", value); });
+
+  $("optEffort").addEventListener("change", (e) => {
+    settings.effort = e.target.value;
+    store.set("axis.effort", settings.effort);
+  });
+
+  $("optVoice").addEventListener("change", (e) => {
+    settings.voice = e.target.value;
+    store.set("axis.voice", settings.voice);
+    elevenBroken = false;
+  });
 
   $("optSpeak").addEventListener("change", (e) => {
     settings.speak = e.target.checked;
     store.set("axis.speak", settings.speak ? "on" : "off");
     $("speakBtn").setAttribute("aria-pressed", String(settings.speak));
-    if (!settings.speak && "speechSynthesis" in window) speechSynthesis.cancel();
+    if (!settings.speak) stopSpeaking();
   });
   $("optSearch").addEventListener("change", (e) => {
     settings.search = e.target.checked;
     store.set("axis.search", settings.search ? "on" : "off");
   });
-  $("optTitle").addEventListener("change", (e) => {
-    settings.title = e.target.value.trim().slice(0, 24) || "sir";
-    store.set("axis.title", settings.title);
+
+  $("loadVoices").addEventListener("click", async () => {
+    const status = $("voiceStatus");
+    if (!settings.eleven) { status.textContent = "Put an ElevenLabs key in first."; status.className = "status bad"; return; }
+    status.textContent = "Asking ElevenLabs…";
+    status.className = "status";
+    try {
+      const voices = await fetchVoices();
+      paintVoices(voices);
+      status.textContent = voices.length + " voices. Pick one above.";
+      status.className = "status good";
+    } catch (err) {
+      status.textContent = err.status === 401
+        ? "ElevenLabs refused that key."
+        : "Couldn't reach ElevenLabs.";
+      status.className = "status bad";
+    }
   });
-  $("optKey").addEventListener("change", (e) => {
-    settings.key = e.target.value.trim();
-    store.set("axis.key", settings.key);
+
+  $("connectHome").addEventListener("click", async () => {
+    const status = $("homeStatus");
+    if (!settings.home) { status.textContent = "It needs the address first."; status.className = "status bad"; return; }
+    status.textContent = "Knocking…";
+    status.className = "status";
+    try {
+      await signInHome();
+      const up = await checkHome();
+      status.textContent = up
+        ? "Connected. He has your email, folders and computer."
+        : "Signed in, but the computer stopped answering.";
+      status.className = "status " + (up ? "good" : "bad");
+      if (up && history.length === 0) render();
+    } catch (err) {
+      home.connected = false;
+      setLink();
+      status.textContent = explainHome(err);
+      status.className = "status bad";
+    }
   });
 
   $("wipe").addEventListener("click", () => {
@@ -805,32 +1448,65 @@ function wirePanel() {
   $("saveCopy").addEventListener("click", saveCopy);
 }
 
+function explainHome(err) {
+  const message = String((err && err.message) || err);
+  if (/Failed to fetch|NetworkError|Load failed/i.test(message)) {
+    return "Nothing at that address. Is START-AXIS-ANYWHERE.bat still running? The address changes every restart.";
+  }
+  if (/isn't the passcode|That isn't/i.test(message)) return "That's not the passcode.";
+  return message;
+}
+
+function paintVoices(voices) {
+  const select = $("optVoice");
+  select.textContent = "";
+  const none = document.createElement("option");
+  none.value = "";
+  none.textContent = "The phone's own voice";
+  select.appendChild(none);
+  for (const voice of voices) {
+    const option = document.createElement("option");
+    option.value = voice.id;
+    option.textContent = voice.name;
+    select.appendChild(option);
+  }
+  select.value = settings.voice || "";
+}
+
+function stopSpeaking() {
+  try { if ("speechSynthesis" in window) speechSynthesis.cancel(); } catch {}
+  if (current) { try { current.pause(); } catch {} }
+}
+
 /**
  * Write a fresh copy of this file with the current settings inside it.
  *
- * The reason this exists: a page opened from a phone's own storage is not
- * always allowed to remember anything, and retyping an API key on a phone
- * keyboard every single time is how a thing stops being used. This bakes the
- * key in, so the copy opens ready.
+ * A page opened from a phone's own storage is not always allowed to remember
+ * anything, and retyping an API key on a phone keyboard every time is how a
+ * thing stops being used. This bakes them in, so the copy opens ready.
  */
 function saveCopy() {
+  const q = (value) => JSON.stringify(value || "");
   const baked =
     "const BAKED = {\n" +
-    "  key: " + JSON.stringify(settings.key) + ",\n" +
-    "  title: " + JSON.stringify(settings.title) + ",\n" +
+    "  brain: " + q(settings.brain) + ",\n" +
+    "  key: " + q(settings.key) + ",\n" +
+    "  claudeKey: " + q(settings.claudeKey) + ",\n" +
+    "  model: " + q(settings.model) + ",\n" +
+    "  effort: " + q(settings.effort) + ",\n" +
+    "  honcho: " + q(settings.honcho) + ",\n" +
+    "  eleven: " + q(settings.eleven) + ",\n" +
+    "  voice: " + q(settings.voice) + ",\n" +
+    "  home: " + q(settings.home) + ",\n" +
+    "  pass: " + q(settings.pass) + ",\n" +
+    "  title: " + q(settings.title) + ",\n" +
     "  speak: " + (settings.speak ? "true" : "false") + ",\n" +
     "  search: " + (settings.search ? "true" : "false") + "\n" +
     "};";
 
-  const source = PRISTINE.replace(
-    /const BAKED = \{[\s\S]*?\n\};/,
-    () => baked   // a function, so $-signs in a key are never read as backreferences
-  );
-
-  if (!source.includes(JSON.stringify(settings.key))) {
-    setState("Couldn't write the copy.");
-    return;
-  }
+  // A function replacement, so a $ in any key is never read as a backreference.
+  const source = PRISTINE.replace(/const BAKED = \{[\s\S]*?\n\};/, () => baked);
+  if (!source.includes(baked)) { setState("Couldn't write the copy."); return; }
 
   try {
     const blob = new Blob(["<!doctype html>\n" + source], { type: "text/html" });
@@ -851,9 +1527,9 @@ function saveCopy() {
 
 /* ------------------------------------------------------------------ orb */
 
-// A small nod to the real one: filaments on a sphere, turning against each
-// other. Canvas rather than three.js, because the whole point of this file is
-// that it is one file and fetches nothing.
+// A nod to the real one: filaments on a sphere, turning against each other.
+// Canvas rather than three.js, because the whole point of this file is that it
+// is one file and fetches nothing.
 function startOrb() {
   const canvas = $("orb");
   const ctx = canvas.getContext("2d");
@@ -879,7 +1555,7 @@ function startOrb() {
     if (!running) return;
     ctx.clearRect(0, 0, size, size);
 
-    ctx.strokeStyle = "rgba(240, 166, 60, 0.55)";
+    ctx.strokeStyle = home.connected ? "rgba(134, 199, 155, 0.6)" : "rgba(240, 166, 60, 0.55)";
     ctx.lineWidth = 1;
     for (const ring of rings) {
       ctx.save();
@@ -932,7 +1608,7 @@ $("speakBtn").addEventListener("click", () => {
   settings.speak = !settings.speak;
   store.set("axis.speak", settings.speak ? "on" : "off");
   $("speakBtn").setAttribute("aria-pressed", String(settings.speak));
-  if (!settings.speak && "speechSynthesis" in window) speechSynthesis.cancel();
+  if (!settings.speak) stopSpeaking();
 });
 
 wireSetup();
@@ -941,7 +1617,13 @@ setupMic();
 startOrb();
 $("speakBtn").setAttribute("aria-pressed", String(settings.speak));
 
-if (settings.key) showApp(); else showSetup();
+if (brainKey() || (settings.home && settings.token)) showApp(); else showSetup();
+
+// Ask the computer whether it is awake, without holding anything up. If it is,
+// the badge turns green, the orb turns with it, and he greets you differently.
+if (settings.home && settings.token) {
+  checkHome().then((up) => { if (up && history.length === 0) render(); });
+}
 </script>
 </body>
 </html>
