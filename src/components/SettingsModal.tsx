@@ -1684,16 +1684,20 @@ export function SettingsModal({
               busy={busySection === "honcho"}
               saved={savedSection === "honcho"}
             />
-            <div className="rounded-none bg-amber-500/10 px-2.5 py-2 text-amber-300">
-              <p className="mb-1 font-semibold">The key is saved; he isn&apos;t using it yet.</p>
-              <p>
-                Honcho&apos;s API reference wasn&apos;t reachable from where this
-                was built, and guessing at the shape of an API is how you get code
-                that fails quietly months later. The key is stored and ready.
-                Send me a page of their API docs — or a single example request —
-                and wiring it up is short work.
-              </p>
-            </div>
+            <p className="text-[10px] text-sand-600">
+              With a key in, every exchange is written to Honcho, which reasons
+              over it in the background. What it works out comes back into his
+              head at the start of each reply, and he can ask it a direct
+              question — <i>&quot;what do you actually know about me?&quot;</i> —
+              and answer from what it has concluded rather than from a
+              transcript. It survives reinstalling Windows, and it reaches your
+              phone whenever the phone is connected to this computer.
+            </p>
+            <p className="text-[10px] text-sand-600">
+              His memory below still works exactly as it did, and still works
+              with no key at all. If Honcho is slow or down he simply answers
+              without it — nothing here can cost you a reply.
+            </p>
           </Section>
           <Section
             icon={<MemoryIcon className="h-4 w-4" />}

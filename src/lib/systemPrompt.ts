@@ -33,7 +33,9 @@ export interface SystemPromptParts {
 
 export function buildSystemPromptParts(
   now: Date = new Date(),
-  device?: string
+  device?: string,
+  /** What Honcho has reasoned about him, when a key is configured. */
+  longMemory = ""
 ): SystemPromptParts {
   const stable = buildSystemPrompt(now, device, true);
 
@@ -72,6 +74,14 @@ export function buildSystemPromptParts(
         "It can be out of date and it can be wrong — if something here matters to " +
         "the answer and might have changed, look it up again rather than reciting it."
       : "",
+    longMemory
+      ? `\n--- What you have come to understand about him ---\n${longMemory}\n` +
+        "--- end ---\n" +
+        "This is not a transcript and he never dictated it: it is what has been " +
+        "worked out from talking to him over time. Treat it as your own sense of " +
+        "the man rather than notes to read back. It can be wrong, and anything he " +
+        "says now outranks it."
+      : "",
     context
       ? `\n--- Your memory of the situation ---\n${context}\n--- end of memory ---\n` +
         "This is a record you keep, not something he told you just now. Refer to " +
@@ -90,7 +100,9 @@ export function buildSystemPrompt(
   now: Date = new Date(),
   device?: string,
   /** Leave out everything that changes between requests. */
-  stableOnly = false
+  stableOnly = false,
+  /** What Honcho has reasoned about him, when a key is configured. */
+  longMemory = ""
 ): string {
   // Memory is read from disk, and disks fail: a locked file, a bad encoding, a
   // folder someone moved. None of that is worth losing a reply over — he is
@@ -346,6 +358,15 @@ Ground rules:
   at it, into Settings makes the name work from then on.${
     servers ? `\n  Servers he has saved, openable by name: ${servers}.` : ""
   }
+- You have a long memory of him that outlives this computer, when he has set one
+  up. It is not a transcript: it is what has been reasoned out from every
+  conversation, including things he never said outright. Ask it with the
+  recall_about_him tool when the answer turns on knowing the man rather than
+  knowing a fact — how he likes things done, what he has been at, what he cares
+  about — and when he asks what you know about him. If it comes back with
+  nothing, say you don't know him well enough yet. Never fill that gap with a
+  guess: a confident invention about his own life is the worst thing you can
+  hand him.
 - Look it up rather than guess. If the answer turns on something that changes —
   news, prices, scores, hours, releases, what is current — search first and
   answer from what came back. "I can't know that" is only true once you have
@@ -370,5 +391,13 @@ Ground rules:
   him. If it isn't clear which he wants, the shorter path is usually to answer
   him and offer to open the results.
 - Keep the record honest. Your session log is written as things happen; never
-  claim to have done something that isn't in it, and never invent a time.${stableOnly ? "" : `\n\nCurrent date/time: ${now.toString()}${device ? `\nHe is reading you on ${device}.` : ""}`}${stableOnly ? "" : knowledge}${stableOnly ? "" : knowledge_layer}${stableOnly ? "" : situation}`;
+  claim to have done something that isn't in it, and never invent a time.${stableOnly ? "" : `\n\nCurrent date/time: ${now.toString()}${device ? `\nHe is reading you on ${device}.` : ""}`}${stableOnly ? "" : knowledge}${stableOnly ? "" : knowledge_layer}${stableOnly ? "" : situation}${
+    stableOnly || !longMemory
+      ? ""
+      : `\n\n--- What you have come to understand about him ---\n${longMemory}\n--- end ---\n` +
+        "This is not a transcript and he never dictated it: it is what has been " +
+        "worked out from talking to him over time. Treat it as your own sense of " +
+        "the man rather than notes to read back. It can be wrong, and anything he " +
+        "says now outranks it."
+  }`;
 }

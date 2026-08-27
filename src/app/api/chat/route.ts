@@ -6,6 +6,7 @@ import { describeModelFailure } from "@/lib/modelErrors";
 import { buildSystemPrompt, buildSystemPromptParts } from "@/lib/systemPrompt";
 import { availableTools, executeTool } from "@/lib/tools";
 import { logRecap } from "@/lib/sessions";
+import { recall, remember } from "@/lib/honcho";
 import { describeDevice } from "@/lib/device";
 import { recapLine } from "@/lib/sessionFormat";
 import type { Brain } from "@/lib/brain";
@@ -42,12 +43,18 @@ export async function POST(req: NextRequest) {
 
   // Whichever brain is configured, spoken to in its own language. Everything
   // below this line is the same for all of them.
+  // What Honcho has worked out about him, when he has a key for it. Fetched
+  // before the prompt is built because it goes inside it — and behind its own
+  // timeout, so a slow memory service delays a reply by seconds at worst and
+  // never fails one.
+  const longMemory = await recall();
+
   let brain: Brain;
   try {
     const now = new Date();
     const input = {
-      system: buildSystemPrompt(now, deviceLabel),
-      parts: buildSystemPromptParts(now, deviceLabel),
+      system: buildSystemPrompt(now, deviceLabel, false, longMemory),
+      parts: buildSystemPromptParts(now, deviceLabel, longMemory),
       messages: incoming.map((m) => ({ role: m.role, content: m.content })),
       tools: availableTools(),
     };
@@ -97,6 +104,9 @@ export async function POST(req: NextRequest) {
 
           if (reply.calls.length === 0) {
             recordTurn(actions);
+            // Deliberately not awaited: Honcho reasons on its own side and
+            // there is nothing in the answer worth holding his reply for.
+            remember({ said: askedFor, replied: reply.content });
             send({
               type: "done",
               reply: reply.content,

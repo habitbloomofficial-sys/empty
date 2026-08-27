@@ -81,6 +81,28 @@ The window still needs the server running behind it. Keep using
 `START-Axis.bat`, or put a shortcut to it in `shell:startup` so it's always
 there (see below).
 
+### Long memory (Honcho, optional)
+
+Axis's own memory is a file on this machine. It works, it needs no account, and
+it stops at the edge of this computer: reinstall Windows and it's gone.
+
+**[Honcho](https://honcho.dev) is memory that reasons.** Every exchange is
+written to it; it thinks about them in the background and builds a picture of
+you — including things you never said outright. That picture comes back into his
+head at the start of each reply, and he can ask it a direct question:
+
+> *"What do you actually know about me?"*
+
+and answer from what has been concluded rather than from a transcript. It
+survives a reinstall, and it reaches your phone whenever the phone is connected
+to this computer.
+
+Paste a key from [app.honcho.dev](https://app.honcho.dev) into **Settings →
+Honcho**. Nothing else changes: his local memory works exactly as before, with
+or without a key, and if Honcho is slow or down he simply answers without it.
+Every call is behind a timeout and a `catch` — **nothing about this can cost you
+a reply.**
+
 ### The whole thing in one file (no computer needed)
 
 **AXIS-PHONE.html** is Axis in a single file. Send it to your phone however you

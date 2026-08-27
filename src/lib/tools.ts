@@ -33,6 +33,7 @@ import { createDocument, outputFolder, type DocumentKind } from "./documents";
 import { isZapierConfigured, runZap } from "./zapier";
 import { isWebSearchConfigured, readPage, searchWeb } from "./web";
 import { learn, unlearn } from "./learned";
+import { askAbout, isHonchoConfigured } from "./honcho";
 import { launchApp, listInstalledApps, rankApps } from "./installedApps";
 import { generateVideo, isVideoEnabled } from "./video";
 import { channelDestination } from "./youtubeChannel";
@@ -297,6 +298,24 @@ export const toolDefinitions: OpenAI.Chat.Completions.ChatCompletionTool[] = [
           },
         },
         required: ["name"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "recall_about_him",
+      description:
+        "Ask your long memory a question about him in plain words — \"how does he like to be spoken to\", \"what has he been working on\", \"what does he care about\". This is not a search of what was said; it answers from what has been worked out about him over every conversation, including things he never stated outright. Use it when the answer turns on knowing the man rather than knowing a fact, when he asks what you know about him, or before something where getting his preferences wrong would show. It can come back empty, which means nothing has been concluded yet — say so rather than inventing something.",
+      parameters: {
+        type: "object",
+        properties: {
+          question: {
+            type: "string",
+            description: "What you want to know about him, as a plain question.",
+          },
+        },
+        required: ["question"],
       },
     },
   },
@@ -808,6 +827,7 @@ export function availableTools(): OpenAI.Chat.Completions.ChatCompletionTool[] {
     }
     if (name === "open_playlist") return isDesktopControlEnabled();
     if (name === "open_discord_server") return isDesktopControlEnabled();
+    if (name === "recall_about_him") return isHonchoConfigured();
     if (name === "list_calendar_events" || name === "create_calendar_event") {
       return isCalendarConfigured();
     }
@@ -1129,6 +1149,26 @@ export async function executeTool(
               : `Searched Spotify for "${wanted}"`,
             ok: true,
           },
+        };
+      }
+      case "recall_about_him": {
+        const question = required(args.question, "question");
+        const answer = await askAbout(question);
+        if (!answer) {
+          return {
+            result: {
+              found: false,
+              note:
+                "Nothing has been concluded about that yet, sir — it takes a few " +
+                "conversations before there is anything worth saying. Don't invent " +
+                "something to fill the gap; say you don't know him well enough yet.",
+            },
+            log: { tool: name, summary: `Nothing known about "${question}"`, ok: false },
+          };
+        }
+        return {
+          result: { found: true, answer },
+          log: { tool: name, summary: `Recalled what he knows about "${question}"`, ok: true },
         };
       }
       case "open_discord_server": {
