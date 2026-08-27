@@ -26,21 +26,31 @@ rem being up to date. After an update adds a library the folder is still there
 rem and the library isn't, and the failure lands somewhere unrelated.
 powershell -NoProfile -ExecutionPolicy Bypass -Command "$h=(Get-FileHash 'package-lock.json' -Algorithm SHA256).Hash; $s='data\.deps-stamp'; if((Test-Path 'node_modules') -and (Test-Path $s) -and ((Get-Content $s -Raw).Trim() -eq $h)){exit 0} else {exit 1}"
 if errorlevel 1 (
-  echo   Getting what Axis needs. This takes a minute the first time.
+  echo   Getting what Axis needs. This is a few hundred files, so on a slow
+  echo   connection it can take five minutes or more.
   echo.
-  call npm install
-  if errorlevel 1 goto failed
+  echo   ^>^> Do not close this window. It looks frozen while it works.
+  echo.
+  call npm install > "data\last-run.log" 2>&1
+  if errorlevel 1 goto failed_log
   powershell -NoProfile -ExecutionPolicy Bypass -Command "(Get-FileHash 'package-lock.json' -Algorithm SHA256).Hash | Set-Content 'data\.deps-stamp'"
   if exist ".next\BUILD_ID" del /q ".next\BUILD_ID" >nul 2>nul
+  echo   Done.
+  echo.
 )
 
 rem Build only when something changed, rather than on every phone start.
 powershell -NoProfile -ExecutionPolicy Bypass -Command "if(-not (Test-Path '.next\BUILD_ID')){exit 1}; $b=(Get-Item '.next\BUILD_ID').LastWriteTimeUtc; $n=(Get-ChildItem -Recurse -File -Path 'src','public','package.json','next.config.ts' -ErrorAction SilentlyContinue | Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1).LastWriteTimeUtc; if($n -gt $b){exit 1} else {exit 0}"
 if errorlevel 1 (
-  echo   Preparing Axis. This happens after an update, not every time.
+  echo   Preparing Axis. This happens after an update, not every time,
+  echo   and it takes two to five minutes with nothing on screen.
   echo.
-  call npm run build
-  if errorlevel 1 goto failed
+  echo   ^>^> Do not close this window. This is the slow bit.
+  echo.
+  call npm run build > "data\last-run.log" 2>&1
+  if errorlevel 1 goto failed_log
+  echo   Ready.
+  echo.
 )
 
 rem --------------------------------------------------------------------------
@@ -114,6 +124,18 @@ if errorlevel 2 (set "FWSTATE=unknown" & exit /b 0)
 if errorlevel 1 (set "FWSTATE=blocked" & exit /b 0)
 set "FWSTATE=clear"
 exit /b 0
+
+:failed_log
+echo.
+echo   That didn't work. Here are the last lines of what it said:
+echo.
+powershell -NoProfile -ExecutionPolicy Bypass -Command "if(Test-Path 'data\last-run.log'){Get-Content 'data\last-run.log' -Tail 20}"
+echo.
+echo   The whole of it is saved in:  data\last-run.log
+echo   Send me that file and I can tell you exactly what went wrong.
+echo.
+pause
+exit /b 1
 
 :failed
 echo.

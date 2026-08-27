@@ -81,6 +81,31 @@ The window still needs the server running behind it. Keep using
 `START-Axis.bat`, or put a shortcut to it in `shell:startup` so it's always
 there (see below).
 
+### The whole thing in one file (no computer needed)
+
+**AXIS-PHONE.html** is Axis in a single file. Send it to your phone however you
+like — WhatsApp, Discord, email, a cable — open it, and he's there. No server,
+no install, no build, and nothing has to be running at home.
+
+Paste a free [Gemini key](https://aistudio.google.com/apikey) in once and he can
+talk, think, remember the conversation, listen, speak back, and search the web.
+Your key is stored on that phone and sent to Google when he answers; there is no
+server in the file to send it anywhere else.
+
+**What he can't do from there, and says so rather than pretending:** open apps,
+read your email, play a playlist, open a website on your PC. All of that is the
+Axis on your computer acting *on* your computer, and a web page on a phone has
+no route to it. What's left — a conversation, a memory, a voice and the web — is
+most of what you want when you're not at home anyway.
+
+Settings has **"Save a copy with my key already in it"**, which writes a fresh
+copy of the file with your key and preferences baked in. Keep that one: it opens
+ready, which matters because some phones won't let a file opened from storage
+remember anything between opens.
+
+The two routes below are the other kind of phone access — the one where your
+phone is a window onto the full Axis at home, with all his tools.
+
 ### On your phone
 
 Axis stays on your computer; your phone becomes a second window onto him. That

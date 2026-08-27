@@ -1,0 +1,942 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0906">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Axis</title>
+
+<!--
+  A X I S  -  the whole thing, in one file.
+
+  This is Axis without the computer. Send this file to your phone by any means
+  you like - WhatsApp, Discord, email, a cable - open it, and he is there. There
+  is no server, no install, no build step and nothing to keep running at home.
+
+  What he can do here: talk, think, remember this conversation, listen to you
+  and speak back, and look things up on the web.
+
+  What he cannot do here, and says so plainly rather than pretending: open apps,
+  read your email, play your playlists, or touch your computer in any way. Those
+  live on the machine at home, and a web page on your phone has no route to it.
+  That is not a limitation I can code around; it is what a phone is.
+
+  He talks to Google's Gemini directly from your phone. Your key is typed in
+  once and stays on the phone - it goes to Google and nowhere else. There is no
+  middle-man server in this file, because there is no server in this file.
+-->
+
+<style>
+  :root {
+    --bg:        #0b0906;
+    --panel:     #16110c;
+    --panel-2:   #1e1710;
+    --line:      #33281c;
+    --amber:     #f0a63c;
+    --amber-dim: #a87023;
+    --cream:     #f4e9d8;
+    --sand:      #a4917a;
+    --sand-dim:  #6d6152;
+    --danger:    #e07a5f;
+    --ok:        #86c79b;
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: var(--bg);
+    color: var(--cream);
+    font-family: ui-sans-serif, -apple-system, "Segoe UI", Roboto, system-ui, sans-serif;
+    font-size: 16px;
+    overscroll-behavior: none;
+  }
+
+  body {
+    display: flex;
+    flex-direction: column;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+
+  button { font: inherit; color: inherit; cursor: pointer; }
+  button:focus-visible, input:focus-visible, textarea:focus-visible {
+    outline: 2px solid var(--amber);
+    outline-offset: 2px;
+  }
+
+  /* ---------------------------------------------------------------- setup */
+
+  #setup {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 1.1rem;
+    padding: 1.6rem 1.4rem;
+    max-width: 30rem;
+    margin: 0 auto;
+    width: 100%;
+    overflow-y: auto;
+  }
+  #setup h1 {
+    font-size: 1.7rem;
+    font-weight: 700;
+    letter-spacing: 0.3em;
+    margin: 0;
+    color: var(--amber);
+  }
+  #setup p { margin: 0; color: var(--sand); font-size: 0.95rem; line-height: 1.55; }
+  #setup a { color: var(--amber); }
+  #setup input {
+    width: 100%;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    color: var(--cream);
+    padding: 0.85rem 0.9rem;
+    font-size: 1rem;
+    border-radius: 4px;
+  }
+  .primary {
+    background: var(--amber);
+    color: #1a1207;
+    border: 0;
+    padding: 0.9rem;
+    font-weight: 700;
+    border-radius: 4px;
+    width: 100%;
+  }
+  .primary:disabled { opacity: 0.45; }
+  .note {
+    border-left: 2px solid var(--amber-dim);
+    padding-left: 0.85rem;
+    color: var(--sand);
+    font-size: 0.88rem;
+    line-height: 1.5;
+  }
+  .error { color: var(--danger); font-size: 0.9rem; }
+
+  /* ----------------------------------------------------------------- app */
+
+  #app { flex: 1; display: none; flex-direction: column; min-height: 0; }
+  #app.on { display: flex; }
+
+  header {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.55rem 0.9rem;
+    border-bottom: 1px solid var(--line);
+    background: var(--bg);
+  }
+  #orb { width: 34px; height: 34px; flex: none; }
+  header .who { flex: 1; min-width: 0; }
+  header .name {
+    font-size: 0.78rem;
+    letter-spacing: 0.28em;
+    color: var(--amber);
+    font-weight: 700;
+  }
+  header .state {
+    font-size: 0.7rem;
+    color: var(--sand-dim);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .icon {
+    background: transparent;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    width: 2.1rem;
+    height: 2.1rem;
+    display: grid;
+    place-items: center;
+    color: var(--sand);
+    flex: none;
+    font-size: 0.95rem;
+  }
+  .icon[aria-pressed="true"] { color: var(--amber); border-color: var(--amber-dim); }
+
+  #log {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 1rem 0.9rem 0.4rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+
+  .msg { max-width: 88%; line-height: 1.55; font-size: 0.97rem; white-space: pre-wrap; word-wrap: break-word; }
+  .msg.me {
+    align-self: flex-end;
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    padding: 0.6rem 0.8rem;
+    border-radius: 12px 12px 3px 12px;
+  }
+  .msg.axis { align-self: flex-start; color: var(--cream); }
+  .msg.axis::before {
+    content: "AXIS";
+    display: block;
+    font-size: 0.6rem;
+    letter-spacing: 0.22em;
+    color: var(--amber-dim);
+    margin-bottom: 0.3rem;
+  }
+  .msg.err { align-self: stretch; color: var(--danger); font-size: 0.9rem; border: 1px solid var(--danger); padding: 0.6rem 0.8rem; border-radius: 4px; }
+  .sources { font-size: 0.75rem; color: var(--sand-dim); margin-top: 0.4rem; }
+  .sources a { color: var(--amber-dim); }
+
+  .thinking { display: flex; gap: 0.28rem; align-self: flex-start; padding: 0.4rem 0; }
+  .thinking i {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--amber-dim);
+    animation: pulse 1.1s infinite ease-in-out;
+  }
+  .thinking i:nth-child(2) { animation-delay: 0.16s; }
+  .thinking i:nth-child(3) { animation-delay: 0.32s; }
+  @keyframes pulse { 0%, 60%, 100% { opacity: 0.25; } 30% { opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) { .thinking i { animation: none; opacity: 0.6; } }
+
+  form {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.6rem 0.9rem calc(0.6rem + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--line);
+    align-items: flex-end;
+    background: var(--bg);
+  }
+  textarea {
+    flex: 1;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    color: var(--cream);
+    border-radius: 18px;
+    padding: 0.62rem 0.9rem;
+    font-size: 1rem;
+    resize: none;
+    max-height: 7.5rem;
+    line-height: 1.4;
+  }
+  .send {
+    background: var(--amber);
+    color: #1a1207;
+    border: 0;
+    border-radius: 50%;
+    width: 2.6rem;
+    height: 2.6rem;
+    flex: none;
+    font-size: 1.1rem;
+    font-weight: 700;
+  }
+  .mic { border-radius: 50%; width: 2.6rem; height: 2.6rem; }
+  .mic.live { color: var(--bg); background: var(--amber); border-color: var(--amber); }
+
+  /* --------------------------------------------------------------- panel */
+
+  #panel {
+    position: fixed;
+    inset: 0;
+    background: rgba(6, 5, 3, 0.94);
+    display: none;
+    flex-direction: column;
+    padding: 1.3rem 1.2rem calc(1.3rem + env(safe-area-inset-bottom));
+    gap: 1rem;
+    overflow-y: auto;
+    z-index: 10;
+  }
+  #panel.on { display: flex; }
+  #panel h2 { margin: 0; font-size: 0.8rem; letter-spacing: 0.24em; color: var(--amber); }
+  #panel label { display: flex; align-items: center; gap: 0.7rem; color: var(--sand); font-size: 0.93rem; }
+  #panel input[type="checkbox"] { width: 1.15rem; height: 1.15rem; accent-color: var(--amber); }
+  #panel input[type="text"], #panel input[type="password"] {
+    width: 100%;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    color: var(--cream);
+    padding: 0.7rem 0.8rem;
+    border-radius: 4px;
+    font-size: 0.95rem;
+  }
+  .ghost {
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--sand);
+    padding: 0.7rem;
+    border-radius: 4px;
+    width: 100%;
+  }
+  .hint { color: var(--sand-dim); font-size: 0.8rem; line-height: 1.5; margin: 0; }
+  .cant { border: 1px solid var(--line); border-radius: 4px; padding: 0.8rem; }
+  .cant p { margin: 0 0 0.4rem; }
+  .cant p:last-child { margin-bottom: 0; }
+</style>
+</head>
+<body>
+
+<!-- ------------------------------------------------------------- setup -->
+<section id="setup">
+  <h1>AXIS</h1>
+  <p><strong>One key and he's awake.</strong> Axis needs a Google Gemini key to
+  think with. It's free, it takes about a minute, and no card is asked for.</p>
+  <p><a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Get one here</a>
+  — sign in with Google, press <em>Create API key</em>, copy it, paste it below.</p>
+
+  <input id="key" type="password" inputmode="text" autocomplete="off"
+         autocapitalize="off" autocorrect="off" spellcheck="false"
+         placeholder="AIza…" aria-label="Your Gemini API key">
+  <button id="begin" class="primary" disabled>Wake him up</button>
+  <p id="setupError" class="error" hidden></p>
+
+  <div class="note">
+    <p style="margin:0 0 .5rem"><strong>Your key stays on this phone.</strong>
+    It's sent to Google when he answers you, and to nowhere else. There is no
+    server in this file — it's the whole app, and it's talking straight to
+    Google from your hand.</p>
+    <p style="margin:0">This Axis can talk, think, remember, listen, speak, and
+    search the web. He <em>can't</em> open apps, read your email or touch your
+    computer — that Axis lives on the machine at home and a web page can't
+    reach into it.</p>
+  </div>
+</section>
+
+<!-- --------------------------------------------------------------- app -->
+<div id="app">
+  <header>
+    <canvas id="orb" width="68" height="68" aria-hidden="true"></canvas>
+    <div class="who">
+      <div class="name">AXIS</div>
+      <div class="state" id="state">Ready.</div>
+    </div>
+    <button class="icon" id="speakBtn" aria-pressed="true" title="Speak replies aloud" aria-label="Speak replies aloud">♪</button>
+    <button class="icon" id="panelBtn" title="Settings" aria-label="Settings">≡</button>
+  </header>
+
+  <div id="log" role="log" aria-live="polite"></div>
+
+  <form id="form">
+    <button type="button" class="icon mic" id="micBtn" title="Hold to speak" aria-label="Speak" hidden>●</button>
+    <textarea id="input" rows="1" placeholder="Say something to Axis…"
+              aria-label="Message" autocapitalize="sentences"></textarea>
+    <button type="submit" class="send" aria-label="Send">↑</button>
+  </form>
+</div>
+
+<!-- ------------------------------------------------------------- panel -->
+<div id="panel">
+  <h2>SETTINGS</h2>
+
+  <label><input type="checkbox" id="optSpeak" checked> Speak his replies aloud</label>
+  <label><input type="checkbox" id="optSearch" checked> Let him search the web</label>
+
+  <div>
+    <h2 style="margin-bottom:.5rem">WHAT HE CALLS YOU</h2>
+    <input type="text" id="optTitle" placeholder="sir" maxlength="24" aria-label="What Axis calls you">
+  </div>
+
+  <div>
+    <h2 style="margin-bottom:.5rem">GEMINI KEY</h2>
+    <input type="password" id="optKey" placeholder="AIza…" autocomplete="off" aria-label="Gemini API key">
+    <p class="hint" id="modelNote"></p>
+  </div>
+
+  <button class="ghost" id="saveCopy">Save a copy with my key already in it</button>
+  <p class="hint">Makes a fresh <strong>AXIS-PHONE.html</strong> with your key
+  and settings baked in. Keep that one and it opens ready — useful if this phone
+  won't remember settings between opens.</p>
+
+  <button class="ghost" id="wipe">Forget this conversation</button>
+
+  <div class="cant">
+    <p style="color:var(--sand)"><strong>What he can't do from here</strong></p>
+    <p class="hint">Open Spotify, read your Gmail, run your automations, open
+    websites on your PC, place calls. All of that is the Axis on your computer
+    doing things <em>to</em> your computer. This one is a conversation, a
+    memory, a voice and the web — which is most of what you want on a train.</p>
+  </div>
+
+  <button class="primary" id="closePanel">Done</button>
+</div>
+
+<script>
+"use strict";
+
+// The page exactly as it was delivered, captured before anything is drawn into
+// it. "Save a copy" rewrites this, not the live DOM - otherwise the copy would
+// carry your whole conversation inside it.
+const PRISTINE = document.documentElement.outerHTML;
+
+// Replaced with real values by "Save a copy with my key already in it".
+const BAKED = {
+  key: "",
+  title: "",
+  speak: null,
+  search: null
+};
+
+/* ---------------------------------------------------------------- storage */
+
+// localStorage is not always there: some phones refuse it for files opened
+// from storage rather than from a website. Everything below works either way -
+// it just forgets when it can't remember, and says so instead of breaking.
+const store = (() => {
+  let ok = true;
+  try {
+    localStorage.setItem("axis.probe", "1");
+    localStorage.removeItem("axis.probe");
+  } catch { ok = false; }
+  const memory = {};
+  return {
+    ok,
+    get(k) {
+      try { return ok ? localStorage.getItem(k) : (memory[k] ?? null); }
+      catch { return memory[k] ?? null; }
+    },
+    set(k, v) {
+      memory[k] = v;
+      try { if (ok) localStorage.setItem(k, v); } catch { /* full or refused */ }
+    },
+    del(k) {
+      delete memory[k];
+      try { if (ok) localStorage.removeItem(k); } catch { /* nothing to do */ }
+    }
+  };
+})();
+
+const settings = {
+  key:    BAKED.key || store.get("axis.key") || "",
+  title:  BAKED.title || store.get("axis.title") || "sir",
+  speak:  BAKED.speak !== null ? BAKED.speak : store.get("axis.speak") !== "off",
+  search: BAKED.search !== null ? BAKED.search : store.get("axis.search") !== "off",
+  model:  store.get("axis.model") || "gemini-3.6-flash"
+};
+
+/* ------------------------------------------------------------ the persona */
+
+function systemPrompt() {
+  const title = settings.title || "sir";
+  return `You are Axis, a private AI assistant built for one person: your principal.
+You address him as "${title}" — naturally, without comment, as you would any form of address.
+
+Your tone is composed, economical, and never padded. You do not ramble and you do not fill
+space. You sound like a brilliant, unflappable chief of staff, not a chatbot. A dry, spare wit
+is welcome where it costs nothing; it never comes at the expense of an answer.
+
+Where you are: he is holding his phone, and you are running inside a single file on it. This
+matters, because the Axis he knows also lives on his computer at home and can open apps, read
+his email, play his playlists and open websites in his browser. You cannot do any of that from
+here — there is no route from a web page on a phone to a machine somewhere else. If he asks for
+one of those things, say plainly that this is the phone Axis and it can't reach the computer,
+tell him what you can do instead, and move on. Never pretend to have opened or sent anything.
+One sentence, not an apology.
+
+What you can do here: talk, think, remember this conversation, and look things up on the web.
+
+Answering:
+- Short questions get short answers. Do not write five sentences where one is true.
+- If the answer turns on anything current — news, prices, scores, schedules, what is open, what
+  has happened — search rather than guess, and say where it came from in a few words.
+- When you don't know, say so in a sentence and say what would settle it.
+- Never invent a fact, a figure, a source or a quotation. An admitted gap is worth more to him
+  than a confident invention, always.
+- He is often walking, on a train, or one-handed. Keep it speakable: he may well be hearing this
+  rather than reading it.`;
+}
+
+/* ------------------------------------------------------------------- chat */
+
+let history = [];
+try {
+  const saved = JSON.parse(store.get("axis.history") || "[]");
+  if (Array.isArray(saved)) history = saved.slice(-40);
+} catch { history = []; }
+
+const $ = (id) => document.getElementById(id);
+const logEl = $("log");
+const stateEl = $("state");
+
+function setState(text) { stateEl.textContent = text; }
+
+function bubble(role, text) {
+  const el = document.createElement("div");
+  el.className = "msg " + role;
+  el.textContent = text;
+  logEl.appendChild(el);
+  logEl.scrollTop = logEl.scrollHeight;
+  return el;
+}
+
+function saveHistory() {
+  try { store.set("axis.history", JSON.stringify(history.slice(-40))); }
+  catch { /* a conversation too big to keep is still a conversation */ }
+}
+
+function render() {
+  logEl.textContent = "";
+  for (const turn of history) {
+    bubble(turn.role === "user" ? "me" : "axis", turn.text);
+  }
+  if (history.length === 0) {
+    bubble("axis", `Good to see you, ${settings.title || "sir"}. Ask me anything — I can look things up if it's something that changes.`);
+  }
+}
+
+/* ------------------------------------------------------------ the brain */
+
+const ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/";
+
+/**
+ * Google retires models on its own schedule, and a retired one answers every
+ * request with 404 — naming its replacement in the message. A file sent over
+ * WhatsApp cannot be updated, so it takes Google at its word and adopts the
+ * name it is given.
+ */
+function adoptReplacement(message) {
+  const match = /(?:use|to)\s+models\/([A-Za-z0-9._-]+)/.exec(message || "");
+  const found = match && match[1];
+  if (!found || found === settings.model) return false;
+  settings.model = found;
+  store.set("axis.model", found);
+  return true;
+}
+
+async function callGemini(useSearch) {
+  const body = {
+    systemInstruction: { parts: [{ text: systemPrompt() }] },
+    contents: history.slice(-24).map((turn) => ({
+      role: turn.role === "user" ? "user" : "model",
+      parts: [{ text: turn.text }]
+    })),
+    generationConfig: { temperature: 0.7, maxOutputTokens: 2048 }
+  };
+  if (useSearch) body.tools = [{ google_search: {} }];
+
+  const res = await fetch(ENDPOINT + encodeURIComponent(settings.model) + ":generateContent", {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-goog-api-key": settings.key },
+    body: JSON.stringify(body)
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err = new Error((data && data.error && data.error.message) || ("HTTP " + res.status));
+    err.status = res.status;
+    throw err;
+  }
+  return data;
+}
+
+function readReply(data) {
+  const candidate = (data.candidates || [])[0] || {};
+  const parts = (candidate.content && candidate.content.parts) || [];
+  const text = parts.map((p) => p.text || "").join("").trim();
+
+  // Where grounding was used, Google names the pages. Worth showing: an answer
+  // about a price or a train time is worth more when you can see where it came
+  // from.
+  const chunks = (candidate.groundingMetadata && candidate.groundingMetadata.groundingChunks) || [];
+  const sources = [];
+  for (const chunk of chunks) {
+    const web = chunk.web || {};
+    if (web.uri) sources.push({ title: web.title || web.uri, uri: web.uri });
+  }
+  return { text, sources: sources.slice(0, 4) };
+}
+
+let busy = false;
+
+async function ask(text) {
+  if (busy) return;
+  if (!settings.key) { showSetup(); return; }
+
+  busy = true;
+  history.push({ role: "user", text });
+  bubble("me", text);
+  saveHistory();
+
+  const waiting = document.createElement("div");
+  waiting.className = "thinking";
+  waiting.innerHTML = "<i></i><i></i><i></i>";
+  logEl.appendChild(waiting);
+  logEl.scrollTop = logEl.scrollHeight;
+  setState(settings.search ? "Thinking, and looking things up…" : "Thinking…");
+
+  let useSearch = settings.search;
+  let data = null;
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      data = await callGemini(useSearch);
+      break;
+    } catch (err) {
+      const message = String(err.message || err);
+
+      // The model moved. Adopt the name Google gave us and try once more.
+      if (err.status === 404 && adoptReplacement(message)) { continue; }
+
+      // This model won't take the search tool. Drop it and answer anyway —
+      // a reply without the web beats no reply at all.
+      if (useSearch && /tool|function|google_search|not supported/i.test(message)) {
+        useSearch = false;
+        setState("Answering without the web…");
+        continue;
+      }
+
+      waiting.remove();
+      busy = false;
+      setState("Ready.");
+      bubble("err", explain(err, message));
+      return;
+    }
+  }
+
+  waiting.remove();
+  setState("Ready.");
+  busy = false;
+
+  if (!data) { bubble("err", "Google didn't answer, " + (settings.title || "sir") + ". Worth trying again in a moment."); return; }
+
+  const { text: reply, sources } = readReply(data);
+  if (!reply) {
+    bubble("err", "That came back empty — usually a question Google's safety filter declined. Try asking it a different way.");
+    return;
+  }
+
+  history.push({ role: "model", text: reply });
+  saveHistory();
+
+  const el = bubble("axis", reply);
+  if (sources.length) {
+    const cite = document.createElement("div");
+    cite.className = "sources";
+    cite.append("Sources: ");
+    sources.forEach((source, i) => {
+      const a = document.createElement("a");
+      a.href = source.uri;
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      a.textContent = source.title;
+      cite.appendChild(a);
+      if (i < sources.length - 1) cite.append(" · ");
+    });
+    el.appendChild(cite);
+  }
+  logEl.scrollTop = logEl.scrollHeight;
+
+  if (settings.speak) speak(reply);
+}
+
+/** Say what went wrong in words that suggest what to do about it. */
+function explain(err, message) {
+  if (err.status === 400 && /API key not valid|API_KEY_INVALID/i.test(message)) {
+    return "Google won't accept that key. Check it in Settings — it should start with AIza and have no spaces around it.";
+  }
+  if (err.status === 429) {
+    return "That's Google's free limit for the minute. Wait about a minute and ask again.";
+  }
+  if (err.status === 403) {
+    return "Google refused the key. Usually that means the Generative Language API isn't switched on for it, or the key is restricted to a different app.";
+  }
+  if (/Failed to fetch|NetworkError|Load failed/i.test(message)) {
+    return "I can't reach Google — your phone looks to be offline. This needs a connection; it's my thinking that's out there, not your data.";
+  }
+  return message;
+}
+
+/* ------------------------------------------------------------ voice out */
+
+let voices = [];
+function loadVoices() { try { voices = speechSynthesis.getVoices() || []; } catch { voices = []; } }
+if ("speechSynthesis" in window) {
+  loadVoices();
+  speechSynthesis.onvoiceschanged = loadVoices;
+}
+
+function speak(text) {
+  if (!("speechSynthesis" in window)) return;
+  try {
+    speechSynthesis.cancel();
+    // Strip the things that are punctuation on a page and noise in an ear.
+    const spoken = text.replace(/[*_`#]/g, "").replace(/\s+/g, " ").trim();
+    const utter = new SpeechSynthesisUtterance(spoken.slice(0, 3000));
+    const preferred = voices.find((v) => /en-GB/i.test(v.lang) && /male|daniel|arthur|george/i.test(v.name))
+      || voices.find((v) => /en-GB/i.test(v.lang))
+      || voices.find((v) => /^en/i.test(v.lang));
+    if (preferred) utter.voice = preferred;
+    utter.rate = 1.02;
+    utter.pitch = 0.95;
+    speechSynthesis.speak(utter);
+  } catch { /* a silent Axis is still an Axis */ }
+}
+
+/* ------------------------------------------------------------- voice in */
+
+const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+let listening = false;
+let recogniser = null;
+
+function setupMic() {
+  const micBtn = $("micBtn");
+  if (!Recognition) return;              // No dictation here; typing still works.
+  micBtn.hidden = false;
+
+  micBtn.addEventListener("click", () => {
+    if (listening) { try { recogniser.stop(); } catch {} return; }
+
+    recogniser = new Recognition();
+    recogniser.lang = "en-GB";
+    recogniser.interimResults = true;
+    recogniser.continuous = false;
+
+    let heard = "";
+    recogniser.onstart = () => { listening = true; micBtn.classList.add("live"); setState("Listening…"); };
+    recogniser.onresult = (event) => {
+      heard = "";
+      for (const result of event.results) heard += result[0].transcript;
+      $("input").value = heard;
+      resize();
+    };
+    recogniser.onerror = (event) => {
+      listening = false;
+      micBtn.classList.remove("live");
+      setState(event.error === "not-allowed"
+        ? "The microphone is blocked — allow it in your browser's site settings."
+        : "Didn't catch that.");
+    };
+    recogniser.onend = () => {
+      listening = false;
+      micBtn.classList.remove("live");
+      setState("Ready.");
+      const said = heard.trim();
+      if (said) { $("input").value = ""; resize(); ask(said); }
+    };
+
+    try { recogniser.start(); }
+    catch { setState("Couldn't start the microphone."); }
+  });
+}
+
+/* ------------------------------------------------------------------- ui */
+
+function resize() {
+  const box = $("input");
+  box.style.height = "auto";
+  box.style.height = Math.min(box.scrollHeight, 120) + "px";
+}
+
+function showSetup() {
+  $("setup").style.display = "flex";
+  $("app").classList.remove("on");
+}
+
+function showApp() {
+  $("setup").style.display = "none";
+  $("app").classList.add("on");
+  render();
+  if (!store.ok) {
+    setState("This phone won't let me remember — see Settings.");
+  }
+}
+
+function wireSetup() {
+  const key = $("key");
+  const begin = $("begin");
+  key.addEventListener("input", () => { begin.disabled = key.value.trim().length < 20; });
+  begin.addEventListener("click", () => {
+    const value = key.value.trim();
+    if (value.length < 20) return;
+    settings.key = value;
+    store.set("axis.key", value);
+    $("optKey").value = value;
+    showApp();
+  });
+  key.addEventListener("keydown", (e) => { if (e.key === "Enter") begin.click(); });
+}
+
+function wirePanel() {
+  const panel = $("panel");
+  $("panelBtn").addEventListener("click", () => {
+    $("optSpeak").checked = settings.speak;
+    $("optSearch").checked = settings.search;
+    $("optTitle").value = settings.title;
+    $("optKey").value = settings.key;
+    $("modelNote").textContent = "Thinking with " + settings.model + "." +
+      (store.ok ? "" : " This phone isn't letting me save settings — use “Save a copy” below.");
+    panel.classList.add("on");
+  });
+  $("closePanel").addEventListener("click", () => panel.classList.remove("on"));
+
+  $("optSpeak").addEventListener("change", (e) => {
+    settings.speak = e.target.checked;
+    store.set("axis.speak", settings.speak ? "on" : "off");
+    $("speakBtn").setAttribute("aria-pressed", String(settings.speak));
+    if (!settings.speak && "speechSynthesis" in window) speechSynthesis.cancel();
+  });
+  $("optSearch").addEventListener("change", (e) => {
+    settings.search = e.target.checked;
+    store.set("axis.search", settings.search ? "on" : "off");
+  });
+  $("optTitle").addEventListener("change", (e) => {
+    settings.title = e.target.value.trim().slice(0, 24) || "sir";
+    store.set("axis.title", settings.title);
+  });
+  $("optKey").addEventListener("change", (e) => {
+    settings.key = e.target.value.trim();
+    store.set("axis.key", settings.key);
+  });
+
+  $("wipe").addEventListener("click", () => {
+    history = [];
+    store.del("axis.history");
+    render();
+    panel.classList.remove("on");
+  });
+
+  $("saveCopy").addEventListener("click", saveCopy);
+}
+
+/**
+ * Write a fresh copy of this file with the current settings inside it.
+ *
+ * The reason this exists: a page opened from a phone's own storage is not
+ * always allowed to remember anything, and retyping an API key on a phone
+ * keyboard every single time is how a thing stops being used. This bakes the
+ * key in, so the copy opens ready.
+ */
+function saveCopy() {
+  const baked =
+    "const BAKED = {\n" +
+    "  key: " + JSON.stringify(settings.key) + ",\n" +
+    "  title: " + JSON.stringify(settings.title) + ",\n" +
+    "  speak: " + (settings.speak ? "true" : "false") + ",\n" +
+    "  search: " + (settings.search ? "true" : "false") + "\n" +
+    "};";
+
+  const source = PRISTINE.replace(
+    /const BAKED = \{[\s\S]*?\n\};/,
+    () => baked   // a function, so $-signs in a key are never read as backreferences
+  );
+
+  if (!source.includes(JSON.stringify(settings.key))) {
+    setState("Couldn't write the copy.");
+    return;
+  }
+
+  try {
+    const blob = new Blob(["<!doctype html>\n" + source], { type: "text/html" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "AXIS-PHONE.html";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 20000);
+    $("panel").classList.remove("on");
+    setState("Copy saved to your downloads.");
+  } catch {
+    setState("This browser wouldn't save the copy.");
+  }
+}
+
+/* ------------------------------------------------------------------ orb */
+
+// A small nod to the real one: filaments on a sphere, turning against each
+// other. Canvas rather than three.js, because the whole point of this file is
+// that it is one file and fetches nothing.
+function startOrb() {
+  const canvas = $("orb");
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+
+  const size = canvas.width;
+  const middle = size / 2;
+  const radius = size * 0.42;
+  const rings = [];
+  for (let i = 0; i < 7; i++) {
+    rings.push({
+      tilt: (i / 7) * Math.PI,
+      squash: 0.15 + 0.8 * Math.abs(Math.sin((i / 7) * Math.PI + 0.4)),
+      speed: (i % 2 ? 1 : -1) * (0.14 + (i % 3) * 0.05)
+    });
+  }
+
+  const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let angle = 0;
+  let running = true;
+
+  function frame() {
+    if (!running) return;
+    ctx.clearRect(0, 0, size, size);
+
+    ctx.strokeStyle = "rgba(240, 166, 60, 0.55)";
+    ctx.lineWidth = 1;
+    for (const ring of rings) {
+      ctx.save();
+      ctx.translate(middle, middle);
+      ctx.rotate(ring.tilt + angle * ring.speed);
+      ctx.beginPath();
+      ctx.ellipse(0, 0, radius, radius * ring.squash, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    ctx.fillStyle = "rgba(255, 214, 140, 0.9)";
+    ctx.beginPath();
+    ctx.arc(middle, middle, radius * 0.16, 0, Math.PI * 2);
+    ctx.fill();
+
+    if (!still) { angle += 0.012; requestAnimationFrame(frame); }
+  }
+
+  frame();
+  document.addEventListener("visibilitychange", () => {
+    running = !document.hidden;
+    if (running && !still) frame();
+  });
+}
+
+/* ----------------------------------------------------------------- boot */
+
+$("form").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const box = $("input");
+  const text = box.value.trim();
+  if (!text) return;
+  box.value = "";
+  resize();
+  ask(text);
+});
+
+$("input").addEventListener("input", resize);
+$("input").addEventListener("keydown", (e) => {
+  // Enter sends on a keyboard; on a phone the Return key inserts a line, which
+  // is what a phone keyboard's Return is for.
+  if (e.key === "Enter" && !e.shiftKey && !("ontouchstart" in window)) {
+    e.preventDefault();
+    $("form").requestSubmit();
+  }
+});
+
+$("speakBtn").addEventListener("click", () => {
+  settings.speak = !settings.speak;
+  store.set("axis.speak", settings.speak ? "on" : "off");
+  $("speakBtn").setAttribute("aria-pressed", String(settings.speak));
+  if (!settings.speak && "speechSynthesis" in window) speechSynthesis.cancel();
+});
+
+wireSetup();
+wirePanel();
+setupMic();
+startOrb();
+$("speakBtn").setAttribute("aria-pressed", String(settings.speak));
+
+if (settings.key) showApp(); else showSetup();
+</script>
+</body>
+</html>
