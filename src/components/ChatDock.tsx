@@ -16,7 +16,10 @@ export function ChatDock({
   wakeSupported,
   wakeEnabled,
   wakeListening,
+  wakeLastHeard,
   onToggleWake,
+  standby,
+  onLeaveStandby,
 }: {
   onSend: (text: string) => void;
   disabled: boolean;
@@ -31,7 +34,12 @@ export function ChatDock({
   wakeSupported: boolean;
   wakeEnabled: boolean;
   wakeListening: boolean;
+  /** The last thing the listener heard that wasn't his name. */
+  wakeLastHeard: string | null;
   onToggleWake: () => void;
+  /** He is listening for his name and nothing else. */
+  standby: boolean;
+  onLeaveStandby: () => void;
 }) {
   const [value, setValue] = useState("");
 
@@ -103,9 +111,16 @@ export function ChatDock({
           }`}
           aria-label={wakeEnabled ? "Stop listening for my name" : "Listen for my name"}
           title={
-            wakeEnabled
-              ? 'Listening for "Hey Axis" — click to switch off'
-              : 'Click to listen for "Hey Axis"'
+            // The one place a wake word that isn't working can explain itself:
+            // what it last heard is the fact that tells you whether the
+            // microphone is dead, or simply listening in the wrong language.
+            !wakeEnabled
+              ? 'Click to listen for "Hey Axis"'
+              : !wakeListening
+                ? "Switched on, but the browser isn't listening — check the microphone permission."
+                : wakeLastHeard
+                  ? `Listening for "Hey Axis". Last heard: "${wakeLastHeard}"`
+                  : 'Listening for "Hey Axis" — click to switch off'
           }
         >
           {/* A quiet pulse while the listener is actually running. */}
@@ -113,6 +128,17 @@ export function ChatDock({
             <span className="absolute inset-1 rounded-full bg-amber-400/20 animate-pulse" />
           )}
           <EarIcon className="relative h-[18px] w-[18px]" />
+        </button>
+      )}
+
+      {standby && (
+        <button
+          type="button"
+          onClick={onLeaveStandby}
+          className="shrink-0 rounded-full border border-amber-500/30 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-amber-400/80 transition-colors hover:bg-amber-500/10"
+          title='Standing by — say "Axis, wake up", or click here'
+        >
+          Standby
         </button>
       )}
 

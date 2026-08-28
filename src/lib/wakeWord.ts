@@ -40,6 +40,25 @@ const ALIASES = new Set([
 /** Words that may lead the name, kept only to recognise the fuller phrase. */
 const GREETINGS = new Set(["hey", "hi", "hello", "ok", "okay", "yo", "hej"]);
 
+/**
+ * Telling him to stop, and telling him to come back.
+ *
+ * Both are matched only after his name. "Stand by" and "quiet" are ordinary
+ * English, and an assistant that goes silent because a film said "be quiet" is
+ * a worse assistant than one that needs his name first.
+ */
+const STANDBY_PHRASES = [
+  "standby", "stand by", "stand by mode", "standby mode",
+  "go to sleep", "go quiet", "be quiet", "shut up", "shush",
+  "stop listening", "stop talking", "leave me alone", "give me a minute",
+  "sleep", "quiet", "silence",
+];
+
+const RESUME_PHRASES = [
+  "wake up", "wake", "resume", "come back", "are you there", "you there",
+  "i'm back", "im back", "carry on", "back on", "stop standby", "end standby",
+];
+
 function editDistance(a: string, b: string): number {
   // Ordinary Levenshtein, one row at a time — the strings here are one word.
   let previous = Array.from({ length: b.length + 1 }, (_, i) => i);
@@ -101,4 +120,31 @@ export function detectWakeWord(transcript: string): WakeMatch {
   }
 
   return { woke: false, command: "" };
+}
+
+/** What he was told to do about listening, if anything. */
+export type StandbyOrder = "standby" | "resume" | null;
+
+/**
+ * "Axis, standby" and "Axis, wake up".
+ *
+ * Deliberately built on detectWakeWord rather than beside it: the name has to
+ * be recognised the same way here as anywhere else, mishearings and all, or
+ * "hey access standby" would go unheard and he would keep talking.
+ */
+export function detectStandbyOrder(transcript: string): StandbyOrder {
+  const { woke, command } = detectWakeWord(transcript);
+  if (!woke) return null;
+
+  const said = words(command).join(" ");
+  if (!said) return null;
+
+  // Longest first, so "stand by mode" is not matched as "stand by" with a
+  // trailing word that stops it being an exact order.
+  const matches = (phrases: string[]) =>
+    phrases.some((phrase) => said === phrase || said.startsWith(`${phrase} `) || said.startsWith(`${phrase},`));
+
+  if (matches(STANDBY_PHRASES)) return "standby";
+  if (matches(RESUME_PHRASES)) return "resume";
+  return null;
 }

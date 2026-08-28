@@ -54,21 +54,33 @@ function getConstructor(): SpeechRecognitionConstructor | null {
 export function useWakeWord({
   enabled,
   paused,
+  lang,
   onWake,
 }: {
   enabled: boolean;
   /** Held off while Axis is speaking or already listening for a command. */
   paused: boolean;
+  /** Language tag to listen in. See speechLang.ts — this is not navigator.language. */
+  lang: string;
   onWake: (command: string) => void;
 }) {
   const [supported, setSupported] = useState(false);
   const [listening, setListening] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /**
+   * The last thing it heard that was not his name.
+   *
+   * Here so a wake word that never fires stops being invisible: if the
+   * recogniser is returning "hej aksel" every time you say "hey Axis", that is
+   * the one fact that explains it, and nobody can guess it from the outside.
+   */
+  const [lastHeard, setLastHeard] = useState<string | null>(null);
 
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastWakeRef = useRef(0);
   const onWakeRef = useRef(onWake);
+  const langRef = useRef(lang);
   // Read inside long-lived handlers, which would otherwise close over stale props.
   const activeRef = useRef(false);
   // The session restarts itself from its own onend handler, which means the
@@ -78,6 +90,7 @@ export function useWakeWord({
 
   useEffect(() => {
     onWakeRef.current = onWake;
+    langRef.current = lang;
   });
 
   useEffect(() => {
@@ -115,7 +128,8 @@ export function useWakeWord({
     const recognition = new Ctor();
     recognition.continuous = true;
     recognition.interimResults = true;
-    recognition.lang = typeof navigator !== "undefined" ? navigator.language : "en-US";
+    // The browser's interface language is not what he speaks; see speechLang.ts.
+    recognition.lang = langRef.current;
 
     recognition.onresult = (event) => {
       if (Date.now() - lastWakeRef.current < REARM_MS) return;
@@ -123,7 +137,12 @@ export function useWakeWord({
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const transcript = event.results[i][0]?.transcript ?? "";
         const { woke, command } = detectWakeWord(transcript);
-        if (!woke) continue;
+        if (!woke) {
+          const heard = transcript.trim();
+          if (heard) setLastHeard(heard);
+          continue;
+        }
+        setLastHeard(null);
 
         lastWakeRef.current = Date.now();
         setError(null);
@@ -187,7 +206,9 @@ export function useWakeWord({
       clearTimeout(timer);
       stop();
     };
-  }, [enabled, paused, stop]);
+    // lang is a dependency: changing it has to tear the session down and open a
+    // new one, because a running recogniser keeps the language it started with.
+  }, [enabled, paused, lang, stop]);
 
-  return { supported, listening, error };
+  return { supported, listening, error, lastHeard };
 }

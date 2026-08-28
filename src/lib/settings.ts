@@ -54,6 +54,7 @@ export const SETTING_KEYS = [
   "VEO_MODEL",
   "USER_TITLE",
   "HUMOUR",
+  "SPEECH_LANG",
   "IDLE_TALK",
   "IDLE_TALK_MINUTES",
 ] as const;

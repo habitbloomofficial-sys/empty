@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { describeDevice, isLoopback } from "@/lib/device";
 import { getSetting } from "@/lib/settings";
 import { isNoticingEnabled } from "@/lib/notice";
+import { speechLanguage } from "@/lib/speechLang";
 import { isAIConfigured, getAIProvider } from "@/lib/ai";
 import { isElevenLabsConfigured } from "@/lib/elevenlabs";
 import {
@@ -49,6 +50,7 @@ export async function GET(req: NextRequest) {
     desktopControl: isDesktopControlEnabled(),
     honcho: Boolean(getSetting("HONCHO_API_KEY")),
     idleTalk: isNoticingEnabled(),
+    speechLang: speechLanguage(),
     webSearch: searchProvider(),
     passcodeSet: isPasscodeSet(),
     zone: requestZone(req.headers, local ? "127.0.0.1" : null),

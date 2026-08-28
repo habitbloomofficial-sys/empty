@@ -9,6 +9,7 @@ import {
   FolderIcon,
   MailIcon,
   MemoryIcon,
+  MicIcon,
   BoltIcon,
   FilmIcon,
   GlobeIcon,
@@ -1659,6 +1660,60 @@ export function SettingsModal({
             <p className="text-[10px] text-sand-600">
               Searching follows the Apps &amp; websites switch above — turn that off
               and file search goes with it.
+            </p>
+          </Section>
+          <Section
+            icon={<MicIcon className="h-4 w-4" />}
+            title="Listening"
+            ok={Boolean(status?.speechLang)}
+          >
+            <p>
+              Which language your browser listens in — for the wake word and for
+              anything you dictate.
+            </p>
+            <label className="block">
+              <span className="mb-1 block text-[11px] font-semibold text-cream">
+                Listen in
+              </span>
+              <select
+                value={draft("SPEECH_LANG") || "en-GB"}
+                onChange={(e) => {
+                  setDraft("SPEECH_LANG", e.target.value);
+                  void save("listening", { SPEECH_LANG: e.target.value });
+                }}
+                className="w-full rounded-none border border-amber-500/20 bg-black/40 px-3 py-2 text-xs text-cream focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-400/30"
+              >
+                <option value="en-GB">English (UK)</option>
+                <option value="en-US">English (US)</option>
+                <option value="da-DK">Dansk</option>
+                <option value="de-DE">Deutsch</option>
+                <option value="es-ES">Español</option>
+                <option value="fr-FR">Français</option>
+                <option value="nl-NL">Nederlands</option>
+                <option value="sv-SE">Svenska</option>
+                <option value="auto">Whatever my browser is set to</option>
+              </select>
+            </label>
+            <div className="rounded-none bg-amber-500/10 px-2.5 py-2 text-amber-300">
+              <p className="mb-1 font-semibold">
+                If &quot;Hey Axis&quot; never works, this is the first thing to check.
+              </p>
+              <p>
+                This used to follow your browser&apos;s own language, which is a
+                different thing entirely — it&apos;s the language of the menus,
+                not the one you speak to Axis in. On a Danish Mac that meant
+                Chrome was listening in Danish, and Danish speech-to-text will
+                never return the word &quot;Axis&quot;. Every part of the wake
+                word worked; the name simply never arrived. <b>His name is
+                English, so leave this on English</b> unless you genuinely speak
+                to him in something else.
+              </p>
+            </div>
+            <p className="text-[10px] text-sand-600">
+              The ear button in the chat bar tells you what it last heard. If
+              it&apos;s listening but hearing nonsense, the language is wrong; if
+              it says the browser isn&apos;t listening at all, the microphone
+              permission is.
             </p>
           </Section>
           <Section

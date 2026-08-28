@@ -110,8 +110,15 @@ const SPEECH_API_ERRORS: Record<string, string> = {
 
 export function useVoiceInput(
   onFinalTranscript: (text: string, transcribeMs?: number) => void,
-  canTranscribeOnServer: boolean
+  canTranscribeOnServer: boolean,
+  /** Language tag to listen in. See speechLang.ts — not navigator.language. */
+  lang = "en-GB"
 ) {
+  const langRef = useRef(lang);
+  useEffect(() => {
+    langRef.current = lang;
+  }, [lang]);
+
   const [speechApiAvailable, setSpeechApiAvailable] = useState(false);
   const [recorderAvailable, setRecorderAvailable] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -323,7 +330,8 @@ export function useVoiceInput(
     const recognition = new Ctor();
     recognition.continuous = false;
     recognition.interimResults = true;
-    recognition.lang = typeof navigator !== "undefined" ? navigator.language : "en-US";
+    // The browser's interface language is not what he speaks; see speechLang.ts.
+    recognition.lang = langRef.current;
 
     recognition.onstart = () => setIsListening(true);
 

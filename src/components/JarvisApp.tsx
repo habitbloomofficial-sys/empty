@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { TopBar } from "./TopBar";
 import { SystemRail } from "./SystemRail";
@@ -13,6 +13,7 @@ import { ChatIcon, CloseIcon } from "./Icons";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
 import { useVoicePlayer } from "@/hooks/useVoicePlayer";
 import { useWakeWord } from "@/hooks/useWakeWord";
+import { detectStandbyOrder } from "@/lib/wakeWord";
 import { describeClientFetchError, fetchWithRetry, postJson } from "@/lib/clientFetch";
 import { catchphraseFor } from "@/lib/catchphrases";
 import { screenUtterance, withinFollowUp } from "@/lib/speechGate";
@@ -41,6 +42,10 @@ export default function AxisApp() {
   const [voiceError, setVoiceError] = useState<string | null>(null);
   const [hologramOpen, setHologramOpen] = useState(false);
   const [wakeEnabled, setWakeEnabled] = useState(true);
+  // Standby: he keeps listening for his name and does nothing else. No
+  // volunteering, no follow-ups without being addressed, no reacting to a
+  // noise that half-sounded like a sentence.
+  const [standby, setStandby] = useState(false);
   const [greetingPending, setGreetingPending] = useState(false);
   // What he remembers of where things stood. undefined until the session has
   // been opened; "" once opened with nothing worth saying.
@@ -59,6 +64,27 @@ export default function AxisApp() {
   const voicePlayer = useVoicePlayer();
 
   async function handleSend(text: string, transcribeMs?: number) {
+    // "Axis, standby" is an instruction to Axis, not a question for the model.
+    // Handled here rather than only in the wake listener so that typing it
+    // works too, and so it never costs a request to answer.
+    const order = detectStandbyOrder(text);
+    if (order === "standby") {
+      setMessages((prev) => [
+        ...prev,
+        { id: crypto.randomUUID(), role: "user" as const, content: text, createdAt: Date.now() },
+      ]);
+      enterStandby();
+      return;
+    }
+    if (order === "resume") {
+      setMessages((prev) => [
+        ...prev,
+        { id: crypto.randomUUID(), role: "user" as const, content: text, createdAt: Date.now() },
+      ]);
+      leaveStandby();
+      return;
+    }
+
     setError(null);
     setVoiceError(null);
     // A new question cuts off the previous answer mid-sentence rather than
@@ -326,8 +352,10 @@ export default function AxisApp() {
     //     since interrupting himself over a noise is the worst version of
     //     getting this wrong.
     const busy = voicePlayer.isSpeaking || isThinking;
+    // Standby is exactly this: his name, every time, for everything. It is what
+    // stops him answering the television.
     const requireName =
-      handsFree && (busy || !withinFollowUp(lastReplyAt, Date.now()));
+      standby || (handsFree && (busy || !withinFollowUp(lastReplyAt, Date.now())));
 
     const verdict = screenUtterance(text, { requireName });
 
@@ -344,14 +372,67 @@ export default function AxisApp() {
     await handleSend(verdict.text, transcribeMs);
   };
 
-  const speech = useVoiceInput(handleHeard, Boolean(status?.transcription));
+  const speech = useVoiceInput(
+    handleHeard,
+    Boolean(status?.transcription),
+    status?.speechLang ?? "en-GB"
+  );
+
+  const enterStandby = useCallback(() => {
+    setStandby(true);
+    voicePlayer.stopSpeaking();
+    speech.stop();
+    setHandsFree(false);
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        role: "assistant" as const,
+        content: "Standing by.",
+        createdAt: Date.now(),
+      },
+    ]);
+    // Said, then silence — an acknowledgement is the one thing worth the
+    // breath, and going quiet without a word looks like a fault.
+    void voicePlayer.speak("Standing by.");
+  }, [speech, voicePlayer]);
+
+  const leaveStandby = useCallback(() => {
+    setStandby(false);
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        role: "assistant" as const,
+        content: "Here, sir.",
+        createdAt: Date.now(),
+      },
+    ]);
+    void voicePlayer.speak("Here, sir.");
+  }, [voicePlayer]);
 
   // Wake word. Held off while he's speaking or already listening, so he never
   // hears his own name in his own voice and wakes himself up.
   const wake = useWakeWord({
     enabled: wakeEnabled,
     paused: voicePlayer.isSpeaking || speech.isListening || speech.isTranscribing || isThinking,
+    lang: status?.speechLang ?? "en-GB",
     onWake: (command) => {
+      const order = detectStandbyOrder(`axis ${command}`);
+
+      if (order === "standby") {
+        enterStandby();
+        return;
+      }
+      // Any address at all brings him back: being told to wake up is the point
+      // of a wake word, and "Axis" alone is how anyone would do it.
+      if (standby) {
+        leaveStandby();
+        if (command.trim().length > 2 && order !== "resume") void handleSend(command.trim());
+        return;
+      }
+      if (order === "resume") return;   // Already awake; nothing to do.
+
       // "Hey Axis, open YouTube" shouldn't need saying twice — if the
       // instruction came in the same breath, act on it directly.
       if (command.trim().length > 2) void handleSend(command.trim());
@@ -499,7 +580,7 @@ export default function AxisApp() {
   // waits for a genuinely idle moment, which is what every clause below is.
   // ---------------------------------------------------------------------
   useEffect(() => {
-    if (!status?.idleTalk) return;
+    if (!status?.idleTalk || standby) return;
 
     let stopped = false;
 
@@ -544,6 +625,7 @@ export default function AxisApp() {
     };
   }, [
     status?.idleTalk,
+    standby,
     isThinking,
     settingsOpen,
     voicePlayer,
@@ -699,7 +781,10 @@ export default function AxisApp() {
           wakeSupported={wake.supported}
           wakeEnabled={wakeEnabled}
           wakeListening={wake.listening}
+          wakeLastHeard={wake.lastHeard}
           onToggleWake={() => setWakeEnabled((v) => !v)}
+          standby={standby}
+          onLeaveStandby={leaveStandby}
           disabled={isThinking}
           isListening={speech.isListening}
           isTranscribing={speech.isTranscribing}

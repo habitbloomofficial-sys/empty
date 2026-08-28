@@ -56,6 +56,11 @@ export interface IntegrationStatus {
   honcho: boolean;
   /** He may speak without being spoken to. */
   idleTalk: boolean;
+  /**
+   * The language tag the browser should listen in. Not the browser's own
+   * setting — see speechLang.ts for why that one breaks the wake word.
+   */
+  speechLang: string;
   /** How he searches the web, if he can — usually through the brain he runs on. */
   webSearch: "google" | "gemini" | "openrouter" | "anthropic" | null;
   /** Whether a passcode exists, which is what makes remote access possible. */

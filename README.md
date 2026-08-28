@@ -122,6 +122,43 @@ menu, so Axis reads your Applications folders instead — including one level in
 the folders Adobe and Microsoft install into, so *"open Photoshop"* finds
 `Adobe Photoshop 2026` where it actually lives.
 
+### "Hey Axis", and standby
+
+**If the wake word has never worked for you, it was almost certainly the
+language.** Both listeners used to be set to `navigator.language` — which is the
+language of your browser's *menus*, not the one you speak in. On a Danish Mac
+that meant Chrome was listening in Danish, and Danish speech-to-text will never
+return the word "Axis". Every part of the wake word was working; the name simply
+never arrived.
+
+It's now a setting — **Settings → Listening** — and it defaults to English,
+because his name is an English word. Change it only if you genuinely talk to him
+in something else.
+
+**And it can no longer fail silently.** Hover the ear button in the chat bar and
+it tells you what it is actually doing:
+
+| What it says | What it means |
+| --- | --- |
+| *Listening for "Hey Axis"* | Working. |
+| *Last heard: "…"* | It's hearing you, but not as his name — usually the wrong language. |
+| *Switched on, but the browser isn't listening* | The microphone permission, not the wake word. |
+
+**Standby.** Say **"Axis, standby"** — or *be quiet*, *go to sleep*, *stop
+listening*, *shut up* — and he stands by: he answers "Standing by", stops
+talking, volunteers nothing, and requires his name before acting on anything.
+That last part is the point: standby is what stops him replying to the
+television, or to a noise that half-sounded like a sentence.
+
+Say **"Axis, wake up"** — or *resume*, *come back*, *are you there* — and he's
+back with "Here, sir." Just saying his name brings him back too, which is what a
+wake word is for. There's a **Standby** button in the chat bar while he's under,
+if you'd rather click.
+
+Both work typed as well as spoken, and neither costs a request: an order to Axis
+is handled by Axis, not sent to a model. The order is recognised through the same
+matcher as the wake word, mishearings included — *"hey access standby"* works.
+
 ### Speaking first (optional, off until you turn it on)
 
 Axis has only ever answered. Switch this on in **Settings → Speaking first** and
