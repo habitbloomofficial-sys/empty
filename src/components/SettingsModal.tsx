@@ -1661,6 +1661,76 @@ export function SettingsModal({
               and file search goes with it.
             </p>
           </Section>
+          <Section
+            icon={<MemoryIcon className="h-4 w-4" />}
+            title="Speaking first"
+            ok={Boolean(status?.idleTalk)}
+          >
+            <p>
+              Lets Axis start a conversation instead of only answering one —
+              unread mail, your channel moving, the essay or deck you were last
+              working on, something in the diary within the hour.
+            </p>
+            <div className="flex gap-1 rounded-none border border-amber-500/20 bg-black/40 p-1">
+              {(["off", "on"] as const).map((value) => {
+                const active = (draft("IDLE_TALK") || "off") === value;
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => {
+                      setDraft("IDLE_TALK", value);
+                      void save("idle", { IDLE_TALK: value });
+                    }}
+                    className={`flex-1 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                      active ? "bg-amber-500 text-white" : "text-sand-500 hover:bg-amber-500/10"
+                    }`}
+                  >
+                    {value === "on" ? "He may" : "Only when asked"}
+                  </button>
+                );
+              })}
+            </div>
+            <label className="block">
+              <span className="mb-1 block text-[11px] font-semibold text-cream">
+                At most one remark every
+              </span>
+              <select
+                value={draft("IDLE_TALK_MINUTES") || "20"}
+                onChange={(e) => {
+                  setDraft("IDLE_TALK_MINUTES", e.target.value);
+                  void save("idle", { IDLE_TALK_MINUTES: e.target.value });
+                }}
+                className="w-full rounded-none border border-amber-500/20 bg-black/40 px-3 py-2 text-xs text-cream focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-400/30"
+              >
+                <option value="10">10 minutes</option>
+                <option value="20">20 minutes</option>
+                <option value="45">45 minutes</option>
+                <option value="90">an hour and a half</option>
+                <option value="240">four hours</option>
+              </select>
+            </label>
+            <div className="rounded-none bg-amber-500/10 px-2.5 py-2 text-amber-300">
+              <p className="mb-1 font-semibold">He can only mention things that are true.</p>
+              <p>
+                Every remark is built from something actually found — a real
+                unread count, a real subscriber number, a real file with a real
+                timestamp. There is no trivia in this and no small talk: when
+                nothing has happened, he says nothing. He never repeats a thing
+                he has already told you, and never speaks while you are talking
+                or while he is still working.
+              </p>
+            </div>
+            <p className="text-[10px] text-sand-600">
+              He draws on whatever is connected. Gmail gives him your inbox, a
+              YouTube key your channel, file search what you have been working
+              on, and Google Calendar what is coming up. With none of them
+              connected there is nothing for him to notice, so he stays quiet.
+              <b> WhatsApp is not among them</b> — Twilio can send messages but
+              never tells Axis about arriving ones, so he has no way to know
+              whether you have any, and won&apos;t pretend to.
+            </p>
+          </Section>
           <GroupHeading title="MEMORY" blurb="What he keeps, and what he did." />
           <Section
             icon={<MemoryIcon className="h-4 w-4" />}

@@ -54,6 +54,8 @@ export const SETTING_KEYS = [
   "VEO_MODEL",
   "USER_TITLE",
   "HUMOUR",
+  "IDLE_TALK",
+  "IDLE_TALK_MINUTES",
 ] as const;
 
 export type SettingKey = (typeof SETTING_KEYS)[number];

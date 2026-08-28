@@ -122,6 +122,45 @@ menu, so Axis reads your Applications folders instead — including one level in
 the folders Adobe and Microsoft install into, so *"open Photoshop"* finds
 `Adobe Photoshop 2026` where it actually lives.
 
+### Speaking first (optional, off until you turn it on)
+
+Axis has only ever answered. Switch this on in **Settings → Speaking first** and
+he'll occasionally start a conversation instead:
+
+> *"Three unread — the top one's from your landlord. And your media studies
+> essay was open about two hours ago."*
+
+**He can only mention things that are actually true.** Every remark is built
+from something real that was found a moment earlier: a real unread count from
+Gmail, a real subscriber number from YouTube, a real file on disk with a real
+timestamp, a real event in your calendar. Nothing generates a topic. **If
+nothing has happened, he says nothing** — there is no fallback that reaches for
+a fact about seals, and the model that phrases the remark is explicitly
+forbidden from adding, guessing or padding. Given nothing worth saying, it is
+told to answer `SKIP`, and he stays quiet.
+
+The rest is about not being a nuisance:
+
+- **Never twice.** Each fact is remembered by identity, so the same three emails
+  are mentioned once, not every twenty minutes.
+- **Never over you.** He waits for a genuinely idle moment — not while you're
+  typing, not while he's thinking, not while either of you is talking, not while
+  Settings is open, not while the window is in the background.
+- **At most one remark per interval**, which you set (default 20 minutes). The
+  clock lives on the server, so three open tabs still means one remark.
+- **A long silence earns one line.** After about three hours with genuinely
+  nothing to report, he'll say so once — *"nothing new"* — and then go quiet
+  again rather than repeating it.
+
+He draws on whatever is connected: Gmail for the inbox, a YouTube key for the
+channel, file search for what you've been working on, Google Calendar for what's
+coming. With none of them connected there is nothing to notice, so he stays
+silent.
+
+**WhatsApp is not on that list, and can't be.** Twilio lets Axis *send* messages
+but never tells him about arriving ones — there's no inbox to read. So he has no
+way to know whether you have new WhatsApp messages, and he won't pretend to.
+
 ### Long memory (Honcho, optional)
 
 Axis's own memory is a file on this machine. It works, it needs no account, and

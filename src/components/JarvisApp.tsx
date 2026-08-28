@@ -487,6 +487,70 @@ export default function AxisApp() {
     speech.error,
   ]);
 
+  // ---------------------------------------------------------------------
+  // Him speaking first.
+  //
+  // Every minute the server is asked whether anything is worth mentioning; it
+  // almost always says no, and enforces the real interval itself so three open
+  // tabs don't produce three remarks. Nothing is invented server-side — if it
+  // found no facts, there is nothing to say and it says so.
+  //
+  // Two things it must never do: talk over him, and talk over itself. So it
+  // waits for a genuinely idle moment, which is what every clause below is.
+  // ---------------------------------------------------------------------
+  useEffect(() => {
+    if (!status?.idleTalk) return;
+
+    let stopped = false;
+
+    const look = async () => {
+      if (stopped) return;
+      if (
+        isThinking ||
+        voicePlayer.isSpeaking ||
+        speech.isListening ||
+        speech.isTranscribing ||
+        settingsOpen ||
+        document.hidden
+      ) {
+        return;
+      }
+
+      let say: string | null = null;
+      try {
+        const res = await fetch("/api/notice", { method: "POST" });
+        if (!res.ok) return;
+        say = ((await res.json()) as { say: string | null }).say;
+      } catch {
+        return;   // Offline, or he closed the window mid-request.
+      }
+      if (!say || stopped) return;
+
+      // Checked again: a minute may have passed inside that request, and he may
+      // have started talking in it.
+      if (isThinking || voicePlayer.isSpeaking || speech.isListening) return;
+
+      setMessages((prev) => [
+        ...prev,
+        { id: crypto.randomUUID(), role: "assistant" as const, content: say!, createdAt: Date.now() },
+      ]);
+      void voicePlayer.speak(say);
+    };
+
+    const timer = setInterval(() => void look(), 60_000);
+    return () => {
+      stopped = true;
+      clearInterval(timer);
+    };
+  }, [
+    status?.idleTalk,
+    isThinking,
+    settingsOpen,
+    voicePlayer,
+    speech.isListening,
+    speech.isTranscribing,
+  ]);
+
   const orbState: OrbState = voicePlayer.isSpeaking
     ? "speaking"
     : isThinking || speech.isTranscribing

@@ -54,6 +54,8 @@ export interface IntegrationStatus {
   desktopControl: boolean;
   /** A Honcho key is saved. Stored only — see the Settings panel. */
   honcho: boolean;
+  /** He may speak without being spoken to. */
+  idleTalk: boolean;
   /** How he searches the web, if he can — usually through the brain he runs on. */
   webSearch: "google" | "gemini" | "openrouter" | "anthropic" | null;
   /** Whether a passcode exists, which is what makes remote access possible. */
