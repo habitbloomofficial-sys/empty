@@ -5,3 +5,6 @@
 # and a mixed-ending file is a needless thing to have to think about.
 *.ps1 text eol=crlf
 *.sh text eol=lf
+# The Mac launchers are shell scripts read by bash. A CRLF line ending would
+# make the shebang unparseable and every one of them fail to start.
+*.command text eol=lf

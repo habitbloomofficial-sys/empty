@@ -81,6 +81,47 @@ The window still needs the server running behind it. Keep using
 `START-Axis.bat`, or put a shortcut to it in `shell:startup` so it's always
 there (see below).
 
+### On a Mac
+
+Everything works. Axis is a Node app, and the parts that touch the machine —
+opening apps, browsers, Spotify, your folders — already knew about macOS. What
+was Windows-only was the launchers, so there are now Mac ones beside them:
+
+| Double-click this | For |
+| --- | --- |
+| `START-AXIS.command` | Axis on this Mac |
+| `START-AXIS-PHONE.command` | Your phone, over your own Wi-Fi |
+| `START-AXIS-ANYWHERE.command` | Your phone, from anywhere |
+
+They do exactly what the `.bat` files do — install what's missing, rebuild only
+when something changed, and tell you what went wrong in `data/last-run.log`
+rather than losing it off the top of the window. **No PowerShell, no Terminal
+commands, no password.** The only thing you may need to install is
+[Node.js](https://nodejs.org/en/download) — take the LTS button and the `.pkg`.
+
+**If double-clicking opens the file in a text editor instead of running it**, the
+executable flag was lost on the way to your Mac. Open Terminal (⌘-Space, type
+`terminal`) and run this once, in the Axis folder:
+
+```bash
+chmod +x *.command
+```
+
+Two differences worth knowing:
+
+- **The firewall.** Windows needed a whole song and dance; macOS just asks you
+  once, in a dialog, when the phone launcher first opens a port. Click **Allow**.
+  If you clicked Don't Allow, it's remembered — System Settings → Network →
+  Firewall → Options.
+- **The tunnel program.** Cloudflare ships the Mac build as a tarball, and there
+  are separate ones for Apple Silicon and Intel. The launcher asks your Mac
+  which it is and fetches the right one; you don't choose.
+
+Finding your apps works differently too and needs no setup: macOS has no Start
+menu, so Axis reads your Applications folders instead — including one level into
+the folders Adobe and Microsoft install into, so *"open Photoshop"* finds
+`Adobe Photoshop 2026` where it actually lives.
+
 ### Long memory (Honcho, optional)
 
 Axis's own memory is a file on this machine. It works, it needs no account, and

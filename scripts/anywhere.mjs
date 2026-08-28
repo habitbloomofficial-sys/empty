@@ -14,7 +14,13 @@ import fs from "node:fs";
 import path from "node:path";
 import qrcode from "qrcode-terminal";
 
-const CLOUDFLARED = path.join(process.cwd(), "data", "cloudflared.exe");
+// Windows gets an .exe; a Mac gets a plain binary out of Cloudflare's tarball.
+// The launcher for each platform puts it here under the matching name.
+const CLOUDFLARED = path.join(
+  process.cwd(),
+  "data",
+  process.platform === "win32" ? "cloudflared.exe" : "cloudflared"
+);
 const LOCAL = "http://127.0.0.1:3000";
 
 /** cloudflared announces the address in its log, amid a lot of other noise. */
@@ -218,7 +224,11 @@ function announce(url) {
 
 async function main() {
   if (!fs.existsSync(CLOUDFLARED)) {
-    console.error("  The tunnel program isn't here. Run START-AXIS-ANYWHERE.bat rather than this file.");
+    console.error(
+      "  The tunnel program isn't here. Run " +
+        (process.platform === "win32" ? "START-AXIS-ANYWHERE.bat" : "START-AXIS-ANYWHERE.command") +
+        " rather than this file."
+    );
     process.exit(1);
   }
 

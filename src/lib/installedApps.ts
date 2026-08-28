@@ -25,10 +25,13 @@ const run = promisify(execFile);
 
 export interface InstalledApp {
   name: string;
-  /** What Windows calls it: an AppUserModelID, or a path to a shortcut. */
+  /**
+   * What the operating system calls it: a Windows AppUserModelID or shortcut
+   * path, a macOS .app bundle path, or a Linux .desktop file name.
+   */
   id: string;
   /** Where it was found, which is only ever shown to a human. */
-  source: "start-menu" | "shortcut" | "desktop-entry";
+  source: "start-menu" | "shortcut" | "desktop-entry" | "applications";
 }
 
 /** Rebuilt no more often than this — scanning is cheap but not free. */
@@ -159,6 +162,67 @@ export function dedupe(apps: InstalledApp[]): InstalledApp[] {
   return kept.sort((a, b) => a.name.localeCompare(b.name));
 }
 
+/**
+ * Everything in the Mac's Applications folders.
+ *
+ * macOS has no equivalent of Get-StartApps, and it doesn't need one: an
+ * application *is* a folder ending in .app, and they live in a handful of known
+ * places. That is the whole index.
+ *
+ * One level of nesting is followed, because Utilities and the folders that
+ * Adobe and Microsoft install into are exactly where the things you'd ask for
+ * by name end up. Deeper than that is bundles inside bundles — a helper app
+ * buried in another app's Contents is never what he means by "open Photoshop".
+ */
+export function fromApplicationsFolders(): InstalledApp[] {
+  // Utilities is deliberately not listed: the walk below already goes one level
+  // into every folder it finds, so naming it here would only find everything in
+  // it twice.
+  const roots = [
+    "/Applications",
+    "/System/Applications",
+    path.join(os.homedir(), "Applications"),
+  ];
+
+  const found: InstalledApp[] = [];
+
+  const add = (parent: string, entry: string) => {
+    if (!entry.endsWith(".app")) return;
+    found.push({
+      name: entry.slice(0, -".app".length),
+      id: path.join(parent, entry),
+      source: "applications",
+    });
+  };
+
+  for (const root of roots) {
+    let entries: fs.Dirent[];
+    try {
+      entries = fs.readdirSync(root, { withFileTypes: true });
+    } catch {
+      continue;   // A folder that isn't there is not a problem, it is a Mac.
+    }
+
+    for (const entry of entries) {
+      if (entry.name.startsWith(".")) continue;
+      if (entry.name.endsWith(".app")) {
+        add(root, entry.name);
+        continue;
+      }
+      if (!entry.isDirectory()) continue;
+
+      // A plain folder — Adobe's, Microsoft's, Utilities. One level in.
+      const nested = path.join(root, entry.name);
+      try {
+        for (const inner of fs.readdirSync(nested)) add(nested, inner);
+      } catch {
+        // Unreadable folders are skipped rather than fatal.
+      }
+    }
+  }
+  return found;
+}
+
 export async function listInstalledApps(force = false): Promise<InstalledApp[]> {
   if (!force && cache && Date.now() - cache.at < CACHE_MS) return cache.apps;
 
@@ -170,6 +234,8 @@ export async function listInstalledApps(force = false): Promise<InstalledApp[]> 
       // PowerShell blocked or missing: the shortcut scan still finds most of it.
     }
     found.push(...fromShortcuts());
+  } else if (process.platform === "darwin") {
+    found.push(...fromApplicationsFolders());
   } else if (process.platform === "linux") {
     found.push(...fromDesktopEntries());
   }
@@ -280,7 +346,11 @@ export async function launchApp(app: InstalledApp): Promise<void> {
   }
 
   if (process.platform === "darwin") {
-    await run("open", ["-a", app.name]);
+    // By path, not by name: `open -a Notes` is ambiguous when two bundles share
+    // a name, and the path is what the scan actually found.
+    await run("open", [app.id]).catch(async () => {
+      await run("open", ["-a", app.name]);
+    });
     return;
   }
 

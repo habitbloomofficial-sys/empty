@@ -137,6 +137,9 @@ async function ensureCertificate(addresses) {
   return { cert: pems.cert, key: pems.private };
 }
 
+/** The launcher for this platform, so advice names a file that exists. */
+const LAUNCHER = process.platform === "win32" ? ".bat" : ".command";
+
 /** Loopback is this computer talking to itself; anything else is a real device. */
 function isRemote(ip) {
   return Boolean(ip) && !/^(::1$|127\.|::ffff:127\.)/.test(ip);
@@ -221,9 +224,19 @@ function narrate(server, best) {
     console.log("  If you have scanned the code and it is spinning or says it");
     console.log("  can't connect, it is one of these three, in this order:");
     console.log("");
-    console.log("  1. WINDOWS FIREWALL. Close this window, right-click");
-    console.log("     START-AXIS-PHONE.bat and choose Run as administrator.");
-    console.log("     It will put the rule in and this stops happening.");
+    if (process.platform === "win32") {
+      console.log("  1. WINDOWS FIREWALL. Close this window, right-click");
+      console.log("     START-AXIS-PHONE.bat and choose Run as administrator.");
+      console.log("     It will put the rule in and this stops happening.");
+    } else if (process.platform === "darwin") {
+      console.log("  1. THE MAC FIREWALL. System Settings > Network >");
+      console.log("     Firewall. Either switch it off, or open Options and");
+      console.log("     allow incoming connections for node. If a dialog asked");
+      console.log("     you this and got Don't Allow, that answer is remembered.");
+    } else {
+      console.log("  1. THE FIREWALL. Something on this machine is refusing");
+      console.log(`     connections on port ${PORT}. Allow it, and try again.`);
+    }
     console.log("");
     console.log("  2. NOT THE SAME WI-FI. Phones hop onto mobile data without");
     console.log("     telling you, and a guest network is a separate network.");
@@ -240,7 +253,7 @@ function narrate(server, best) {
     console.log("     guest networks, have 'AP isolation' or 'client isolation'");
     console.log("     switched on, which stops your own devices from seeing");
     console.log("     each other. If you can't turn it off, use");
-    console.log("     START-AXIS-ANYWHERE.bat instead - that one goes out to");
+    console.log(`     START-AXIS-ANYWHERE${LAUNCHER} instead - that one goes out to`);
     console.log("     the internet and back, so the router has no say in it.");
     console.log("");
   }, 45_000).unref();
