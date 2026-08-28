@@ -644,7 +644,7 @@ export const toolDefinitions: OpenAI.Chat.Completions.ChatCompletionTool[] = [
     function: {
       name: "create_document",
       description:
-        "Write a real file he can open: a Word document for an essay or a report, a PowerPoint deck for slides, an Excel workbook for a table or budget, or a Markdown file for notes. Use this whenever he asks you to write, draft, or put something in a document, an essay, a presentation or a spreadsheet — write the actual content here rather than saying it in chat and leaving him to copy it. Write it in full: real paragraphs for prose, real figures for a table. It is saved in his Documents folder and you can open it for him afterwards.",
+        "Write a real file he can open: a Word document for an essay or a report, a PowerPoint deck for slides, an Excel workbook for a table or budget, or a Markdown file for notes. Use this whenever he asks you to write, draft, or put something in a document, an essay, a presentation or a spreadsheet — write the actual content here rather than saying it in chat and leaving him to copy it. Write it in full: real paragraphs for prose, real figures for a table. It is saved in his Documents folder and you can open it for him afterwards. IT IS DESIGNED, NOT PLAIN: colours, coloured headings, shapes and illustrations are added for you from the theme, so you never need to ask for them — but the `layout` and `figures` fields below are what turn a wall of bullets into a deck worth looking at, and you should use them. He has said outright that he wants pictures and shapes rather than plain text, so on a deck of any length, vary it: a `statement` slide for the sentence that matters, `figures` wherever there are real numbers, a `quote` where someone is worth quoting, `columns` when a list is long. Never invent a number to fill a chart.",
       parameters: {
         type: "object",
         properties: {
@@ -670,8 +670,37 @@ export const toolDefinitions: OpenAI.Chat.Completions.ChatCompletionTool[] = [
                   description: "Prose, one string per paragraph. Write them properly, not as notes.",
                 },
                 bullets: { type: "array", items: { type: "string" } },
+                layout: {
+                  type: "string",
+                  enum: ["bullets", "statement", "columns", "quote"],
+                  description:
+                    "Slides only, and worth choosing. bullets = the ordinary slide. statement = the whole slide given to one short sentence in large type on full colour, for the line you want remembered; use it once or twice in a deck, never for a list. columns = a long list split in two, which is better than one column running off the slide. quote = a pulled quotation with a coloured rule beside it, with `attribution` for who said it. Left out, a single short line becomes a statement and everything else becomes bullets.",
+                },
+                figures: {
+                  type: "array",
+                  description:
+                    "Slides and essays. Two to five labelled numbers, drawn as a coloured bar chart on a slide and a coloured table in a document. Use it whenever the content has real numbers in it — percentages, counts, years, scores. ONLY numbers that are true and that he gave you or you looked up. Never invent one to make the picture look fuller; a chart of made-up figures is worse than no chart.",
+                  items: {
+                    type: "object",
+                    properties: {
+                      label: { type: "string" },
+                      value: { type: "number" },
+                    },
+                    required: ["label", "value"],
+                  },
+                },
+                attribution: {
+                  type: "string",
+                  description: "Who said it. Only with layout \"quote\".",
+                },
               },
             },
+          },
+          theme: {
+            type: "string",
+            enum: ["midnight", "ocean", "ember", "forest", "berry", "slate"],
+            description:
+              "Optional colour palette. Pick one that suits the subject — ocean for water or science, forest for nature, ember for something warm or urgent, berry for something creative, midnight or slate for business. Left out, one is chosen from the title and stays the same every time that document is made.",
           },
           sheets: {
             type: "array",

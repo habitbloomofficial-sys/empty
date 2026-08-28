@@ -159,6 +159,38 @@ Both work typed as well as spoken, and neither costs a request: an order to Axis
 is handled by Axis, not sent to a model. The order is recognised through the same
 matcher as the wake word, mishearings included — *"hey access standby"* works.
 
+### Documents that look designed
+
+Decks and documents used to come out as black text on white — correct, complete
+and lifeless. They now arrive with a palette, a composed title page, coloured
+headings, and illustrations built from PowerPoint's own shapes.
+
+**Nothing is fetched.** Every mark is a rectangle, a circle, a triangle or a
+chevron placed deliberately, so there are no images to fail to load, no
+copyright to worry about, and no wait.
+
+Slides come in four shapes, and Axis picks between them:
+
+| Layout | What it is |
+| --- | --- |
+| **bullets** | The ordinary slide: tinted header band, coloured heading, square bullet markers, and a decorative motif in the corner that changes as the deck goes on. |
+| **statement** | The whole slide given to one sentence in large type on full colour, for the line you want remembered. |
+| **figures** | Real numbers drawn as a coloured bar chart, with values above and labels below. |
+| **quote** | A pulled quotation with a coloured rule beside it and an attribution. |
+| **columns** | A long list split in two, with a divider, instead of running off the bottom. |
+
+**Six palettes** — midnight, ocean, ember, forest, berry, slate. Ask for one, or
+let him choose: with none named he picks from the title, so the same document is
+the same colour every time you make it.
+
+Word documents get the same treatment as far as Word allows: a coloured title
+over an accent rule, headings with a coloured edge, tinted pull-quotes, and
+figures as a table with a coloured header row.
+
+**The one rule: he never invents a number to fill a chart.** Figures have to be
+ones you gave him or ones he looked up. A slide with no real numbers simply has
+no chart on it.
+
 ### Speaking first (optional, off until you turn it on)
 
 Axis has only ever answered. Switch this on in **Settings → Speaking first** and

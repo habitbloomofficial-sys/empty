@@ -2,6 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { getSetting } from "./settings";
+import { motif, pickTheme, titleMotif, type Mark } from "./docTheme";
 
 // Making a real file rather than talking about one.
 //
@@ -22,6 +23,17 @@ export interface Section {
   paragraphs?: string[];
   /** Bullet points, for slides or a list inside a document. */
   bullets?: string[];
+  /**
+   * How this slide is built. "bullets" is the ordinary one; "statement" gives
+   * the whole slide over to a single line in large type on colour, which is
+   * what you want for the sentence that matters; "columns" splits the points
+   * into two; "quote" sets it as a pulled quotation.
+   */
+  layout?: "bullets" | "statement" | "columns" | "quote";
+  /** A few labelled numbers, drawn as bars. Nothing is invented to fill it. */
+  figures?: { label: string; value: number }[];
+  /** Attribution, for a quote. */
+  attribution?: string;
 }
 
 export interface Sheet {
@@ -38,6 +50,12 @@ export interface DocumentRequest {
   sheets?: Sheet[];
   /** Overrides the name. Treated as a name only, never a path. */
   filename?: string;
+  /**
+   * A palette by name — midnight, ocean, ember, forest, berry, slate. Left out,
+   * one is chosen from the title, so the same document is always the same
+   * colour.
+   */
+  theme?: string;
 }
 
 export interface WrittenDocument {
@@ -103,27 +121,153 @@ function countWords(sections: Section[]): number {
 }
 
 async function writeEssay(request: DocumentRequest, target: string): Promise<string> {
-  const { Document, Packer, Paragraph, HeadingLevel, TextRun } = await import("docx");
-  const sections = request.sections ?? [];
+  const {
+    Document, Packer, Paragraph, TextRun, AlignmentType, BorderStyle, ShadingType,
+  } = await import("docx");
 
-  const children: InstanceType<typeof Paragraph>[] = [
-    new Paragraph({ text: request.title, heading: HeadingLevel.TITLE }),
-  ];
+  const theme = pickTheme(request.theme, request.title);
+  const sections = request.sections ?? [];
+  const children: InstanceType<typeof Paragraph>[] = [];
+
+  // A title in colour, over a rule in the accent. Word has no shapes worth the
+  // trouble, so the colour does the work that shapes do on a slide.
+  children.push(
+    new Paragraph({
+      spacing: { after: 60 },
+      children: [
+        new TextRun({ text: request.title, bold: true, size: 44, color: theme.heading }),
+      ],
+    })
+  );
+  children.push(
+    new Paragraph({
+      spacing: { after: request.subtitle ? 80 : 320 },
+      border: { bottom: { style: BorderStyle.SINGLE, size: 18, color: theme.accent, space: 4 } },
+      children: [],
+    })
+  );
   if (request.subtitle) {
     children.push(
-      new Paragraph({ children: [new TextRun({ text: request.subtitle, italics: true })] })
+      new Paragraph({
+        spacing: { after: 320 },
+        children: [
+          new TextRun({ text: request.subtitle, italics: true, size: 24, color: theme.accent2 }),
+        ],
+      })
     );
   }
 
   for (const section of sections) {
     if (section.heading) {
-      children.push(new Paragraph({ text: section.heading, heading: HeadingLevel.HEADING_1 }));
+      children.push(
+        new Paragraph({
+          spacing: { before: 320, after: 40 },
+          border: { left: { style: BorderStyle.SINGLE, size: 18, color: theme.accent, space: 8 } },
+          children: [
+            new TextRun({ text: section.heading, bold: true, size: 30, color: theme.heading }),
+          ],
+        })
+      );
     }
+
+    // A quote is set apart: tinted, indented, with a coloured edge.
+    if (section.layout === "quote" || section.layout === "statement") {
+      const line = (section.paragraphs ?? section.bullets ?? [])[0];
+      if (line) {
+        children.push(
+          new Paragraph({
+            spacing: { before: 160, after: 160 },
+            indent: { left: 360, right: 360 },
+            shading: { type: ShadingType.CLEAR, fill: theme.wash },
+            border: { left: { style: BorderStyle.SINGLE, size: 24, color: theme.accent, space: 12 } },
+            children: [
+              new TextRun({
+                text: section.layout === "quote" ? `"${line}"` : line,
+                italics: section.layout === "quote",
+                bold: section.layout === "statement",
+                size: 26,
+                color: theme.heading,
+              }),
+            ],
+          })
+        );
+        if (section.attribution) {
+          children.push(
+            new Paragraph({
+              alignment: AlignmentType.RIGHT,
+              spacing: { after: 200 },
+              indent: { right: 360 },
+              children: [
+                new TextRun({ text: `— ${section.attribution}`, size: 20, color: theme.accent2 }),
+              ],
+            })
+          );
+        }
+        continue;
+      }
+    }
+
     for (const paragraph of section.paragraphs ?? []) {
-      children.push(new Paragraph({ text: paragraph, spacing: { after: 160 } }));
+      children.push(
+        new Paragraph({
+          spacing: { after: 160, line: 300 },
+          children: [new TextRun({ text: paragraph, size: 23, color: theme.ink })],
+        })
+      );
     }
     for (const bullet of section.bullets ?? []) {
-      children.push(new Paragraph({ text: bullet, bullet: { level: 0 } }));
+      children.push(
+        new Paragraph({
+          bullet: { level: 0 },
+          spacing: { after: 90 },
+          children: [new TextRun({ text: bullet, size: 23, color: theme.ink })],
+        })
+      );
+    }
+
+    // Numbers become a small table with a coloured header, which is the one
+    // piece of furniture Word does better than anything else.
+    if (section.figures && section.figures.length > 0) {
+      const { Table, TableRow, TableCell, WidthType } = await import("docx");
+      const header = new TableRow({
+        children: ["", ""].map((_, i) =>
+          new TableCell({
+            shading: { type: ShadingType.CLEAR, fill: theme.accent },
+            children: [
+              new Paragraph({
+                children: [
+                  new TextRun({
+                    text: i === 0 ? "Item" : "Figure",
+                    bold: true,
+                    size: 20,
+                    color: theme.onAccent,
+                  }),
+                ],
+              }),
+            ],
+          })
+        ),
+      });
+
+      const rows = section.figures.map((figure, i) =>
+        new TableRow({
+          children: [figure.label, String(figure.value)].map(
+            (text) =>
+              new TableCell({
+                shading: i % 2 === 0 ? { type: ShadingType.CLEAR, fill: theme.wash } : undefined,
+                children: [
+                  new Paragraph({ children: [new TextRun({ text, size: 21, color: theme.ink })] }),
+                ],
+              })
+          ),
+        })
+      );
+
+      children.push(
+        new Paragraph({ spacing: { before: 120 }, children: [] }),
+        new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [header, ...rows] }) as never
+      );
+      children.push(new Paragraph({ spacing: { after: 160 }, children: [] }));
     }
   }
 
@@ -137,39 +281,185 @@ async function writeSlides(request: DocumentRequest, target: string): Promise<st
   const deck = new PptxGenJS();
   deck.layout = "LAYOUT_16x9";
 
+  const theme = pickTheme(request.theme, request.title);
+
+  /** Put a decorative cluster on a slide. Shapes only — nothing is fetched. */
+  type Slide = ReturnType<typeof deck.addSlide>;
+  const decorate = (slide: Slide, marks: Mark[]) => {
+    for (const mark of marks) {
+      slide.addShape(deck.ShapeType[mark.shape], {
+        x: mark.x,
+        y: mark.y,
+        w: mark.w,
+        h: mark.h,
+        ...(mark.fill ? { fill: { color: mark.fill, transparency: mark.transparency ?? 0 } } : {}),
+        ...(mark.line
+          ? { line: { color: mark.line, width: mark.lineWidth ?? 1, transparency: mark.transparency ?? 0 } }
+          : {}),
+        ...(mark.rotate ? { rotate: mark.rotate } : {}),
+      });
+    }
+  };
+
+  // --- the title slide ---
   const title = deck.addSlide();
-  title.addText(request.title, { x: 0.6, y: 2.1, w: 8.8, h: 1, fontSize: 40, bold: true });
+  title.background = { color: theme.paper };
+
+  // A broad wash behind everything, and a solid bar the title sits against, so
+  // the first slide is a composition rather than words floating in space.
+  title.addShape(deck.ShapeType.rect, { x: 0, y: 0, w: 10, h: 5.63, fill: { color: theme.wash } });
+  title.addShape(deck.ShapeType.rect, { x: 0, y: 0, w: 0.35, h: 5.63, fill: { color: theme.accent } });
+  decorate(title, titleMotif(theme));
+
+  title.addText(request.title, {
+    x: 0.85, y: 1.9, w: 5.6, h: 1.4,
+    fontSize: 40, bold: true, color: theme.heading, valign: "bottom",
+  });
+  title.addShape(deck.ShapeType.rect, { x: 0.9, y: 3.42, w: 1.2, h: 0.055, fill: { color: theme.accent } });
   if (request.subtitle) {
     title.addText(request.subtitle, {
-      x: 0.6,
-      y: 3.1,
-      w: 8.8,
-      h: 0.6,
-      fontSize: 20,
-      color: "666666",
+      x: 0.85, y: 3.65, w: 5.6, h: 0.8,
+      fontSize: 17, color: theme.ink, transparency: 25,
     });
   }
 
+  // --- the rest ---
   const sections = request.sections ?? [];
-  for (const section of sections) {
+  sections.forEach((section, index) => {
     const slide = deck.addSlide();
+    slide.background = { color: theme.paper };
+    const points = [...(section.bullets ?? []), ...(section.paragraphs ?? [])];
+    const hasFigures = Boolean(section.figures && section.figures.length > 0);
+    // Numbers win. A section that carries figures is a chart slide with a line
+    // of prose above it, never a statement slide that quietly drops the
+    // numbers — which is exactly what the auto-layout below used to do to it.
+    const layout = hasFigures
+      ? "figures"
+      : section.layout ?? (points.length === 1 && points[0].length < 120 ? "statement" : "bullets");
+
+    // A whole slide given to one sentence, in large type on colour.
+    if (layout === "statement" && points.length > 0) {
+      slide.addShape(deck.ShapeType.rect, { x: 0, y: 0, w: 10, h: 5.63, fill: { color: theme.accent } });
+      slide.addShape(deck.ShapeType.ellipse, {
+        x: 7.6, y: -1.1, w: 4, h: 4, fill: { color: theme.onAccent, transparency: 88 },
+      });
+      slide.addShape(deck.ShapeType.ellipse, {
+        x: -1.2, y: 3.3, w: 3, h: 3, fill: { color: theme.onAccent, transparency: 92 },
+      });
+      if (section.heading) {
+        slide.addText(section.heading.toUpperCase(), {
+          x: 0.9, y: 1.15, w: 8.2, h: 0.4,
+          fontSize: 12, bold: true, color: theme.onAccent, charSpacing: 3, transparency: 25,
+        });
+      }
+      slide.addText(points[0], {
+        x: 0.9, y: 1.7, w: 8.2, h: 2.4,
+        fontSize: 32, bold: true, color: theme.onAccent, valign: "top",
+      });
+      return;
+    }
+
+    // Every other slide shares a header: a tinted band, the heading in colour,
+    // a rule under it, and the slide's number in a circle.
+    slide.addShape(deck.ShapeType.rect, { x: 0, y: 0, w: 10, h: 1.15, fill: { color: theme.wash } });
+    slide.addShape(deck.ShapeType.rect, { x: 0, y: 1.15, w: 10, h: 0.045, fill: { color: theme.accent } });
     slide.addText(section.heading ?? "", {
-      x: 0.6,
-      y: 0.5,
-      w: 8.8,
-      h: 0.9,
-      fontSize: 28,
-      bold: true,
+      x: 0.85, y: 0.24, w: 7.6, h: 0.7,
+      fontSize: 26, bold: true, color: theme.heading, valign: "middle",
+    });
+    slide.addShape(deck.ShapeType.ellipse, {
+      x: 8.95, y: 0.34, w: 0.5, h: 0.5, fill: { color: theme.accent },
+    });
+    slide.addText(String(index + 1), {
+      x: 8.95, y: 0.34, w: 0.5, h: 0.5,
+      fontSize: 14, bold: true, color: theme.onAccent, align: "center", valign: "middle",
     });
 
-    const points = [...(section.bullets ?? []), ...(section.paragraphs ?? [])];
-    if (points.length > 0) {
-      slide.addText(
-        points.map((text) => ({ text, options: { bullet: true, breakLine: true } })),
-        { x: 0.8, y: 1.6, w: 8.4, h: 3.6, fontSize: 18, valign: "top" }
-      );
+    if (layout === "quote" && points.length > 0) {
+      slide.addShape(deck.ShapeType.rect, { x: 0.85, y: 1.75, w: 0.07, h: 2.4, fill: { color: theme.accent } });
+      slide.addText(`"${points[0]}"`, {
+        x: 1.2, y: 1.75, w: 7.2, h: 2.0,
+        fontSize: 22, italic: true, color: theme.heading, valign: "top",
+      });
+      if (section.attribution) {
+        slide.addText(`— ${section.attribution}`, {
+          x: 1.2, y: 3.85, w: 7.2, h: 0.4, fontSize: 14, color: theme.accent2,
+        });
+      }
+      decorate(slide, motif(index, theme));
+      return;
     }
-  }
+
+    // Numbers, drawn as bars. Only ever what was given — nothing is invented to
+    // make the picture look fuller.
+    if (layout === "figures" && section.figures) {
+      const figures = section.figures.slice(0, 5);
+      const largest = Math.max(...figures.map((f) => Math.abs(f.value)), 1);
+      const columnWidth = 8.3 / figures.length;
+
+      // The bars hang from a fixed baseline, and the tallest is short enough
+      // that its value label still clears the caption above it. Sized from the
+      // caption downwards rather than guessed: a number sitting on top of a
+      // sentence is the one way a chart can look broken.
+      const baseline = 4.25;
+      const tallest = 1.85;
+
+      figures.forEach((figure, i) => {
+        const height = Math.max(0.15, (Math.abs(figure.value) / largest) * tallest);
+        const x = 0.85 + i * columnWidth + columnWidth * 0.18;
+        const w = columnWidth * 0.64;
+        slide.addShape(deck.ShapeType.roundRect, {
+          x, y: baseline - height, w, h: height,
+          fill: { color: i % 2 === 0 ? theme.accent : theme.accent2 },
+        });
+        slide.addText(String(figure.value), {
+          x, y: baseline - height - 0.42, w, h: 0.38,
+          fontSize: 14, bold: true, color: theme.heading, align: "center", valign: "bottom",
+        });
+        slide.addText(figure.label, {
+          x, y: baseline + 0.07, w, h: 0.5,
+          fontSize: 11, color: theme.ink, align: "center", valign: "top",
+        });
+      });
+
+      if (points.length > 0) {
+        slide.addText(points[0], {
+          x: 0.85, y: 1.42, w: 8.3, h: 0.4, fontSize: 14, color: theme.ink, transparency: 20,
+          valign: "top",
+        });
+      }
+      return;
+    }
+
+    // Bullets, with a coloured square for a marker rather than a black dot —
+    // and split into two columns when there are enough to be a wall of text.
+    const asText = (list: string[]) =>
+      list.map((text) => ({
+        text,
+        options: { bullet: { characterCode: "25AA" }, breakLine: true, paraSpaceAfter: 10 },
+      }));
+
+    if (layout === "columns" && points.length > 2) {
+      const half = Math.ceil(points.length / 2);
+      slide.addText(asText(points.slice(0, half)), {
+        x: 0.85, y: 1.6, w: 4.0, h: 3.3, fontSize: 15, color: theme.ink, valign: "top",
+      });
+      slide.addText(asText(points.slice(half)), {
+        x: 5.15, y: 1.6, w: 4.0, h: 3.3, fontSize: 15, color: theme.ink, valign: "top",
+      });
+      slide.addShape(deck.ShapeType.rect, {
+        x: 5.0, y: 1.7, w: 0.02, h: 2.9, fill: { color: theme.accent2, transparency: 55 },
+      });
+      return;
+    }
+
+    if (points.length > 0) {
+      slide.addText(asText(points), {
+        x: 0.9, y: 1.6, w: 7.3, h: 3.4, fontSize: 17, color: theme.ink, valign: "top",
+      });
+    }
+    decorate(slide, motif(index, theme));
+  });
 
   // pptxgenjs types its Node output loosely; it is a Buffer here.
   const data = (await deck.write({ outputType: "nodebuffer" })) as Buffer;
