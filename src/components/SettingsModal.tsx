@@ -1504,6 +1504,55 @@ export function SettingsModal({
               use. Videos land in Documents\Axis\Videos.
             </p>
           </Section>
+          <Section
+            icon={<FilmIcon className="h-4 w-4" />}
+            title="Thumbnails"
+            ok={Boolean(status?.thumbnails)}
+          >
+            <p>
+              <i>&quot;Make me a thumbnail of a chess king toppling over.&quot;</i>{" "}
+              A 1280&times;720 picture for a video, saved to your Documents,
+              made through the same Gemini key his brain can run on.
+            </p>
+            <div className="flex gap-1 rounded-none border border-amber-500/20 bg-black/40 p-1">
+              {(["off", "on"] as const).map((value) => {
+                const active = (draft("THUMBNAILS") || "off") === value;
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => {
+                      setDraft("THUMBNAILS", value);
+                      void save("thumbnails", { THUMBNAILS: value });
+                    }}
+                    className={`flex-1 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                      active ? "bg-amber-500 text-white" : "text-sand-500 hover:bg-amber-500/10"
+                    }`}
+                  >
+                    {value === "on" ? "Allowed" : "Off"}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="rounded-none bg-amber-500/10 px-2.5 py-2 text-amber-300">
+              <p className="mb-1 font-semibold">He asks before every single one.</p>
+              <p>
+                Each picture costs a few pence on your key, and that is not left
+                to his judgement: the first time you ask, <b>nothing is made</b>{" "}
+                — he comes back with the price and waits for a yes. Say yes and
+                he makes exactly that one. Ask for a different picture, or a
+                different style, and he asks again, because a yes to one is not
+                a yes to another. This is enforced in the code, not by telling
+                him to be careful.
+              </p>
+            </div>
+            <p className="text-[10px] text-sand-600">
+              The picture comes back with <b>no lettering on it</b>, deliberately:
+              image models spell badly, and a misspelled word on a thumbnail is
+              worse than none. Put your title on afterwards. Your Gemini key
+              needs billing enabled — the free tier doesn&apos;t make images.
+            </p>
+          </Section>
           <GroupHeading title="THIS COMPUTER" blurb="What he may do on the machine he runs on." />
           <Section
             icon={<MusicIcon className="h-4 w-4" />}

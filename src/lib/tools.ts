@@ -36,6 +36,13 @@ import { learn, unlearn } from "./learned";
 import { askAbout, isHonchoConfigured } from "./honcho";
 import { launchApp, listInstalledApps, rankApps } from "./installedApps";
 import { generateVideo, isVideoEnabled } from "./video";
+import {
+  PRICE_HIGH,
+  PRICE_LOW,
+  isThumbnailEnabled,
+  makeThumbnail,
+} from "./thumbnail";
+import { askFirst, takeApproval } from "./spend";
 import { channelDestination } from "./youtubeChannel";
 import {
   findRivals,
@@ -403,6 +410,30 @@ export const toolDefinitions: OpenAI.Chat.Completions.ChatCompletionTool[] = [
       description:
         "How his channel and every competitor he follows are doing now, and — the part that matters — how much each has moved since the last time you told him. Use it when he asks about competitors, how he compares, or how the channel is doing against the field. The changes are counted from when you last reported, so saying it twice in a minute makes the second report show almost nothing moved; that is correct, not a fault. Read out the movement rather than the raw totals: he knows roughly how big everyone is, and what he wants is who is gaining.",
       parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "make_thumbnail",
+      description:
+        "Make a YouTube thumbnail with AI — a 1280x720 picture for a video, saved to his Documents. THIS COSTS REAL MONEY, and you cannot get round that: the first time you call it for a given subject nothing is made, and you get back a price to put to him. Ask him in your own words, wait for a plain yes, then call it again with exactly the same subject and it goes ahead. Changing the subject means a new price and a new question, which is correct — a yes to one picture is not a yes to a different one. The picture comes back with no lettering on it: image models spell badly, and a misspelled word on a thumbnail is worse than none. Tell him to add his title in an editor afterwards.",
+      parameters: {
+        type: "object",
+        properties: {
+          subject: {
+            type: "string",
+            description:
+              "What the picture shows. Concrete and visual — \"a chess king toppling on a board, close up\" rather than \"chess video\". Must be word-for-word identical between the quote and the confirmation.",
+          },
+          style: {
+            type: "string",
+            description:
+              "Optional look — \"dark and cinematic\", \"bright cartoon\", \"photorealistic\". Left out, a bold high-contrast style is used, which is what reads at thumbnail size.",
+          },
+        },
+        required: ["subject"],
+      },
     },
   },
   {
@@ -924,6 +955,7 @@ export function availableTools(): OpenAI.Chat.Completions.ChatCompletionTool[] {
     if (name === "open_playlist") return isDesktopControlEnabled();
     if (name === "open_discord_server") return isDesktopControlEnabled();
     if (name === "recall_about_him") return isHonchoConfigured();
+    if (name === "make_thumbnail") return isThumbnailEnabled();
     if (
       name === "find_competitors" ||
       name === "track_competitor" ||
@@ -1382,6 +1414,43 @@ export async function executeTool(
             }`,
             ok: true,
           },
+        };
+      }
+      case "make_thumbnail": {
+        const subject = required(args.subject, "subject");
+        const style = text(args.style);
+        // The style is part of what he is agreeing to: a yes to a dark
+        // cinematic version is not a yes to a cartoon one.
+        const detail = style ? `${subject} | ${style}` : subject;
+
+        // No approval on file for this exact picture: quote, and stop. Nothing
+        // the model can pass in reaches the paid call on this branch — the
+        // question is the only thing that can come out of it.
+        const approved = takeApproval("thumbnail", detail);
+        if (!approved) {
+          const asked = askFirst("thumbnail", detail, PRICE_LOW, PRICE_HIGH);
+          return {
+            result: {
+              made: false,
+              needsApproval: true,
+              price: asked.price,
+              question: asked.question,
+              note: `Ask him whether to spend ${asked.price} on this. Say the price. If he agrees, call make_thumbnail again with the identical subject and style; anything else and it is not made. Do not make it because you assume he would say yes.`,
+            },
+            log: { tool: name, summary: `Quoted ${asked.price} for a thumbnail`, ok: true },
+          };
+        }
+
+        const made = await makeThumbnail(subject, style);
+        return {
+          result: {
+            made: true,
+            path: made.path,
+            filename: made.filename,
+            folder: made.folder,
+            note: `Saved to ${made.folder}. There is no text on it by design — image models misspell, and a misspelled thumbnail is worse than a plain one. He adds the title himself.`,
+          },
+          log: { tool: name, summary: `Made a thumbnail: ${made.filename}`, ok: true },
         };
       }
       case "open_installed_app": {

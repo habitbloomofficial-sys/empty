@@ -159,6 +159,45 @@ Both work typed as well as spoken, and neither costs a request: an order to Axis
 is handled by Axis, not sent to a model. The order is recognised through the same
 matcher as the wake word, mishearings included — *"hey access standby"* works.
 
+### Thumbnails (paid — and he asks first, every time)
+
+*"Make me a thumbnail of a chess king toppling over."* A 1280×720 picture,
+saved to your Documents, made through the same Gemini key his brain runs on.
+
+**Each one costs a few pence, so he asks — and that is not a matter of him
+remembering to.** The first call makes nothing at all: it comes back with a
+price, and he puts it to you.
+
+> *"That will cost about $0.03 to $0.12, sir. Shall I go ahead?"*
+
+Say yes and he makes exactly that one. The rules underneath, all enforced in
+code rather than by instruction:
+
+- **A yes buys one picture.** Ask for the same thing again and he asks again — a
+  yes is not a standing order.
+- **A yes to one picture is not a yes to another.** Change the subject *or the
+  style* and it is a new price and a new question.
+- **A yes goes stale after ten minutes**, so agreeing this morning cannot
+  authorise a charge this afternoon.
+- **The first call cannot spend**, whatever the model does — there is nothing to
+  confirm against until a quote exists.
+
+The picture comes back with **no lettering on it**, deliberately: image models
+spell badly, and a misspelled word on a thumbnail is worse than no word. Add
+your title in an editor afterwards.
+
+Off until you turn it on, in **Settings → Thumbnails**. Your Gemini key needs
+billing enabled — the free tier doesn't make pictures.
+
+### Spreadsheets
+
+He has always written .xlsx files; now they look like someone made them. A
+coloured header row that stays put when you scroll and can be filtered, banded
+rows so your eye keeps its place, numbers formatted as numbers and aligned
+right, columns wide enough to read — and, where a column is entirely numeric, a
+**total row written as a real `SUM` formula**, so it stays correct when you edit
+a cell.
+
 ### Competitors (for a channel)
 
 *"Who else makes chess videos?"* — he searches YouTube for channels making the

@@ -472,6 +472,7 @@ async function writeSpreadsheet(request: DocumentRequest, target: string): Promi
   const workbook = new ExcelJS.Workbook();
   workbook.created = new Date();
 
+  const theme = pickTheme(request.theme, request.title);
   const sheets = request.sheets ?? [];
   if (sheets.length === 0) {
     throw new Error("A spreadsheet needs at least one sheet of data, sir.");
@@ -481,26 +482,79 @@ async function writeSpreadsheet(request: DocumentRequest, target: string): Promi
   sheets.forEach((sheet, index) => {
     // Sheet names have their own rules, and a duplicate name throws.
     const cleaned = (sheet.name || `Sheet${index + 1}`).replace(/[[\]:*?/\\]/g, " ").slice(0, 31);
-    const worksheet = workbook.addWorksheet(cleaned.trim() || `Sheet${index + 1}`);
+    const worksheet = workbook.addWorksheet(cleaned.trim() || `Sheet${index + 1}`, {
+      views: [{ state: "frozen", ySplit: 1 }],
+    });
 
     const columns = sheet.columns ?? [];
+    const rows = sheet.rows ?? [];
+
     if (columns.length > 0) {
-      worksheet.addRow(columns);
-      worksheet.getRow(1).font = { bold: true };
-      worksheet.views = [{ state: "frozen", ySplit: 1 }];
+      const header = worksheet.addRow(columns);
+      header.height = 22;
+      header.eachCell((cell) => {
+        cell.font = { bold: true, color: { argb: `FF${theme.onAccent}` }, size: 11 };
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: `FF${theme.accent}` } };
+        cell.alignment = { vertical: "middle", horizontal: "left" };
+        cell.border = { bottom: { style: "thin", color: { argb: `FF${theme.heading}` } } };
+      });
+      // A filter on the header is the first thing anyone reaches for.
+      worksheet.autoFilter = {
+        from: { row: 1, column: 1 },
+        to: { row: 1, column: columns.length },
+      };
     }
-    for (const row of sheet.rows ?? []) {
-      worksheet.addRow(row);
+
+    for (const row of rows) {
+      const added = worksheet.addRow(row);
       rowCount++;
+      added.eachCell((cell, column) => {
+        cell.font = { color: { argb: `FF${theme.ink}` }, size: 11 };
+        // Banded rows, so the eye keeps its place across a wide table.
+        if (rowCount % 2 === 0) {
+          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: `FF${theme.wash}` } };
+        }
+        // Numbers right, with thousands separators; text left. Excel aligns
+        // this way itself, but only once it has decided a cell is a number,
+        // and it does not always agree with what was meant.
+        const value = row[column - 1];
+        if (typeof value === "number") {
+          cell.numFmt = Number.isInteger(value) ? "#,##0" : "#,##0.00";
+          cell.alignment = { horizontal: "right" };
+        }
+      });
+    }
+
+    // A total row wherever a column is entirely numbers, written as a real
+    // SUM formula rather than a number — so it stays right when he edits a cell.
+    const numeric = columns
+      .map((_, i) => i)
+      .filter((i) => rows.length > 0 && rows.every((row) => typeof row[i] === "number"));
+
+    if (numeric.length > 0 && rows.length > 1) {
+      const totals = worksheet.addRow([]);
+      totals.getCell(1).value = "Total";
+      for (const i of numeric) {
+        const letter = worksheet.getColumn(i + 1).letter;
+        totals.getCell(i + 1).value = { formula: `SUM(${letter}2:${letter}${rows.length + 1})` };
+      }
+      totals.eachCell((cell, column) => {
+        cell.font = { bold: true, color: { argb: `FF${theme.heading}` }, size: 11 };
+        cell.border = { top: { style: "double", color: { argb: `FF${theme.accent}` } } };
+        if (numeric.includes(column - 1)) {
+          cell.numFmt = "#,##0.00";
+          cell.alignment = { horizontal: "right" };
+        }
+      });
     }
 
     // Width from the longest cell, so numbers never open as a row of hashes.
     worksheet.columns.forEach((column, i) => {
       const longest = Math.max(
         (columns[i] ?? "").length,
-        ...(sheet.rows ?? []).map((row) => String(row[i] ?? "").length)
+        ...rows.map((row) => String(row[i] ?? "").length)
       );
-      column.width = Math.min(Math.max(longest + 2, 10), 60);
+      column.width = Math.min(Math.max(longest + 4, 12), 60);
     });
   });
 

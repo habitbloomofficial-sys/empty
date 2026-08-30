@@ -54,6 +54,8 @@ export interface IntegrationStatus {
   desktopControl: boolean;
   /** A Honcho key is saved. Stored only — see the Settings panel. */
   honcho: boolean;
+  /** He may make thumbnails, which cost money per picture. */
+  thumbnails: boolean;
   /** He may speak without being spoken to. */
   idleTalk: boolean;
   /**
