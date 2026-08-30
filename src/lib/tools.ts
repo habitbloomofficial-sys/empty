@@ -37,6 +37,14 @@ import { askAbout, isHonchoConfigured } from "./honcho";
 import { launchApp, listInstalledApps, rankApps } from "./installedApps";
 import { generateVideo, isVideoEnabled } from "./video";
 import { channelDestination } from "./youtubeChannel";
+import {
+  findRivals,
+  isCompetitorTrackingAvailable,
+  standings,
+  trackRival,
+  trackedRivals,
+  untrackRival,
+} from "./competitors";
 import { playlistDestination } from "./spotify";
 import { serverDestination } from "./discord";
 import { createEvent, listEvents } from "./calendar";
@@ -336,6 +344,65 @@ export const toolDefinitions: OpenAI.Chat.Completions.ChatCompletionTool[] = [
         },
         required: ["name"],
       },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "find_competitors",
+      description:
+        "Search YouTube for channels making the same thing he does, with their subscriber counts, so he can see who he is up against. Use it when he asks who his competitors are, who else covers his subject, or what channels are worth watching in his niche. His own channel is left out and the results come back biggest first. Nothing is tracked by this — read them out, then offer to follow the ones worth following with track_competitor.",
+      parameters: {
+        type: "object",
+        properties: {
+          topic: {
+            type: "string",
+            description:
+              "What the channels are about, as you would type it into YouTube — \"chess\", \"chess openings\", \"speed chess commentary\". Narrower gets better rivals than broader.",
+          },
+          limit: { type: "number", description: "How many to bring back. Default 6, max 10." },
+        },
+        required: ["topic"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "track_competitor",
+      description:
+        "Add a channel to the list of competitors he follows, so their numbers are remembered and the change can be reported later. Use it after he agrees one is worth watching, or when he names a channel as a rival himself.",
+      parameters: {
+        type: "object",
+        properties: {
+          channel: {
+            type: "string",
+            description: "An @handle, a channel URL, a channel id, or the exact name.",
+          },
+        },
+        required: ["channel"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "untrack_competitor",
+      description: "Stop following a competitor. Takes the name or handle he uses for them.",
+      parameters: {
+        type: "object",
+        properties: { channel: { type: "string" } },
+        required: ["channel"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "competitor_report",
+      description:
+        "How his channel and every competitor he follows are doing now, and — the part that matters — how much each has moved since the last time you told him. Use it when he asks about competitors, how he compares, or how the channel is doing against the field. The changes are counted from when you last reported, so saying it twice in a minute makes the second report show almost nothing moved; that is correct, not a fault. Read out the movement rather than the raw totals: he knows roughly how big everyone is, and what he wants is who is gaining.",
+      parameters: { type: "object", properties: {} },
     },
   },
   {
@@ -857,6 +924,14 @@ export function availableTools(): OpenAI.Chat.Completions.ChatCompletionTool[] {
     if (name === "open_playlist") return isDesktopControlEnabled();
     if (name === "open_discord_server") return isDesktopControlEnabled();
     if (name === "recall_about_him") return isHonchoConfigured();
+    if (
+      name === "find_competitors" ||
+      name === "track_competitor" ||
+      name === "untrack_competitor" ||
+      name === "competitor_report"
+    ) {
+      return isCompetitorTrackingAvailable();
+    }
     if (name === "list_calendar_events" || name === "create_calendar_event") {
       return isCalendarConfigured();
     }
@@ -1234,6 +1309,77 @@ export async function executeTool(
             summary: destination.exact
               ? `Opened ${destination.name ?? "a Discord server"} ${where}`
               : `Opened Discord — nothing saved for "${wanted}"`,
+            ok: true,
+          },
+        };
+      }
+      case "find_competitors": {
+        const topic = required(args.topic, "topic");
+        const limit = Math.min(10, Math.max(3, count(args.limit) ?? 6));
+        const found = await findRivals(topic, limit);
+        return {
+          result: {
+            found,
+            note:
+              found.length === 0
+                ? "Nothing came back for that. A narrower phrase usually works better than a broader one."
+                : "Subscriber counts are the public figures, and YouTube rounds them above a thousand. Say so if you quote one exactly. Offer to follow the ones he cares about.",
+          },
+          log: { tool: name, summary: `Found ${found.length} channels like his for "${topic}"`, ok: true },
+        };
+      }
+      case "track_competitor": {
+        const channel = required(args.channel, "channel");
+        const rival = await trackRival(channel);
+        return {
+          result: {
+            tracked: true,
+            title: rival.title,
+            handle: rival.handle,
+            subscribers: rival.subscribers,
+            following: trackedRivals().length,
+            note: "Their numbers are noted. From now on you can report how much they've moved.",
+          },
+          log: { tool: name, summary: `Now following ${rival.title}`, ok: true },
+        };
+      }
+      case "untrack_competitor": {
+        const channel = required(args.channel, "channel");
+        const removed = untrackRival(channel);
+        if (!removed) {
+          return {
+            result: { removed: false, following: trackedRivals().map((r) => r.title) },
+            log: { tool: name, summary: `Not following anything called "${channel}"`, ok: false },
+          };
+        }
+        return {
+          result: { removed: true, title: removed.title, following: trackedRivals().length },
+          log: { tool: name, summary: `Stopped following ${removed.title}`, ok: true },
+        };
+      }
+      case "competitor_report": {
+        const report = await standings();
+        if (report.rivals.length === 0) {
+          return {
+            result: {
+              ...report,
+              note:
+                "He isn't following anyone yet. Offer to find some with find_competitors — a search for what his channel is about is enough to start.",
+            },
+            log: { tool: name, summary: "No competitors followed yet", ok: true },
+          };
+        }
+        return {
+          result: {
+            ...report,
+            note:
+              "subscriberChange and viewChange are since you last reported; null means this is the first report and there is nothing to compare against, so say that rather than implying nothing happened.",
+          },
+          log: {
+            tool: name,
+            summary: `Compared his channel with ${report.rivals.length} competitor${
+              report.rivals.length === 1 ? "" : "s"
+            }`,
             ok: true,
           },
         };

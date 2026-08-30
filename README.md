@@ -159,6 +159,53 @@ Both work typed as well as spoken, and neither costs a request: an order to Axis
 is handled by Axis, not sent to a model. The order is recognised through the same
 matcher as the wake word, mishearings included — *"hey access standby"* works.
 
+### Competitors (for a channel)
+
+*"Who else makes chess videos?"* — he searches YouTube for channels making the
+same thing you do, brings them back **biggest first with their subscriber
+counts**, and leaves your own channel out of it.
+
+Tell him which ones matter and he follows them. After that:
+
+*"How am I doing against them?"*
+
+> *"Gotham Chess is up about 12,000 since Tuesday, at five million. Chess Corner
+> has slipped forty. You're up eighty-five over the same stretch."*
+
+**The movement is the point**, and it is why he remembers. The change is counted
+from *the last time he told you*, not from when you added the channel — so
+asking twice in a minute correctly shows almost nothing moved. Subscriber counts
+above a thousand are rounded by YouTube itself, so he says "about" when he
+quotes one.
+
+A rival who has moved is also something he'll mention on his own, if you've
+turned on Speaking first below. That check deliberately doesn't reset the
+baseline — otherwise it would quietly eat the change before you ever heard it.
+
+Needs a YouTube key and your own channel set, in **Settings → YouTube**.
+
+### He offers to do things
+
+He answered well and started nothing, which made him a search box with a voice.
+Now, about half the times you open him, he offers:
+
+> *"Need an essay written in Word for tomorrow?"*
+> *"Any new videos you'd like to watch?"*
+> *"Shall I see what your competitors have been up to?"*
+> *"Want me to go through your inbox?"*
+
+**Forty-odd different lines**, and he never repeats one until he's been through
+the others — the last twelve are remembered, so a dozen openings in a row give
+you a dozen different lines.
+
+**He only ever offers what he can actually do.** Every line names the capability
+it needs, and one whose capability is off is never chosen. With nothing
+connected he sticks to writing and thinking, because those always work. Offering
+to check an inbox he can't reach would only have to be followed by an apology.
+
+About half, not every time: an assistant that asks you something every single
+time you open it is a pop-up.
+
 ### Documents that look designed
 
 Decks and documents used to come out as black text on white — correct, complete

@@ -18,6 +18,7 @@ import { describeClientFetchError, fetchWithRetry, postJson } from "@/lib/client
 import { catchphraseFor } from "@/lib/catchphrases";
 import { screenUtterance, withinFollowUp } from "@/lib/speechGate";
 import { nextGreeting } from "@/lib/greeting";
+import { pickOffer } from "@/lib/offers";
 import { SpeechChunker } from "@/lib/speechChunks";
 import { SmallTalk, describeActions } from "@/lib/smallTalk";
 import { banterFor } from "@/lib/banter";
@@ -496,7 +497,11 @@ export default function AxisApp() {
 
     let greeted = false;
     const greeting = nextGreeting();
-    const line = briefing ? `${greeting} ${briefing}` : greeting;
+    // Sometimes he offers to do something rather than waiting to be asked —
+    // but only ever something he can actually do, and never when he already
+    // has something to tell you. Two openings at once is a speech.
+    const offer = briefing ? null : pickOffer(status);
+    const line = briefing ? `${greeting} ${briefing}` : offer ? `${greeting} ${offer}` : greeting;
 
     const say = async () => {
       if (greeted) return;

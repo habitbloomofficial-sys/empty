@@ -6,6 +6,7 @@ import { searchRoots, isFileSearchEnabled } from "./files";
 import { isGmailConfigured, searchEmails, isCalendarConfigured } from "./gmail";
 import { listEvents } from "./calendar";
 import { channelStats, configuredChannel, isYouTubeConfigured } from "./youtube";
+import { standings, trackedRivals } from "./competitors";
 
 // Axis speaking first.
 //
@@ -168,6 +169,42 @@ async function channelNotices(state: State): Promise<Notice[]> {
   ];
 }
 
+/**
+ * A competitor who has moved.
+ *
+ * Looked at without recording, so asking him for the full report afterwards
+ * still shows the change rather than a row of zeroes.
+ */
+async function rivalNotices(): Promise<Notice[]> {
+  if (!isYouTubeConfigured() || trackedRivals().length === 0) return [];
+
+  const report = await standings(false);
+  const moved = report.rivals
+    .filter((rival) => rival.subscriberChange !== null && Math.abs(rival.subscriberChange) > 0)
+    .sort((a, b) => Math.abs(b.subscriberChange ?? 0) - Math.abs(a.subscriberChange ?? 0));
+  if (moved.length === 0) return [];
+
+  const biggest = moved[0];
+  const change = biggest.subscriberChange as number;
+  const mine =
+    report.mine && report.mine.subscriberChange !== null
+      ? ` His own channel is ${report.mine.subscriberChange >= 0 ? "up" : "down"} ${Math.abs(
+          report.mine.subscriberChange
+        ).toLocaleString()} over the same stretch.`
+      : "";
+
+  return [
+    {
+      kind: "channel",
+      key: `rival:${biggest.title}:${biggest.subscribers}`,
+      fact:
+        `${biggest.title}, a channel he follows, is ${change >= 0 ? "up" : "down"} ` +
+        `${Math.abs(change).toLocaleString()} subscribers since he was last told, at ` +
+        `${biggest.subscribers?.toLocaleString() ?? "an undisclosed number"}.${mine}`,
+    },
+  ];
+}
+
 /** The documents he has actually been working on. */
 const DOCUMENT_KINDS = new Set([
   ".doc", ".docx", ".odt", ".pages", ".rtf",
@@ -299,6 +336,7 @@ export async function gatherNotices(): Promise<Gathered> {
   const results = await Promise.allSettled([
     emailNotices(state),
     channelNotices(state),
+    rivalNotices(),
     Promise.resolve(workNotices()),
     calendarNotices(),
   ]);
