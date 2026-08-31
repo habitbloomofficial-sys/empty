@@ -17,7 +17,7 @@ import { detectStandbyOrder } from "@/lib/wakeWord";
 import { describeClientFetchError, fetchWithRetry, postJson } from "@/lib/clientFetch";
 import { catchphraseFor } from "@/lib/catchphrases";
 import { screenUtterance, withinFollowUp } from "@/lib/speechGate";
-import { nextGreeting } from "@/lib/greeting";
+import { bootGreeting, nextGreeting } from "@/lib/greeting";
 import { pickOffer } from "@/lib/offers";
 import { SpeechChunker } from "@/lib/speechChunks";
 import type { ActionLogEntry } from "@/lib/types";
@@ -523,11 +523,16 @@ export default function AxisApp() {
     // something to tell you, and never on top of a greeting that has asked a
     // question of its own. Two openings at once is a speech.
     const offer = briefing || greeting.asks ? null : pickOffer(status);
-    const line = briefing
+    // The butler's report on the way in: the time of day and what he is
+    // actually holding. It leads, because it is the one line that is the same
+    // shape every time — the varying greeting comes after it.
+    const boot = bootGreeting(status, new Date(), status?.title || "sir");
+    const rest = briefing
       ? `${greeting.line} ${briefing}`
       : offer
         ? `${greeting.line} ${offer}`
         : greeting.line;
+    const line = `${boot} ${rest}`;
 
     const say = async () => {
       if (greeted) return;

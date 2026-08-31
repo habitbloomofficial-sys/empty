@@ -43,3 +43,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Screen guide captures: pictures of the owner's own screen, and his voice
+# preference. Neither belongs in the repository.
+screen-guide/latest.png
+screen-guide/pointed.png
+screen-guide/voice.json

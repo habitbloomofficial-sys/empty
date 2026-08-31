@@ -28,6 +28,35 @@ export interface Greeting {
   asks: boolean;
 }
 
+/**
+ * The boot greeting: what a butler says when you walk in.
+ *
+ * The time of day and the real count of what he is holding, because "all
+ * present and accounted for" is only worth saying if it is actually a report.
+ * A made-up number here would be the exact opposite of the point.
+ */
+export function bootGreeting(
+  status: IntegrationStatus | null,
+  now: Date = new Date(),
+  title = "sir"
+): string {
+  const hour = now.getHours();
+  const partOfDay = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+
+  const held = status?.memories ?? 0;
+  const learned = status?.learned ?? 0;
+  const total = held + learned;
+
+  // Nothing remembered yet is a different sentence. Reporting "0 things
+  // indexed, all present and accounted for" is a joke he did not ask for.
+  if (total === 0) {
+    return `${partOfDay}, ${title}. Nothing in the ledger yet — I shall start keeping notes.`;
+  }
+  return `${partOfDay}, ${title}. ${total.toLocaleString()} ${
+    total === 1 ? "thing" : "things"
+  } remembered, all present and accounted for.`;
+}
+
 /** At the desk. He has no reason to remark on where you are. */
 const AT_THE_DESK: Greeting[] = [
   { line: "Hey, sir. Welcome back.", needs: "always", asks: false },
