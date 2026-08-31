@@ -49,3 +49,7 @@ next-env.d.ts
 screen-guide/latest.png
 screen-guide/pointed.png
 screen-guide/voice.json
+
+# Python leaves these beside any script it runs. They are build output.
+__pycache__/
+*.py[cod]
