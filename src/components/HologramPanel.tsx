@@ -5,9 +5,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { CloseIcon } from "./Icons";
 import { buildHologramSource, type HologramSource } from "@/lib/depthMap";
+import { parseStl, type ParsedModel } from "@/lib/stl";
 import type { HologramMode, HologramSettings } from "./HologramScene";
 
 const HologramScene = dynamic(() => import("./HologramScene"), { ssr: false });
+const ModelHologram = dynamic(() => import("./ModelHologram"), { ssr: false });
 
 const MODES: { id: HologramMode; label: string; hint: string }[] = [
   { id: "points", label: "Particles", hint: "Suspended motes of light" },
@@ -53,7 +55,15 @@ function Slider({
   );
 }
 
-export function HologramPanel({ onClose }: { onClose: () => void }) {
+export function HologramPanel({
+  onClose,
+  modelPath,
+}: {
+  onClose: () => void;
+  /** A part Axis has designed, projected instead of a picture. */
+  modelPath?: string;
+}) {
+  const [model, setModel] = useState<ParsedModel | null>(null);
   const [source, setSource] = useState<HologramSource | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -75,6 +85,32 @@ export function HologramPanel({ onClose }: { onClose: () => void }) {
   const dragRef = useRef<{ x: number; y: number } | null>(null);
   const lastFileRef = useRef<File | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!modelPath) return;
+    let cancelled = false;
+
+    (async () => {
+      setBusy(true);
+      setError(null);
+      try {
+        const res = await fetch(`/api/model?path=${encodeURIComponent(modelPath)}`);
+        if (!res.ok) throw new Error("I couldn't fetch that model, sir.");
+        const parsed = parseStl(await res.arrayBuffer());
+        if (cancelled) return;
+        setModel(parsed);
+        setFileName(modelPath.split(/[\\/]/).pop() ?? modelPath);
+      } catch (err) {
+        if (!cancelled) setError(err instanceof Error ? err.message : String(err));
+      } finally {
+        if (!cancelled) setBusy(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [modelPath]);
 
   const update = <K extends keyof HologramSettings>(key: K, value: HologramSettings[K]) =>
     setSettings((prev) => ({ ...prev, [key]: value }));
@@ -212,9 +248,25 @@ export function HologramPanel({ onClose }: { onClose: () => void }) {
               }}
             />
 
-            <HologramScene source={source} settings={settings} yaw={yaw} pitch={pitch} />
+            {model ? (
+              <ModelHologram model={model} spin={settings.autoRotate} yaw={yaw} pitch={pitch} />
+            ) : (
+              <HologramScene source={source} settings={settings} yaw={yaw} pitch={pitch} />
+            )}
 
-            {!source && !busy && (
+            {model && (
+              <div className="pointer-events-none absolute left-4 top-4 font-mono text-[10px] leading-relaxed text-cyan-200/60">
+                <div className="tracking-[0.2em] text-cyan-100/80">PART LOADED</div>
+                <div>{model.triangles.toLocaleString()} facets</div>
+                <div>
+                  {(model.max[0] - model.min[0]).toFixed(0)} &times;{" "}
+                  {(model.max[1] - model.min[1]).toFixed(0)} &times;{" "}
+                  {(model.max[2] - model.min[2]).toFixed(0)} mm
+                </div>
+              </div>
+            )}
+
+            {!source && !model && !busy && (
               <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3 text-center">
                 <p className="font-display text-sm tracking-[0.2em] text-cyan-100/80">
                   NO SUBJECT LOADED
@@ -253,10 +305,15 @@ export function HologramPanel({ onClose }: { onClose: () => void }) {
               }}
             />
             <button
-              onClick={() => inputRef.current?.click()}
+              onClick={() => {
+                // Leaving the part puts the projector back to its picture mode
+                // rather than stacking one over the other.
+                if (model) setModel(null);
+                inputRef.current?.click();
+              }}
               className="w-full rounded-none border border-cyan-400/40 bg-cyan-400/10 px-3 py-2 text-xs font-semibold tracking-wide text-cyan-100 transition hover:bg-cyan-400/20"
             >
-              {source ? "Load another picture" : "Choose a picture"}
+              {model ? "Project a picture instead" : source ? "Load another picture" : "Choose a picture"}
             </button>
 
             {error && (
@@ -265,7 +322,7 @@ export function HologramPanel({ onClose }: { onClose: () => void }) {
               </p>
             )}
 
-            <div className="space-y-1.5">
+            <div className="space-y-1.5" hidden={Boolean(model)}>
               <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-cyan-100/60">
                 Projection
               </span>
@@ -287,40 +344,42 @@ export function HologramPanel({ onClose }: { onClose: () => void }) {
               </div>
             </div>
 
-            <Slider
-              label="Depth"
-              value={settings.depthScale}
-              min={0}
-              max={2}
-              step={0.01}
-              onChange={(v) => update("depthScale", v)}
-            />
-            <Slider
-              label="Resolution"
-              value={settings.density}
-              min={40}
-              max={400}
-              step={4}
-              onChange={(v) => update("density", v)}
-              format={(v) => `${Math.round(v)}²`}
-            />
-            <Slider
-              label="Glow"
-              value={settings.opacity}
-              min={0.15}
-              max={1.6}
-              step={0.01}
-              onChange={(v) => update("opacity", v)}
-            />
-            <Slider
-              label="True colour"
-              value={settings.colorMix}
-              min={0}
-              max={1}
-              step={0.01}
-              onChange={(v) => update("colorMix", v)}
-              format={(v) => `${Math.round(v * 100)}%`}
-            />
+            <div className="space-y-4" hidden={Boolean(model)}>
+              <Slider
+                label="Depth"
+                value={settings.depthScale}
+                min={0}
+                max={2}
+                step={0.01}
+                onChange={(v) => update("depthScale", v)}
+              />
+              <Slider
+                label="Resolution"
+                value={settings.density}
+                min={40}
+                max={400}
+                step={4}
+                onChange={(v) => update("density", v)}
+                format={(v) => `${Math.round(v)}²`}
+              />
+              <Slider
+                label="Glow"
+                value={settings.opacity}
+                min={0.15}
+                max={1.6}
+                step={0.01}
+                onChange={(v) => update("opacity", v)}
+              />
+              <Slider
+                label="True colour"
+                value={settings.colorMix}
+                min={0}
+                max={1}
+                step={0.01}
+                onChange={(v) => update("colorMix", v)}
+                format={(v) => `${Math.round(v * 100)}%`}
+              />
+            </div>
 
             <div className="space-y-2 border-t border-cyan-400/15 pt-3">
               {[
@@ -329,7 +388,9 @@ export function HologramPanel({ onClose }: { onClose: () => void }) {
                   value: settings.autoRotate,
                   toggle: () => update("autoRotate", !settings.autoRotate),
                 },
-                { label: "Invert depth", value: invert, toggle: () => setInvert((v) => !v) },
+                ...(model
+                  ? []
+                  : [{ label: "Invert depth", value: invert, toggle: () => setInvert((v) => !v) }]),
               ].map((row) => (
                 <button
                   key={row.label}
@@ -353,9 +414,9 @@ export function HologramPanel({ onClose }: { onClose: () => void }) {
             </div>
 
             <p className="border-t border-cyan-400/15 pt-3 text-[10px] leading-relaxed text-cyan-200/40">
-              Depth is estimated from the picture itself — light, colour, and
-              composition — so it&apos;s an interpretation, not a measurement. Drag the
-              projection to look around it.
+              {model
+                ? "Real geometry, at the size it will print. Drag the projection to look around it — the file is in your Documents, ready for a slicer."
+                : "Depth is estimated from the picture itself — light, colour, and composition — so it's an interpretation, not a measurement. Drag the projection to look around it."}
             </p>
           </div>
         </div>

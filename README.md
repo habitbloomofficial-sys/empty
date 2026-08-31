@@ -189,6 +189,61 @@ your title in an editor afterwards.
 Off until you turn it on, in **Settings → Thumbnails**. Your Gemini key needs
 billing enabled — the free tier doesn't make pictures.
 
+### 3D models that will actually hold (no setup needed)
+
+*"I want to hang my hat on the wall — it weighs 2 kg and it needs to stick out
+10 cm. Make me a bracket."*
+
+He designs the bracket, **works out whether it holds**, writes a real `.stl`
+file into `Documents/Axis/Models`, and projects it on the hologram so you can
+look at it before you print it.
+
+The sums are the point. He treats the bracket as a cantilever beam built into
+the wall — which is what it is — and checks the two things that break one:
+
+- **The bending stress at the root.** Your weight times how far out it sits is
+  the moment; the section resists it with `b·t²/6`. That gives the stress, and
+  the stress against what the material will take gives a **safety factor**.
+- **The screws pulling out of the wall.** That same moment resolved across the
+  fixing spacing. This is usually the one that fails, and he tells you the pull
+  in kilograms so you can check it against what your wall plugs are rated for.
+
+He also tells you **how far it will droop** under the load, because a bracket
+can be strong and still look wrong.
+
+If you don't give it a thickness, he **solves for one** — the thinnest that
+still leaves a safety factor of 3 — rather than guessing and hoping.
+
+Nine materials, with honest numbers: PLA, PETG, ABS, ASA, nylon, aluminium,
+mild steel, plywood and pine. Printed plastics are **derated hard**, and
+deliberately so: a printed part is layers glued together, and the datasheet
+number for the raw plastic is not what the glue between layers reaches. Infill
+is folded in too. PETG is the default for anything load-bearing.
+
+The answer is never just "yes":
+
+> 2 kg is 19.6 N. At 100 mm from the wall that is a bending moment of 2.0 N·m
+> at the root. A 60 × 6 mm section has a modulus of 360 mm³, so the stress at
+> the root is 5.5 MPa. PETG is good for about 45 MPa, but printed at 40% infill
+> I derate that to 18.1 MPa — layers are glued, not solid. That leaves a safety
+> factor of 3.3. It will droop about 3.2 mm under the load. The top fixing has
+> to resist about 19 N of pull-out — roughly 1.9 kg hanging straight off it.
+>
+> **Yes — safety factor 3.3, about 3.2 mm of droop. Comfortable.**
+
+…and it comes with the cautions that matter: print it so the layers run along
+the arm, brittle materials give no warning before they go, a swinging load can
+double the force for an instant, and **the wall is usually what fails, not the
+bracket**.
+
+What it deliberately isn't: finite-element analysis. It's beam theory, stated
+as beam theory, erring low at every step — the gusset is ignored in the sums
+even though it's in the file, so the real part is stronger than the number says
+and never weaker.
+
+The `.stl` is a proper closed solid — checked for open edges before it's
+written — so it drops straight into a slicer.
+
 ### Spreadsheets
 
 He has always written .xlsx files; now they look like someone made them. A
@@ -1093,9 +1148,18 @@ first run and kept as `data/memory.json.migrated`; nothing is lost.
 
 ### Hologram v3 (no setup needed)
 
-A projector built into Axis. Say *"open Hologram v3"*, or click the pyramid
-icon in the top bar, then drop a picture in — drag it, paste it, or browse for
-it — and it's projected as a hologram you can drag to look around.
+A projector built into Axis, in the Iron Man vein. Say *"open Hologram v3"*, or
+click the pyramid icon in the top bar, then drop a picture in — drag it, paste
+it, or browse for it — and it's projected as a hologram you can drag to look
+around.
+
+**It also projects real parts.** When Axis designs a bracket, the projector
+opens on it by itself: the part in glowing cyan wireframe over a faint body,
+standing on projector rings, with a scan frame sweeping up through it and a
+readout of the facet count and its size in millimetres. That one is not an
+interpretation — it's the actual geometry of the file that just went into your
+Documents, at the size it will print. The picture controls hide themselves when
+a part is loaded, because none of them mean anything to a solid.
 
 Three projections: **Particles** (suspended motes of light), **Volume** (solid
 projected relief) and **Lattice** (a wireframe scan). Depth, resolution, glow,
@@ -1540,12 +1604,18 @@ src/
       gmail/callback/   finish Google OAuth, store token
       gmail/disconnect/ forget the stored Gmail token
       whatsapp/send/   direct WhatsApp send (used by the tool + testable directly)
+      model/           serves a designed .stl to the projector, confined to Models/
     page.tsx, layout.tsx, globals.css
-  components/          Orb (3D), Hologram v3 (3D), chat UI, settings, top bar
+  components/          Orb (3D), Hologram v3 (3D, pictures and parts), chat UI,
+                       settings, top bar
   hooks/               voice input (record + transcribe), TTS playback + amplitude analysis
   lib/                 AI/ElevenLabs/Gmail/WhatsApp/desktop clients, web search and
                        page reading, persistent memory and what he has learned,
                        depth estimation, speech chunking, settings store, tools, prompt
+                       loadCalc.ts  beam theory: will it hold, and how thick to make it
+                       mesh.ts      triangulation, extrusion, watertightness, binary STL
+                       bracket.ts   the bracket itself, built from what the sums decided
+                       stl.ts       reads an .stl back, and frames it for the projector
 ```
 
 Security notes:
@@ -1561,6 +1631,10 @@ Security notes:
   assistant that can send mail and fire automations. Fetching is confined to
   public http(s) addresses: your own network is refused, and every redirect hop
   is re-checked so a public link cannot bounce him onto it.
+- The projector reads models only out of `Documents/Axis/Models`, resolved
+  through the real path on disk and checked to be inside that folder, so a
+  crafted name cannot walk out of it — `..` and symlinks both land outside and
+  are refused, and only `.stl` is served.
 - Opening and closing Spotify and Discord, and opening an http(s) page, are the
   only desktop actions that exist. Which processes may be terminated is a fixed
   table in the code. No shell is spawned, no path or command comes from the conversation,

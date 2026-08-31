@@ -43,6 +43,8 @@ import {
   makeThumbnail,
 } from "./thumbnail";
 import { askFirst, takeApproval } from "./spend";
+import { designBracket } from "./bracket";
+import { MATERIAL_NAMES } from "./loadCalc";
 import { channelDestination } from "./youtubeChannel";
 import {
   findRivals,
@@ -433,6 +435,59 @@ export const toolDefinitions: OpenAI.Chat.Completions.ChatCompletionTool[] = [
           },
         },
         required: ["subject"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "design_bracket",
+      description:
+        "Design a shelf bracket or wall mount to hold something up, work out whether it will actually take the weight, and write a printable STL file. Use this whenever he wants to hold, hang, mount or support something and wants to know if it will hold — \"a bracket for my hat, it weighs about a kilo\", \"will a printed mount take this shelf\". The weight and how far it sticks out from the wall are the two numbers that decide everything, so ask for them if he hasn't said. It comes back with a safety factor, how far it will sag, and how hard the top screw is being pulled — read those out. If the safety factor is under 3, say so plainly and offer it thicker or shorter rather than letting him print something that will fail. This is beam theory, not simulation: it is right for a straightforward bracket and it is not a substitute for an engineer on anything that could hurt someone.",
+      parameters: {
+        type: "object",
+        properties: {
+          item_name: {
+            type: "string",
+            description: "What it holds, for the file name — \"heavy hat\", \"monitor arm\".",
+          },
+          mass_kg: {
+            type: "number",
+            description:
+              "What the thing weighs, in kilograms. If he gives it in pounds convert it. If he genuinely doesn't know, guess high and tell him you did.",
+          },
+          reach_mm: {
+            type: "number",
+            description:
+              "How far the weight sits out from the wall, in millimetres. This matters more than anything else — doubling it doubles the load on the root.",
+          },
+          material: {
+            type: "string",
+            enum: MATERIAL_NAMES,
+            description:
+              "Left out, PETG is used: the sensible default for a printed load-bearing part, because it bends before it breaks. PLA is stiffer but brittle and softens in a warm room.",
+          },
+          thickness_mm: {
+            type: "number",
+            description:
+              "How thick the arm is. Leave it out and the thickness needed for a safety factor of 3 is worked out — which is usually what he wants.",
+          },
+          width_mm: { type: "number", description: "Across the bracket. Left out, it is sized from the reach." },
+          height_mm: { type: "number", description: "How tall the wall plate is. Taller spreads the screw load." },
+          infill_percent: {
+            type: "number",
+            description: "For printed parts. Default 40. Below 30 a load-bearing part is mostly air.",
+          },
+          hanging_hole_mm: {
+            type: "number",
+            description: "Diameter of a hole through the end of the arm, if something hangs off it.",
+          },
+          gusset: {
+            type: "boolean",
+            description: "The triangular brace in the corner. On by default; it is what stops the corner opening up.",
+          },
+        },
+        required: ["item_name", "mass_kg", "reach_mm"],
       },
     },
   },
@@ -1451,6 +1506,61 @@ export async function executeTool(
             note: `Saved to ${made.folder}. There is no text on it by design — image models misspell, and a misspelled thumbnail is worse than a plain one. He adds the title himself.`,
           },
           log: { tool: name, summary: `Made a thumbnail: ${made.filename}`, ok: true },
+        };
+      }
+      case "design_bracket": {
+        const made = designBracket({
+          itemName: required(args.item_name, "item_name"),
+          massKg: count(args.mass_kg) ?? 0,
+          reachMm: count(args.reach_mm) ?? 0,
+          material: text(args.material),
+          thicknessMm: count(args.thickness_mm),
+          widthMm: count(args.width_mm),
+          heightMm: count(args.height_mm),
+          infillPercent: count(args.infill_percent),
+          hangingHoleMm: count(args.hanging_hole_mm),
+          gusset: args.gusset === undefined ? undefined : args.gusset !== false,
+        });
+
+        const { verdict, spec } = made;
+        return {
+          result: {
+            file: made.path,
+            filename: made.filename,
+            folder: made.folder,
+            printable: made.watertight,
+            dimensions: {
+              reachMm: spec.reachMm,
+              heightMm: spec.heightMm,
+              widthMm: spec.widthMm,
+              thicknessMm: spec.thicknessMm,
+              gusset: spec.gusset,
+            },
+            holds: verdict.holds,
+            headline: verdict.headline,
+            safetyFactor: Number(verdict.safetyFactor.toFixed(2)),
+            deflectionMm: Number(verdict.deflectionMm.toFixed(2)),
+            stressMPa: Number(verdict.stress.toFixed(1)),
+            allowableMPa: Number(verdict.allowable.toFixed(1)),
+            screwPullN: Number(verdict.screwTensionN.toFixed(0)),
+            maxSafeLoadKg: Number(verdict.safeLoadKg.toFixed(1)),
+            workings: verdict.reasoning,
+            cautions: verdict.cautions,
+            note:
+              "Give him the headline, the safety factor and the sag, then the cautions that apply — especially the one about the wall fixing, which is what usually fails. Do not tell him it is safe beyond what the numbers say.",
+          },
+          log: {
+            tool: name,
+            summary: verdict.holds
+              ? `Designed a bracket for ${spec.reachMm}mm reach — safety factor ${verdict.safetyFactor.toFixed(1)}`
+              : `Designed a bracket, but it does not hold — safety factor ${verdict.safetyFactor.toFixed(1)}`,
+            ok: true,
+            // Put it up on the projector. Seeing the thing turning is worth
+            // more than any description of it, and it is how he finds out the
+            // gusset is on the wrong side before he prints it.
+            opens: "hologram",
+            model: made.filename,
+          },
         };
       }
       case "open_installed_app": {

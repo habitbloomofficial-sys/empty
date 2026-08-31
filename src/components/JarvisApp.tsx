@@ -42,6 +42,9 @@ export default function AxisApp() {
   const [error, setError] = useState<string | null>(null);
   const [voiceError, setVoiceError] = useState<string | null>(null);
   const [hologramOpen, setHologramOpen] = useState(false);
+  // Set when he has just designed something, so the projector opens onto the
+  // part rather than an empty stage.
+  const [hologramModel, setHologramModel] = useState<string | undefined>(undefined);
   const [wakeEnabled, setWakeEnabled] = useState(true);
   // Standby: he keeps listening for his name and does nothing else. No
   // volunteering, no follow-ups without being addressed, no reacting to a
@@ -244,7 +247,10 @@ export default function AxisApp() {
             }
           } else if (event.type === "action") {
             // Some tools act on this interface rather than on the machine.
-            if (event.log?.opens === "hologram") setHologramOpen(true);
+            if (event.log?.opens === "hologram") {
+              setHologramModel(event.log.model);
+              setHologramOpen(true);
+            }
             // Shown the moment it happens — the action is already done.
             setMessages((prev) =>
               prev.map((m) =>
@@ -852,7 +858,15 @@ export default function AxisApp() {
       </AnimatePresence>
 
       <AnimatePresence>
-        {hologramOpen && <HologramPanel onClose={() => setHologramOpen(false)} />}
+        {hologramOpen && (
+          <HologramPanel
+            modelPath={hologramModel}
+            onClose={() => {
+              setHologramOpen(false);
+              setHologramModel(undefined);
+            }}
+          />
+        )}
       </AnimatePresence>
 
       <AnimatePresence>

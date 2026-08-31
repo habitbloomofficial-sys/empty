@@ -18,6 +18,8 @@ export interface ActionLogEntry {
    * the server, so this is how one asks the interface to do something.
    */
   opens?: "hologram";
+  /** A model file the projector should open onto, rather than an empty stage. */
+  model?: string;
 }
 
 /** Per-stage latency in milliseconds, so slowness can be located, not guessed. */
