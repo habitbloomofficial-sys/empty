@@ -105,7 +105,7 @@ export function uniquePath(folder: string, filename: string): string {
 
   let candidate = path.join(folder, filename);
   let n = 2;
-  while (fs.existsSync(candidate)) {
+  while (fs.existsSync(/*turbopackIgnore: true*/ candidate)) {
     candidate = path.join(folder, `${stem} (${n})${extension}`);
     n++;
   }

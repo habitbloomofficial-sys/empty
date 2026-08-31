@@ -4,6 +4,15 @@ import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 
+// A note on the turbopackIgnore comments below.
+//
+// Every path here points at the owner's machine — his Start menu, his
+// Applications folder, his desktop entries — and none of them is a file in
+// this project. Turbopack cannot tell that statically, so it assumes the
+// worst and traces the entire project into the server bundle, which makes
+// the build slower and the output enormous for no benefit at all. The
+// comment says: this is runtime data, not code, leave it alone.
+
 const run = promisify(execFile);
 
 // Everything on this computer, not just the handful written into desktop.ts.
@@ -126,7 +135,7 @@ function fromDesktopEntries(): InstalledApp[] {
   for (const root of roots) {
     let entries: string[];
     try {
-      entries = fs.readdirSync(root);
+      entries = fs.readdirSync(/*turbopackIgnore: true*/ root);
     } catch {
       continue;
     }
@@ -134,7 +143,7 @@ function fromDesktopEntries(): InstalledApp[] {
       if (!file.endsWith(".desktop")) continue;
       let contents: string;
       try {
-        contents = fs.readFileSync(path.join(root, file), "utf-8");
+        contents = fs.readFileSync(path.join(/*turbopackIgnore: true*/ root, file), "utf-8");
       } catch {
         continue;
       }
@@ -198,7 +207,7 @@ export function fromApplicationsFolders(): InstalledApp[] {
   for (const root of roots) {
     let entries: fs.Dirent[];
     try {
-      entries = fs.readdirSync(root, { withFileTypes: true });
+      entries = fs.readdirSync(/*turbopackIgnore: true*/ root, { withFileTypes: true });
     } catch {
       continue;   // A folder that isn't there is not a problem, it is a Mac.
     }
@@ -212,9 +221,9 @@ export function fromApplicationsFolders(): InstalledApp[] {
       if (!entry.isDirectory()) continue;
 
       // A plain folder — Adobe's, Microsoft's, Utilities. One level in.
-      const nested = path.join(root, entry.name);
+      const nested = path.join(/*turbopackIgnore: true*/ root, entry.name);
       try {
-        for (const inner of fs.readdirSync(nested)) add(nested, inner);
+        for (const inner of fs.readdirSync(/*turbopackIgnore: true*/ nested)) add(nested, inner);
       } catch {
         // Unreadable folders are skipped rather than fatal.
       }

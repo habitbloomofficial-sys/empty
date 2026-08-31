@@ -16,7 +16,16 @@ export async function GET(req: NextRequest) {
   const asked = req.nextUrl.searchParams.get("path");
   if (!asked) return NextResponse.json({ error: "Which model, sir?" }, { status: 400 });
 
-  const root = fs.realpathSync(path.join(outputFolder(), "Models"));
+  // The Models folder may not exist yet, and resolving a folder that is not
+  // there throws rather than returning null — which turned "no models yet"
+  // into a 500 on the one request that is most likely to be the first.
+  let root: string;
+  try {
+    root = fs.realpathSync(path.join(outputFolder(), "Models"));
+  } catch {
+    return NextResponse.json({ error: "There's no such model." }, { status: 404 });
+  }
+
   let target: string;
   try {
     target = fs.realpathSync(path.resolve(root, asked));

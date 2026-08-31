@@ -2162,10 +2162,21 @@ export async function executeTool(
 
         // Same rule as the projector: resolve it, and require it to be inside
         // the Models folder. A filename is a filename, not a path.
-        const root = fs.realpathSync(folder);
+        //
+        // The folder itself may not exist — on a machine where he has never
+        // asked for a model, it does not. Resolving it unguarded threw the raw
+        // ENOENT at him, which is not an answer.
+        let root: string;
+        try {
+          root = fs.realpathSync(/*turbopackIgnore: true*/ folder);
+        } catch {
+          throw new Error(
+            "There are no models yet, sir — ask me to design something first and I'll test that."
+          );
+        }
         let target: string;
         try {
-          target = fs.realpathSync(path.resolve(root, asked));
+          target = fs.realpathSync(/*turbopackIgnore: true*/ path.resolve(root, asked));
         } catch {
           throw new Error(`There's no model called "${asked}" in ${folder}, sir.`);
         }

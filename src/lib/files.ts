@@ -31,7 +31,7 @@ export interface SearchRoot {
 
 function realDirectory(candidate: string): string | null {
   try {
-    const resolved = fs.realpathSync(candidate);
+    const resolved = fs.realpathSync(/*turbopackIgnore: true*/ candidate);
     return fs.statSync(resolved).isDirectory() ? resolved : null;
   } catch {
     return null;
@@ -54,7 +54,7 @@ export function searchRoots(): SearchRoot[] {
     roots.push({ label, path: resolved });
   };
 
-  for (const folder of HOME_FOLDERS) add(folder, path.join(home, folder));
+  for (const folder of HOME_FOLDERS) add(folder, path.join(/*turbopackIgnore: true*/ home, folder));
   // OneDrive redirects the personal folders on a lot of Windows installs, and
   // the originals are then empty — so look in both places.
   const oneDrive = path.join(home, "OneDrive");
