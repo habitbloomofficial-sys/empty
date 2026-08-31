@@ -29,6 +29,8 @@ export interface Material {
   printed: boolean;
   /** Brittle things give no warning before they go. */
   brittle: boolean;
+  /** Grams per cubic centimetre, for working out what the part will weigh. */
+  density: number;
   note: string;
 }
 
@@ -43,6 +45,7 @@ export const MATERIALS: Record<string, Material> = {
     stiffness: 3000,
     printed: true,
     brittle: true,
+    density: 1.24,
     note: "Stiff and strong for its weight, but brittle, and it creeps and softens in a warm room or a sunny window. Fine indoors, poor in a car.",
   },
   petg: {
@@ -51,6 +54,7 @@ export const MATERIALS: Record<string, Material> = {
     stiffness: 1900,
     printed: true,
     brittle: false,
+    density: 1.27,
     note: "The sensible default for something load-bearing. Bends before it breaks, and tolerates warmth far better than PLA.",
   },
   abs: {
@@ -59,6 +63,7 @@ export const MATERIALS: Record<string, Material> = {
     stiffness: 2000,
     printed: true,
     brittle: false,
+    density: 1.04,
     note: "Tough and heat-tolerant, weaker between layers than PETG unless printed in an enclosure.",
   },
   asa: {
@@ -67,6 +72,7 @@ export const MATERIALS: Record<string, Material> = {
     stiffness: 2000,
     printed: true,
     brittle: false,
+    density: 1.07,
     note: "ABS that survives sunlight. The choice for anything outdoors.",
   },
   nylon: {
@@ -75,6 +81,7 @@ export const MATERIALS: Record<string, Material> = {
     stiffness: 1500,
     printed: true,
     brittle: false,
+    density: 1.14,
     note: "Very tough, but it absorbs water and goes soft and floppy if it isn't kept dry.",
   },
   aluminium: {
@@ -83,6 +90,7 @@ export const MATERIALS: Record<string, Material> = {
     stiffness: 69000,
     printed: false,
     brittle: false,
+    density: 2.7,
     note: "Yield strength. Machined or cut from stock, not printed.",
   },
   steel: {
@@ -91,6 +99,7 @@ export const MATERIALS: Record<string, Material> = {
     stiffness: 200000,
     printed: false,
     brittle: false,
+    density: 7.85,
     note: "Yield strength. Bends visibly long before it breaks, which is the failure you want.",
   },
   plywood: {
@@ -99,6 +108,7 @@ export const MATERIALS: Record<string, Material> = {
     stiffness: 8000,
     printed: false,
     brittle: false,
+    density: 0.6,
     note: "Bending strength across the face. Varies a lot with grade and moisture.",
   },
   pine: {
@@ -107,6 +117,7 @@ export const MATERIALS: Record<string, Material> = {
     stiffness: 9000,
     printed: false,
     brittle: true,
+    density: 0.5,
     note: "Along the grain. Across it, a fraction of this — and a knot at the root halves it again.",
   },
 };

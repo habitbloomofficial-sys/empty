@@ -20,6 +20,7 @@ import { screenUtterance, withinFollowUp } from "@/lib/speechGate";
 import { nextGreeting } from "@/lib/greeting";
 import { pickOffer } from "@/lib/offers";
 import { SpeechChunker } from "@/lib/speechChunks";
+import type { ActionLogEntry } from "@/lib/types";
 import { SmallTalk, describeActions } from "@/lib/smallTalk";
 import { banterFor } from "@/lib/banter";
 import type { ChatMessage, IntegrationStatus, OrbState } from "@/lib/types";
@@ -45,6 +46,8 @@ export default function AxisApp() {
   // Set when he has just designed something, so the projector opens onto the
   // part rather than an empty stage.
   const [hologramModel, setHologramModel] = useState<string | undefined>(undefined);
+  const [hologramWeakPoint, setHologramWeakPoint] =
+    useState<ActionLogEntry["weakPoint"]>(undefined);
   const [wakeEnabled, setWakeEnabled] = useState(true);
   // Standby: he keeps listening for his name and does nothing else. No
   // volunteering, no follow-ups without being addressed, no reacting to a
@@ -249,6 +252,7 @@ export default function AxisApp() {
             // Some tools act on this interface rather than on the machine.
             if (event.log?.opens === "hologram") {
               setHologramModel(event.log.model);
+              setHologramWeakPoint(event.log.weakPoint);
               setHologramOpen(true);
             }
             // Shown the moment it happens — the action is already done.
@@ -861,9 +865,11 @@ export default function AxisApp() {
         {hologramOpen && (
           <HologramPanel
             modelPath={hologramModel}
+            weakPoint={hologramWeakPoint}
             onClose={() => {
               setHologramOpen(false);
               setHologramModel(undefined);
+              setHologramWeakPoint(undefined);
             }}
           />
         )}

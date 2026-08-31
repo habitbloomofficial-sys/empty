@@ -60,3 +60,29 @@ export function framing(model: ParsedModel, target = 3): { centre: [number, numb
   );
   return { centre, scale: span > 0 ? target / span : 1 };
 }
+
+/**
+ * Back into triangles, so a model read off disk can be measured.
+ *
+ * The projector only ever needs the flat array of coordinates, but the stress
+ * test works on triangles — and being able to test a file that was written
+ * earlier, rather than only one being built right now, is the difference
+ * between "here is a number" and "check this again for me".
+ */
+export function toTriangles(model: ParsedModel): {
+  a: { x: number; y: number; z: number };
+  b: { x: number; y: number; z: number };
+  c: { x: number; y: number; z: number };
+}[] {
+  const out = [];
+  for (let t = 0; t < model.triangles; t++) {
+    const base = t * 9;
+    const corner = (i: number) => ({
+      x: model.positions[base + i * 3],
+      y: model.positions[base + i * 3 + 1],
+      z: model.positions[base + i * 3 + 2],
+    });
+    out.push({ a: corner(0), b: corner(1), c: corner(2) });
+  }
+  return out;
+}

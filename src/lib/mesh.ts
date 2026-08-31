@@ -35,7 +35,7 @@ export interface Profile {
 
 // --- turning an outline into triangles --------------------------------------
 
-function area(polygon: Point[]): number {
+export function area(polygon: Point[]): number {
   let sum = 0;
   for (let i = 0; i < polygon.length; i++) {
     const current = polygon[i];
@@ -46,7 +46,7 @@ function area(polygon: Point[]): number {
 }
 
 /** Anticlockwise, so "inside" means the same thing everywhere below. */
-function anticlockwise(polygon: Point[]): Point[] {
+export function anticlockwise(polygon: Point[]): Point[] {
   return area(polygon) < 0 ? [...polygon].reverse() : polygon;
 }
 
@@ -351,7 +351,11 @@ export function isWatertight(triangles: Triangle[]): {
   /** Edges where separate bodies touch. Expected, and harmless. */
   sharedEdges: number;
 } {
-  const key = (p: Vec3) => `${p.x.toFixed(4)},${p.y.toFixed(4)},${p.z.toFixed(4)}`;
+  // Rounded to a tenth of a micron, and the zero normalised: a coordinate that
+  // arrives as a whisker below zero formats as "-0.0000", which would never
+  // match the "0.0000" on the other side of the same edge.
+  const round = (value: number) => (Math.abs(value) < 5e-5 ? 0 : Number(value.toFixed(4)));
+  const key = (p: Vec3) => `${round(p.x)},${round(p.y)},${round(p.z)}`;
   const edges = new Map<string, number>();
 
   for (const t of triangles) {

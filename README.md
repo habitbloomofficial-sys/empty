@@ -189,7 +189,88 @@ your title in an editor afterwards.
 Off until you turn it on, in **Settings → Thumbnails**. Your Gemini key needs
 billing enabled — the free tier doesn't make pictures.
 
-### 3D models that will actually hold (no setup needed)
+### 3D models of anything (no setup needed)
+
+*"Make me a phone stand."* *"I need a holder for a filament spool."* *"A hook for the back of the door."*
+
+He designs it, writes a real `.stl` into `Documents/Axis/Models`, and projects
+it so you can look at it before you print it.
+
+**How it works, and why it works.** Axis doesn't write geometry — he writes a
+parts list, and the geometry is built from it. That division is the whole
+design. Ask a language model for a mesh and you get one that looks plausible
+and has holes in it; ask it for "a base 80 × 70 × 5, a back wedge behind it, a
+lip at the front" and you get a parts list, which can be checked before a
+single triangle exists. Every number is validated, every shape is generated
+closed, and what comes out is watertight because it could not have been
+anything else.
+
+Eleven shapes, which between them cover most of what anyone actually prints:
+
+| | |
+|---|---|
+| **box** | blocks, plates, arms |
+| **cylinder** · **tube** | posts and pipes — `tube` is how you get a bore |
+| **cone** | tapers and points |
+| **sphere** · **torus** | balls, rings, handles |
+| **wedge** | ramps, gussets, doorstops |
+| **prism** | hex posts, triangular columns |
+| **plate** | a rectangle with screw holes straight through it |
+| **extrude** | any flat outline you like, with holes of any shape |
+| **revolve** | an outline spun around an axis — vases, cups, knobs, wheels, spools, domes |
+
+Pieces are *meant* to overlap; that's how they join, and every slicer welds
+them. A piece placed where nothing touches it would print as a loose bit, so
+that's caught and reported before you print rather than discovered in your hand.
+
+**What it can't do, plainly:** there's no boolean subtraction. Cutting one
+arbitrary mesh out of another is the single most failure-prone thing in solid
+modelling — it's where "opens fine, looks fine, won't slice" comes from. So
+holes come from `tube`, from `plate` holes, from `extrude` cutouts, or from
+revolving a profile with the hollow already in it. That's a real limit, and the
+trade is a file that always slices.
+
+### Stress testing — will it actually hold? (no setup needed)
+
+*"Will that hold my coat?"* *"How much can it take?"* *"Where would it break?"*
+
+This works on **any** model, whatever shape it is, and it is the part worth
+trusting. He cuts the part into sixty cross-sections and checks every one —
+which is what an engineer does when the formula runs out.
+
+That matters more than it sounds. A closed-form answer assumes the part fails
+at the root. Real parts don't. On a hook that's braced at the wall and thin
+further out, he finds the weak point **at the end of the brace, 35 mm along**,
+and says so — because making the root thicker would buy you nothing.
+
+You get back:
+
+- a **safety factor**, and where the weakest section is
+- **three load figures**: what it carries comfortably, where it becomes
+  marginal, and where the material gives
+- how far it will **deflect**, and what it **weighs** printed
+- for anything stood up, the load at which it **buckles** — a slender column
+  folds sideways long before it crushes, and that failure is sudden
+
+Say how it's held: `bend` (fixed at one end, weight on the other — hooks,
+brackets, arms), `press` (stood up, weight pushing down), or `pull` (hanging).
+He'll guess from the shape, but the guess is worth correcting: the same hook
+tested as a column looks perfectly safe and tested as a cantilever is marginal.
+
+If the load gets **caught, swung or yanked** rather than set down gently, ask
+for a shock factor of 2. That's a real doubling of the force, not a margin.
+
+**And you can see it.** The weak section is drawn on the hologram as a plane
+cutting through the part — cyan if there's margin in hand, red if there isn't.
+
+Two things it deliberately doesn't do. It isn't finite-element analysis: it's
+section analysis, which is sound for the load it's told about and cannot see a
+stress concentration at a sharp internal corner (round off inside corners and
+they largely go away). And where it disagrees with the bracket calculator
+below, expect this one to be *higher* — the bracket calculator ignores the
+gusset on purpose, this measures it. **Plan by the conservative one.**
+
+### Wall brackets, with the wall fixings worked out (no setup needed)
 
 *"I want to hang my hat on the wall — it weighs 2 kg and it needs to stick out
 10 cm. Make me a bracket."*
@@ -1153,13 +1234,17 @@ click the pyramid icon in the top bar, then drop a picture in — drag it, paste
 it, or browse for it — and it's projected as a hologram you can drag to look
 around.
 
-**It also projects real parts.** When Axis designs a bracket, the projector
+**It also projects real parts.** When Axis designs anything, the projector
 opens on it by itself: the part in glowing cyan wireframe over a faint body,
 standing on projector rings, with a scan frame sweeping up through it and a
 readout of the facet count and its size in millimetres. That one is not an
 interpretation — it's the actual geometry of the file that just went into your
-Documents, at the size it will print. The picture controls hide themselves when
-a part is loaded, because none of them mean anything to a solid.
+Documents, at the size it will print, standing the way up it will be used.
+
+After a stress test the weakest section is drawn on it too, as a plane cutting
+through the part — cyan if there's margin in hand, **red if there isn't** — with
+the safety factor beside it. The picture controls hide themselves when a part is
+loaded, because none of them mean anything to a solid.
 
 Three projections: **Particles** (suspended motes of light), **Volume** (solid
 projected relief) and **Lattice** (a wireframe scan). Depth, resolution, glow,

@@ -58,10 +58,18 @@ function Slider({
 export function HologramPanel({
   onClose,
   modelPath,
+  weakPoint,
 }: {
   onClose: () => void;
   /** A part Axis has designed, projected instead of a picture. */
   modelPath?: string;
+  /** Where a stress test found it weakest, marked on the part itself. */
+  weakPoint?: {
+    axis: "x" | "y" | "z";
+    atMm: number;
+    safetyFactor: number;
+    holds: boolean;
+  };
 }) {
   const [model, setModel] = useState<ParsedModel | null>(null);
   const [source, setSource] = useState<HologramSource | null>(null);
@@ -249,7 +257,13 @@ export function HologramPanel({
             />
 
             {model ? (
-              <ModelHologram model={model} spin={settings.autoRotate} yaw={yaw} pitch={pitch} />
+              <ModelHologram
+                model={model}
+                spin={settings.autoRotate}
+                yaw={yaw}
+                pitch={pitch}
+                weakPoint={weakPoint}
+              />
             ) : (
               <HologramScene source={source} settings={settings} yaw={yaw} pitch={pitch} />
             )}
@@ -263,6 +277,26 @@ export function HologramPanel({
                   {(model.max[1] - model.min[1]).toFixed(0)} &times;{" "}
                   {(model.max[2] - model.min[2]).toFixed(0)} mm
                 </div>
+                {weakPoint && (
+                  <div
+                    className={`mt-2 border-l-2 pl-2 ${
+                      weakPoint.holds
+                        ? "border-cyan-300/70 text-cyan-100/80"
+                        : "border-rose-400/80 text-rose-200/90"
+                    }`}
+                  >
+                    <div className="tracking-[0.2em]">
+                      {weakPoint.holds ? "WEAKEST SECTION" : "FAILS HERE"}
+                    </div>
+                    <div>{weakPoint.atMm.toFixed(0)} mm along</div>
+                    <div>
+                      safety factor{" "}
+                      {Number.isFinite(weakPoint.safetyFactor)
+                        ? weakPoint.safetyFactor.toFixed(1)
+                        : "\u2014"}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 

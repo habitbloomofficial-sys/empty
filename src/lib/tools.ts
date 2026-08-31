@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import type OpenAI from "openai";
 import {
   searchEmails,
@@ -44,7 +46,15 @@ import {
 } from "./thumbnail";
 import { askFirst, takeApproval } from "./spend";
 import { designBracket } from "./bracket";
-import { MATERIAL_NAMES } from "./loadCalc";
+import { MATERIAL_NAMES, findMaterial } from "./loadCalc";
+import { writeModel, type ModelSpec, type Piece } from "./part";
+import { stressTest, type HoldMode } from "./stress";
+import { parseStl, toTriangles } from "./stl";
+
+// The last model made in this conversation, so "now stress test it" works
+// without him having to remember the file name. Module-level on purpose: it is
+// a convenience for the next sentence he says, not state worth persisting.
+let lastModel: string | null = null;
 import { channelDestination } from "./youtubeChannel";
 import {
   findRivals,
@@ -435,6 +445,143 @@ export const toolDefinitions: OpenAI.Chat.Completions.ChatCompletionTool[] = [
           },
         },
         required: ["subject"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "make_model",
+      description:
+        "Build a 3D model of anything he asks for and write a printable STL file — a phone stand, a hook, a spool holder, a knob, a pen pot, a cable clip, a plant pot, a doorstop, a spacer, a handle, a stand for something. Use this for any 'make me a...', 'can you 3D print...', 'model me a...' that is not specifically a wall bracket (design_bracket does those, and works out the wall fixings too).\n\nYOU choose the shapes and the numbers. Describe the object as a list of overlapping solid pieces; the geometry is built from your list, so it always comes out watertight and always slices. Pieces are MEANT to overlap — that is how they join, and every slicer welds them. A piece touching nothing else prints as a loose bit and is reported back to you.\n\nCoordinates are millimetres. Z is up. Every piece is positioned by its CENTRE at [x, y, z], then optionally turned by degrees about X, then Y, then Z. Build it in the orientation it is used in — that is what the stress test assumes.\n\nShapes: box (width/depth/height) · cylinder (radius/height, axis up Z) · tube (radius/bore/height, a pipe) · cone (radius/topRadius/height; leave topRadius out for a point) · sphere (radius) · wedge (width/depth/height — a ramp, full height at -Y falling to nothing at +Y) · prism (sides/radius/height — hex posts) · torus (radius/tubeRadius — rings and handles) · plate (width/depth/thickness plus holes:[{x,y,diameter}] measured from its middle — the easy way to get screw holes) · extrude (outline:[[x,y],...] plus thickness, and cutouts:[[[x,y],...]] for holes of any shape) · revolve (outline:[[radius,height],...] spun around Z — vases, cups, knobs, wheels, bottles, domes; this is the most powerful one).\n\nThere is no boolean subtraction. To get a hole, use tube, or plate holes, or extrude cutouts, or revolve a profile with the hollow already in it. Do not try to place a piece 'to cut' another one — it will add material, not remove it.\n\nSizes must be real: think about what it actually has to fit. A phone is about 75 x 8 mm, a pencil 8 mm, a 3D printer spool 52 mm bore. If he gives you a weight, pass carries_kg and it is stress-tested as it is built, and you must read the verdict out.",
+      parameters: {
+        type: "object",
+        properties: {
+          name: {
+            type: "string",
+            description: "What it is, for the file name — \"phone stand\", \"spool holder\".",
+          },
+          pieces: {
+            type: "array",
+            description:
+              "The solids it is made of, in millimetres. Overlap them to join them. Keep it under about a dozen unless it genuinely needs more.",
+            items: {
+              type: "object",
+              properties: {
+                shape: {
+                  type: "string",
+                  enum: [
+                    "box", "cylinder", "tube", "cone", "sphere",
+                    "wedge", "prism", "torus", "plate", "extrude", "revolve",
+                  ],
+                },
+                at: {
+                  type: "array",
+                  items: { type: "number" },
+                  description: "Where the CENTRE of this piece goes: [x, y, z]. Defaults to the origin.",
+                },
+                rotate: {
+                  type: "array",
+                  items: { type: "number" },
+                  description: "Degrees about X, then Y, then Z, about the piece's own middle.",
+                },
+                width: { type: "number" },
+                depth: { type: "number" },
+                height: { type: "number" },
+                thickness: { type: "number", description: "For plate and extrude." },
+                radius: { type: "number" },
+                bore: { type: "number", description: "The hole up the middle of a tube." },
+                topRadius: { type: "number", description: "For cone. Leave out for a point." },
+                tubeRadius: { type: "number", description: "For torus: the thickness of the ring itself." },
+                sides: { type: "number", description: "For prism." },
+                holes: {
+                  type: "array",
+                  description: "For plate: round holes straight through, positioned from the plate's middle.",
+                  items: {
+                    type: "object",
+                    properties: {
+                      x: { type: "number" },
+                      y: { type: "number" },
+                      diameter: { type: "number" },
+                    },
+                    required: ["x", "y", "diameter"],
+                  },
+                },
+                outline: {
+                  type: "array",
+                  description:
+                    "For extrude, the flat shape as [[x,y],...]. For revolve, the half-profile as [[radius,height],...] with every radius zero or positive. A closed loop; do not repeat the first point.",
+                  items: { type: "array", items: { type: "number" } },
+                },
+                cutouts: {
+                  type: "array",
+                  description: "For extrude: holes of any shape through it, each its own closed loop.",
+                  items: { type: "array", items: { type: "array", items: { type: "number" } } },
+                },
+                label: { type: "string", description: "What this piece is, for your own answer. Ignored by the geometry." },
+              },
+              required: ["shape"],
+            },
+          },
+          carries_kg: {
+            type: "number",
+            description:
+              "If it has to hold something, what that weighs. Stress-tests the model as it is built and returns the verdict.",
+          },
+          held_as: {
+            type: "string",
+            enum: ["bend", "press", "pull"],
+            description:
+              "How the load is carried, when carries_kg is given. bend = fixed at one end with the weight out on the other (hooks, brackets, arms, shelves — most things). press = stood up with the weight pushing straight down (stands, feet, legs). pull = hung up with the weight pulling down. SAY THIS whenever you give a weight: it is guessed from the proportions otherwise, and a hook that is taller than it is deep gets guessed wrong, which turns a marginal answer into a reassuring one.",
+          },
+          shock_factor: {
+            type: "number",
+            description: "2 if the load gets caught, swung or yanked rather than set down gently.",
+          },
+          material: {
+            type: "string",
+            enum: MATERIAL_NAMES,
+            description: "What it will be made of. PETG by default.",
+          },
+          infill_percent: { type: "number", description: "For printed parts. Default 40." },
+        },
+        required: ["name", "pieces"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "stress_test",
+      description:
+        "Load a model that has already been made and find out what it will actually take — \"will that hold my hat\", \"how much can it carry\", \"where would it break\", \"stress test it\". Works on any STL in his Models folder, whether it came from make_model or design_bracket.\n\nIt cuts the part into sixty cross-sections and checks every one, so it finds the weakest place itself rather than assuming that is the root — which matters, because a part that is thick at the base and thin two thirds of the way along breaks two thirds of the way along. It returns the safety factor, where the weak point is, how far it will deflect, what it weighs, and three numbers worth reading out every time: what it carries comfortably, where it becomes marginal, and where the material gives.\n\nSay which way it is held. `bend` is a cantilever, fixed at one end with the weight on the other — brackets, hooks, arms, shelves. `press` is stood up with the weight pushing down — stands, legs, feet; slender ones buckle long before they crush and that is checked. `pull` is hanging with the weight pulling down. Left out, it is guessed from the shape.\n\nThis is section analysis, not finite-element simulation. It is sound for the load it is told about, and it cannot see stress concentrations at sharp internal corners. Say so if he is about to trust it with something that could hurt someone.",
+      parameters: {
+        type: "object",
+        properties: {
+          filename: {
+            type: "string",
+            description:
+              "The .stl in his Models folder. Leave it out to test the last model made in this conversation.",
+          },
+          load_kg: {
+            type: "number",
+            description: "What it has to carry, in kilograms. Convert from pounds if he gave those.",
+          },
+          mode: {
+            type: "string",
+            enum: ["bend", "press", "pull"],
+            description:
+              "bend = held at one end, weight on the other. press = stood up, weight pushing down. pull = hung up, weight pulling down. Guessed from the shape if left out.",
+          },
+          material: { type: "string", enum: MATERIAL_NAMES, description: "PETG by default." },
+          infill_percent: { type: "number", description: "For printed parts. Default 40." },
+          shock_factor: {
+            type: "number",
+            description:
+              "Multiplies the force. Use 2 if the load will be caught, swung or yanked rather than set down gently — that is a real doubling, not a margin.",
+          },
+        },
+        required: ["load_kg"],
       },
     },
   },
@@ -1508,6 +1655,175 @@ export async function executeTool(
           log: { tool: name, summary: `Made a thumbnail: ${made.filename}`, ok: true },
         };
       }
+      case "make_model": {
+        const spec: ModelSpec = {
+          name: required(args.name, "name"),
+          pieces: (Array.isArray(args.pieces) ? args.pieces : []) as Piece[],
+        };
+        const made = writeModel(spec);
+        lastModel = made.filename;
+
+        // Stress-tested here rather than as a second round trip: if he said
+        // what it has to hold, the answer and the file should arrive together.
+        const carriesKg = count(args.carries_kg);
+        const material = findMaterial(text(args.material) ?? "petg");
+        const infillPercent = count(args.infill_percent) ?? 40;
+        const verdict =
+          carriesKg && carriesKg > 0 && material
+            ? stressTest({
+                triangles: made.built.triangles,
+                material,
+                loadKg: carriesKg,
+                infillPercent,
+                mode: text(args.held_as) as HoldMode | undefined,
+                shockFactor: count(args.shock_factor),
+              })
+            : null;
+
+        const labels = spec.pieces
+          .map((piece, i) => (piece.label ? `${i + 1}. ${piece.label}` : null))
+          .filter(Boolean);
+
+        return {
+          result: {
+            file: made.path,
+            filename: made.filename,
+            folder: made.folder,
+            printable: made.watertight,
+            sizeMm: made.sizeMm.map((v) => Number(v.toFixed(1))),
+            pieces: spec.pieces.length,
+            triangles: made.triangles,
+            parts: labels.length ? labels : undefined,
+            // A piece nobody touches is the one mistake this cannot fix for
+            // him, so it is surfaced rather than left in the file.
+            floatingPieces: made.floatingPieces.length
+              ? made.floatingPieces.map((i) => i + 1)
+              : undefined,
+            strength: verdict
+              ? {
+                  headline: verdict.headline,
+                  holds: verdict.holds,
+                  // Echoed back so he hears which way it was loaded — the
+                  // difference between "bend" and "press" on the same part is
+                  // the difference between marginal and never in doubt.
+                  heldAs: verdict.mode,
+                  safetyFactor: Number(verdict.safetyFactor.toFixed(2)),
+                  weakestAtMm: Number(verdict.weakest.at.toFixed(0)),
+                  holdsComfortablyKg: Number(verdict.holdsKg.toFixed(1)),
+                  givesAtKg: Number(verdict.breaksKg.toFixed(1)),
+                  workings: verdict.reasoning,
+                  cautions: verdict.cautions,
+                }
+              : undefined,
+            note:
+              (made.floatingPieces.length
+                ? `Warn him first: piece ${made.floatingPieces.map((i) => i + 1).join(", ")} isn't touching the rest, so it would print as a separate loose bit. Offer to move it. `
+                : "") +
+              "Tell him what you built and how big it is, in terms he can picture. It's on the projector now. " +
+              (verdict
+                ? `Give the strength verdict plainly — the headline, and what it carries comfortably. Say you tested it as a ${verdict.mode === "bend" ? "cantilever, held at one end with the weight on the other" : verdict.mode === "press" ? "column, stood up with the weight pushing down" : "hanger, with the weight pulling straight down"}, so he can correct you if that isn't how he'll use it.`
+                : "If it has to hold anything, offer to stress test it."),
+          },
+          log: {
+            tool: name,
+            summary: verdict
+              ? `Made ${made.filename} — ${made.sizeMm.map((v) => v.toFixed(0)).join(" x ")} mm, safety factor ${verdict.safetyFactor.toFixed(1)}`
+              : `Made ${made.filename} — ${made.sizeMm.map((v) => v.toFixed(0)).join(" x ")} mm`,
+            ok: true,
+            opens: "hologram",
+            model: made.filename,
+            weakPoint: verdict
+              ? {
+                  axis: verdict.axis,
+                  atMm: verdict.weakest.at,
+                  safetyFactor: verdict.safetyFactor,
+                  holds: verdict.holds,
+                }
+              : undefined,
+          },
+        };
+      }
+      case "stress_test": {
+        const folder = path.join(outputFolder(), "Models");
+        const asked = text(args.filename) ?? lastModel;
+        if (!asked) {
+          throw new Error("Which model, sir? I don't have one from this conversation to fall back on.");
+        }
+
+        // Same rule as the projector: resolve it, and require it to be inside
+        // the Models folder. A filename is a filename, not a path.
+        const root = fs.realpathSync(folder);
+        let target: string;
+        try {
+          target = fs.realpathSync(path.resolve(root, asked));
+        } catch {
+          throw new Error(`There's no model called "${asked}" in ${folder}, sir.`);
+        }
+        if (!(target === root || target.startsWith(root + path.sep)) || !target.toLowerCase().endsWith(".stl")) {
+          throw new Error("That isn't one of my models, sir.");
+        }
+
+        const material = findMaterial(text(args.material) ?? "petg");
+        if (!material) {
+          throw new Error(`I don't have figures for "${text(args.material)}", sir.`);
+        }
+
+        const file = fs.readFileSync(target);
+        const parsed = parseStl(
+          file.buffer.slice(file.byteOffset, file.byteOffset + file.byteLength) as ArrayBuffer
+        );
+        const report = stressTest({
+          triangles: toTriangles(parsed),
+          material,
+          loadKg: count(args.load_kg) ?? 0,
+          mode: text(args.mode) as HoldMode | undefined,
+          infillPercent: count(args.infill_percent) ?? 40,
+          shockFactor: count(args.shock_factor),
+        });
+
+        return {
+          result: {
+            model: path.basename(target),
+            heldAs: report.mode,
+            sizeMm: report.sizeMm.map((v) => Number(v.toFixed(1))),
+            headline: report.headline,
+            holds: report.holds,
+            safetyFactor: Number(report.safetyFactor.toFixed(2)),
+            weakestPoint: {
+              atMm: Number(report.weakest.at.toFixed(0)),
+              fractionAlong: Number(report.weakest.fraction.toFixed(2)),
+              areaMm2: Number(report.weakest.areaMm2.toFixed(0)),
+              stressMPa: Number(report.weakest.stress.toFixed(1)),
+            },
+            allowableMPa: Number(report.allowableMPa.toFixed(1)),
+            deflectionMm:
+              report.deflectionMm === null ? undefined : Number(report.deflectionMm.toFixed(2)),
+            holdsComfortablyKg: Number(report.holdsKg.toFixed(1)),
+            marginalAtKg: Number(report.marginalKg.toFixed(1)),
+            givesAtKg: Number(report.breaksKg.toFixed(1)),
+            bucklesAtKg: report.buckling ? Number(report.buckling.criticalKg.toFixed(1)) : undefined,
+            weighsG: Number((report.printedMassG ?? report.solidMassG).toFixed(0)),
+            workings: report.reasoning,
+            cautions: report.cautions,
+            note:
+              "Give him the headline first, then where the weak point is and the three load figures — comfortable, marginal, gives. Do not round the failure load up. If it does not hold, say what would fix it. " +
+              "If he also has a figure from design_bracket for this part, expect this one to be higher and explain why rather than contradicting yourself: design_bracket deliberately ignores the gusset and loads the arm as a bare rectangle, while this measures the real section at every station and sees the gusset carrying its share. The conservative one is the one to plan by.",
+          },
+          log: {
+            tool: name,
+            summary: `Stress tested ${path.basename(target)} at ${count(args.load_kg)}kg — safety factor ${report.safetyFactor.toFixed(1)}`,
+            ok: true,
+            opens: "hologram",
+            model: path.basename(target),
+            weakPoint: {
+              axis: report.axis,
+              atMm: report.weakest.at,
+              safetyFactor: report.safetyFactor,
+              holds: report.holds,
+            },
+          },
+        };
+      }
       case "design_bracket": {
         const made = designBracket({
           itemName: required(args.item_name, "item_name"),
@@ -1521,6 +1837,8 @@ export async function executeTool(
           hangingHoleMm: count(args.hanging_hole_mm),
           gusset: args.gusset === undefined ? undefined : args.gusset !== false,
         });
+
+        lastModel = made.filename;
 
         const { verdict, spec } = made;
         return {

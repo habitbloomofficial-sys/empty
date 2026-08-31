@@ -20,6 +20,18 @@ export interface ActionLogEntry {
   opens?: "hologram";
   /** A model file the projector should open onto, rather than an empty stage. */
   model?: string;
+  /**
+   * Where a stress test found the weak point, so the projector can mark it.
+   * A number in a sentence is a claim; a band on the part is something he can
+   * look at and argue with, which is the more useful of the two.
+   */
+  weakPoint?: {
+    axis: "x" | "y" | "z";
+    /** Millimetres from the held end, along that axis. */
+    atMm: number;
+    safetyFactor: number;
+    holds: boolean;
+  };
 }
 
 /** Per-stage latency in milliseconds, so slowness can be located, not guessed. */
