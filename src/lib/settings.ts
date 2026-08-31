@@ -59,6 +59,12 @@ export const SETTING_KEYS = [
   "SPEECH_LANG",
   "IDLE_TALK",
   "IDLE_TALK_MINUTES",
+  "CURRENCY",
+  "INVOICE_LOCALE",
+  "INVOICE_FROM",
+  "INVOICE_TAX_PERCENT",
+  "INVOICE_TERMS_DAYS",
+  "INVOICE_PAYMENT_DETAILS",
 ] as const;
 
 export type SettingKey = (typeof SETTING_KEYS)[number];

@@ -41,6 +41,12 @@ export interface Offer {
 export const OFFERS: Offer[] = [
   // --- documents: essays, decks, spreadsheets ---
   { needs: "documents", line: "Need an essay written in Word for tomorrow?" },
+  { needs: "documents", line: "Anything to invoice, sir? I'll do the VAT." },
+  { needs: "documents", line: "Shall I check what's still outstanding?" },
+  { needs: "documents", line: "Any bills come in that I should be keeping track of?" },
+  { needs: "documents", line: "Want me to see who hasn't paid you yet?" },
+  { needs: "documents", line: "Anything you'd like modelled and printed, sir?" },
+  { needs: "documents", line: "Shall I work out whether that would actually hold the weight?" },
   { needs: "documents", line: "Shall I put a presentation together for you?" },
   { needs: "documents", line: "Any homework I can make a start on?" },
   { needs: "documents", line: "I could draft that report, if it's still hanging over you." },

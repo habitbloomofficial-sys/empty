@@ -1553,6 +1553,78 @@ export function SettingsModal({
               needs billing enabled — the free tier doesn&apos;t make images.
             </p>
           </Section>
+          <Section
+            icon={<FolderIcon className="h-4 w-4" />}
+            title="Invoicing"
+            ok={Boolean(draft("INVOICE_FROM").trim())}
+          >
+            <p>
+              <i>&quot;Invoice Anders 2500 for the website.&quot;</i>{" "}
+              <i>&quot;What do I owe?&quot;</i>{" "}
+              He writes the invoice, does the VAT, and remembers it — so he can
+              tell you later what is outstanding and what is overdue.
+            </p>
+            <Field
+              label="Your details, as they appear on the invoice"
+              view={views.INVOICE_FROM}
+              value={draft("INVOICE_FROM")}
+              onChange={(v) => setDraft("INVOICE_FROM", v)}
+              multiline
+              placeholder={"Your name\nStreet\nPostcode and town\nCVR / VAT number"}
+              hint="One line each. This is printed at the top of every invoice you send."
+            />
+            <Field
+              label="How to pay you"
+              view={views.INVOICE_PAYMENT_DETAILS}
+              value={draft("INVOICE_PAYMENT_DETAILS")}
+              onChange={(v) => setDraft("INVOICE_PAYMENT_DETAILS", v)}
+              multiline
+              placeholder={"Reg. 1234  Konto 5678901\nMobilePay 12345"}
+              hint="Bank details, MobilePay, IBAN — whatever you want people to pay into."
+            />
+            <div className="grid grid-cols-3 gap-2">
+              <Field
+                label="Currency"
+                view={views.CURRENCY}
+                value={draft("CURRENCY")}
+                onChange={(v) => setDraft("CURRENCY", v)}
+                placeholder="DKK"
+              />
+              <Field
+                label="VAT %"
+                view={views.INVOICE_TAX_PERCENT}
+                value={draft("INVOICE_TAX_PERCENT")}
+                onChange={(v) => setDraft("INVOICE_TAX_PERCENT", v)}
+                placeholder="25"
+              />
+              <Field
+                label="Days to pay"
+                view={views.INVOICE_TERMS_DAYS}
+                value={draft("INVOICE_TERMS_DAYS")}
+                onChange={(v) => setDraft("INVOICE_TERMS_DAYS", v)}
+                placeholder="14"
+              />
+            </div>
+            <SaveButton
+              onClick={() =>
+                save("invoicing", {
+                  INVOICE_FROM: draft("INVOICE_FROM"),
+                  INVOICE_PAYMENT_DETAILS: draft("INVOICE_PAYMENT_DETAILS"),
+                  CURRENCY: draft("CURRENCY"),
+                  INVOICE_TAX_PERCENT: draft("INVOICE_TAX_PERCENT"),
+                  INVOICE_TERMS_DAYS: draft("INVOICE_TERMS_DAYS"),
+                })
+              }
+              busy={busySection === "invoicing"}
+              saved={savedSection === "invoicing"}
+            />
+            <p className="text-[10px] text-sand-600">
+              Nothing here is required — he will write an invoice without any of
+              it. Filling it in is the difference between a document you can send
+              and one you have to edit first. Invoices are numbered in sequence
+              per year and land in Documents\Axis\Bills.
+            </p>
+          </Section>
           <GroupHeading title="THIS COMPUTER" blurb="What he may do on the machine he runs on." />
           <Section
             icon={<MusicIcon className="h-4 w-4" />}

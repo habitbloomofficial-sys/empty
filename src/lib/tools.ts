@@ -48,6 +48,22 @@ import { askFirst, takeApproval } from "./spend";
 import { designBracket } from "./bracket";
 import { MATERIAL_NAMES, findMaterial } from "./loadCalc";
 import { writeModel, type ModelSpec, type Piece } from "./part";
+import { PHONES, designCase, type Opening, type Side } from "./phoneCase";
+import {
+  createBill,
+  describeBill,
+  findBill,
+  formatMoney,
+  forgetBill,
+  listBills,
+  markPaid,
+  position,
+  statusOf,
+  totalsOf,
+  type Direction,
+  type Status,
+} from "./bills";
+import { writeInvoice } from "./invoiceDoc";
 import { stressTest, type HoldMode } from "./stress";
 import { parseStl, toTriangles } from "./stl";
 
@@ -546,6 +562,177 @@ export const toolDefinitions: OpenAI.Chat.Completions.ChatCompletionTool[] = [
           infill_percent: { type: "number", description: "For printed parts. Default 40." },
         },
         required: ["name", "pieces"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "make_bill",
+      description:
+        "Write an invoice or record a bill, and keep it. Use this for \"invoice Anders 2500 for the website\", \"bill the club for four lessons\", \"I've had a bill from the plumber for 3400, due the 15th\".\n\nTwo directions, and getting it right matters. `outgoing` is an invoice HE is sending — someone owes him. `incoming` is a bill that has come IN — he owes someone. Default is outgoing.\n\nIt does the arithmetic and writes a proper Word document with the line items, the VAT and the total, and it remembers the bill so he can later ask what is outstanding. Amounts are per unit, before tax; give the quantity separately and let it multiply. VAT defaults to 25% — say the rate you used when you tell him the total.\n\nRead back the number, the total and the due date. Those three are what he needs, and the number is how he will refer to it later.",
+      parameters: {
+        type: "object",
+        properties: {
+          party: {
+            type: "string",
+            description: "Who it is to, for an invoice — or who it is from, for a bill that came in.",
+          },
+          direction: {
+            type: "string",
+            enum: ["outgoing", "incoming"],
+            description:
+              "outgoing = he is invoicing them, they owe him. incoming = a bill he has received and owes. Default outgoing.",
+          },
+          lines: {
+            type: "array",
+            description: "What it is for. One entry per thing being charged.",
+            items: {
+              type: "object",
+              properties: {
+                description: { type: "string" },
+                quantity: { type: "number", description: "Default 1. Hours, items, months." },
+                amount: {
+                  type: "number",
+                  description: "The price for ONE, before tax. 2500 means two and a half thousand, not 25.00.",
+                },
+                tax_percent: {
+                  type: "number",
+                  description: "Only if this line is taxed differently from the rest of the bill.",
+                },
+              },
+              required: ["description", "amount"],
+            },
+          },
+          tax_percent: {
+            type: "number",
+            description: "VAT for the whole bill. Default 25. Use 0 for anything not VAT-rated.",
+          },
+          currency: { type: "string", description: "Three letters — DKK, EUR, GBP. Default DKK." },
+          issued: { type: "string", description: "YYYY-MM-DD. Today if left out." },
+          terms_days: {
+            type: "number",
+            description: "Days to pay. Default 14. Danish invoices are usually 8, 14 or 30.",
+          },
+          due: { type: "string", description: "YYYY-MM-DD, if he named a date rather than terms." },
+          reference: { type: "string", description: "Their order number or reference, if there is one." },
+          notes: { type: "string", description: "Anything that should appear at the bottom." },
+          paid_on: {
+            type: "string",
+            description: "YYYY-MM-DD, if he is recording something already settled.",
+          },
+          write_document: {
+            type: "boolean",
+            description:
+              "Write the Word document. On by default for an invoice he is sending; for one he has received, the record is often enough.",
+          },
+        },
+        required: ["party", "lines"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "list_bills",
+      description:
+        "What is outstanding, what is overdue, and what has been settled — \"what do I owe\", \"who hasn't paid me\", \"any bills due this week\", \"how much is outstanding\".\n\nWith no filter it gives the whole position: what he is owed, what he owes, what is overdue in each direction and what falls due in the next week. Overdue ones are worth leading with, and say how many days late rather than just the date.\n\nWhat he is owed and what he owes are never netted off against each other. One number for both would be true and useless.",
+      parameters: {
+        type: "object",
+        properties: {
+          direction: {
+            type: "string",
+            enum: ["outgoing", "incoming"],
+            description: "outgoing = money owed to him. incoming = money he owes. Both if left out.",
+          },
+          status: {
+            type: "string",
+            enum: ["open", "overdue", "paid", "all"],
+            description: "Left out, he gets the whole position rather than a filtered list.",
+          },
+          party: { type: "string", description: "Only bills to or from someone whose name contains this." },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "settle_bill",
+      description:
+        "Mark a bill paid, or delete one — \"Anders has paid\", \"mark 2026-014 as settled\", \"scrap that last invoice\". Identify it by its number; a name works when only one bill matches it. Confirm which one you settled by number and amount, so a wrong match is caught immediately.",
+      parameters: {
+        type: "object",
+        properties: {
+          bill: { type: "string", description: "The number — \"2026-014\" — or a name that matches only one." },
+          action: {
+            type: "string",
+            enum: ["paid", "delete"],
+            description: "Default paid. Deleting removes the record; the number is never handed out again.",
+          },
+          on: { type: "string", description: "YYYY-MM-DD it was settled. Today if left out." },
+        },
+        required: ["bill"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "design_phone_case",
+      description:
+        "Design a printable phone case and write the STL. Use this for any \"make me a case for my <phone>\" — do not try to build one with make_model, which would take sixty outline points that all have to be right to a tenth of a millimetre.\n\nGive the phone by name if it is one I have figures for (" +
+        Object.values(PHONES).map((p) => p.name).join(", ") +
+        "). For anything else, ask him to measure the width, height and thickness with a ruler or calipers and pass those instead — measured numbers always beat published ones, and for a case half a millimetre is the difference between it going on and not.\n\nThe fit is set by one number, the clearance, which defaults to 0.4 mm all round. If he comes back and says it is too tight, rebuild it at 0.6; too loose, 0.3. Say that when you hand it over, because it saves him a wasted print.\n\nTell him to print it in TPU. A case has to stretch to go on, and a rigid one in PLA or PETG either will not go on or will snap doing it — this is worth saying every time, unprompted.\n\nBy default it puts a gap in the bottom for the charging port and speaker, a gap up the right side for the buttons, and a window in the back for the cameras. That is right for almost every phone; say so, so he can correct it if his is different.",
+      parameters: {
+        type: "object",
+        properties: {
+          phone: {
+            type: "string",
+            description:
+              "The phone by name — \"Samsung A35\", \"iPhone 15 Pro\". Left out, measurements are required.",
+          },
+          width_mm: { type: "number", description: "His own measurement, across the phone. Beats the table." },
+          height_mm: { type: "number", description: "His own measurement, top to bottom." },
+          thickness_mm: {
+            type: "number",
+            description: "His own measurement, front to back. Not including a camera bump.",
+          },
+          corner_radius_mm: { type: "number", description: "The phone's own corner radius. 12 mm suits most." },
+          clearance_mm: {
+            type: "number",
+            description:
+              "The gap between phone and case, all round. Default 0.4. This is the fit — 0.3 tighter, 0.6 looser.",
+          },
+          wall_mm: { type: "number", description: "Side wall thickness. Default 2." },
+          back_mm: { type: "number", description: "Back thickness. Default 1.2." },
+          lip_mm: {
+            type: "number",
+            description:
+              "How far the wall stands proud of the screen, so a face-down phone rests on the case and not the glass. Default 1.4.",
+          },
+          camera_window: { type: "boolean", description: "A window in the back for the cameras. On by default." },
+          openings: {
+            type: "array",
+            description:
+              "Replaces the default port and button gaps. Only give this if his phone differs — say, the port on the left, or a fingerprint reader that needs clearing.",
+            items: {
+              type: "object",
+              properties: {
+                side: { type: "string", enum: ["bottom", "right", "top", "left"] },
+                centre_mm: {
+                  type: "number",
+                  description: "From the middle of that side. Positive is towards the top, or the right.",
+                },
+                width_mm: { type: "number" },
+                label: { type: "string", description: "What it is for — \"charging port\", \"buttons\"." },
+              },
+              required: ["side", "centre_mm", "width_mm", "label"],
+            },
+          },
+        },
+        required: [],
       },
     },
   },
@@ -1740,6 +1927,229 @@ export async function executeTool(
                   holds: verdict.holds,
                 }
               : undefined,
+          },
+        };
+      }
+      case "make_bill": {
+        const rawLines = Array.isArray(args.lines) ? (args.lines as Record<string, unknown>[]) : [];
+        const direction = (text(args.direction) ?? "outgoing") as Direction;
+        if (direction !== "outgoing" && direction !== "incoming") {
+          throw new Error("A bill is either outgoing or incoming, sir.");
+        }
+
+        const bill = createBill({
+          direction,
+          party: required(args.party, "party"),
+          lines: rawLines.map((line) => ({
+            description: text(line.description) ?? "",
+            quantity: count(line.quantity),
+            amount: count(line.amount) ?? (text(line.amount) as string) ?? 0,
+            taxPercent: count(line.tax_percent),
+          })),
+          taxPercent: count(args.tax_percent),
+          currency: text(args.currency),
+          issued: text(args.issued),
+          termsDays: count(args.terms_days),
+          due: text(args.due),
+          reference: text(args.reference),
+          notes: text(args.notes),
+          paidOn: text(args.paid_on),
+        });
+
+        // The document is written for an invoice he is sending by default,
+        // since that one has to go to somebody. A bill he has received is
+        // often just a record.
+        const wanted = args.write_document === undefined ? direction === "outgoing" : args.write_document !== false;
+        let document: { path: string; filename: string; folder: string } | null = null;
+        if (wanted) document = await writeInvoice(bill);
+
+        const totals = totalsOf(bill.lines, bill.taxPercent);
+        return {
+          result: {
+            number: bill.number,
+            direction: bill.direction,
+            party: bill.party,
+            issued: bill.issued,
+            due: bill.due,
+            subtotal: formatMoney(totals.subtotalMinor, bill.currency),
+            tax: formatMoney(totals.taxMinor, bill.currency),
+            taxPercent: bill.taxPercent,
+            total: formatMoney(totals.totalMinor, bill.currency),
+            lines: bill.lines.map((line) => ({
+              what: line.description,
+              quantity: line.quantity,
+              each: formatMoney(line.unitMinor, bill.currency),
+              amount: formatMoney(Math.round(line.unitMinor * line.quantity), bill.currency),
+            })),
+            file: document?.path,
+            filename: document?.filename,
+            folder: document?.folder,
+            note:
+              `Give him the number (${bill.number}), the total and the due date — those three, in that order. ` +
+              `Say the VAT rate you used (${bill.taxPercent}%) so a wrong one is caught now rather than by his accountant. ` +
+              (document ? "The document is in his Documents folder, ready to send." : "No document written — this is a record only."),
+          },
+          log: {
+            tool: name,
+            summary:
+              direction === "outgoing"
+                ? `Invoiced ${bill.party} ${formatMoney(totals.totalMinor, bill.currency)} — ${bill.number}, due ${bill.due}`
+                : `Recorded a bill from ${bill.party} for ${formatMoney(totals.totalMinor, bill.currency)}, due ${bill.due}`,
+            ok: true,
+          },
+        };
+      }
+      case "list_bills": {
+        const status = text(args.status) as Status | "all" | undefined;
+        const direction = text(args.direction) as Direction | undefined;
+        const party = text(args.party);
+
+        const describe = (bill: ReturnType<typeof listBills>[number]) => {
+          const totals = totalsOf(bill.lines, bill.taxPercent);
+          return {
+            number: bill.number,
+            direction: bill.direction,
+            party: bill.party,
+            total: formatMoney(totals.totalMinor, bill.currency),
+            due: bill.due,
+            status: statusOf(bill),
+            line: describeBill(bill),
+          };
+        };
+
+        // With no filter at all he gets the position rather than a list, which
+        // is what "what do I owe" actually means.
+        if (!status && !direction && !party) {
+          const now = position();
+          return {
+            result: {
+              owedToHim: formatMoney(now.owedToHimMinor, now.currency),
+              owedByHim: formatMoney(now.owedByHimMinor, now.currency),
+              overdueTheyOweHim: now.overdueOut.map(describe),
+              overdueHeOwes: now.overdueIn.map(describe),
+              dueWithinAWeek: now.dueSoon.map(describe),
+              note:
+                "Lead with anything overdue, and say how many days late. Then what he is owed and what he owes, kept apart — never one net figure. If nothing is overdue say so plainly and keep it short.",
+            },
+            log: {
+              tool: name,
+              summary: `Bills: owed ${formatMoney(now.owedToHimMinor, now.currency)}, owes ${formatMoney(now.owedByHimMinor, now.currency)}, ${now.overdueOut.length + now.overdueIn.length} overdue`,
+              ok: true,
+            },
+          };
+        }
+
+        const found = listBills({ direction, status, party });
+        return {
+          result: {
+            count: found.length,
+            bills: found.map(describe),
+            note: found.length === 0 ? "Nothing matched. Say so; do not invent one." : undefined,
+          },
+          log: { tool: name, summary: `Listed ${found.length} bill${found.length === 1 ? "" : "s"}`, ok: true },
+        };
+      }
+      case "settle_bill": {
+        const reference = required(args.bill, "bill");
+        const action = text(args.action) ?? "paid";
+
+        if (action === "delete") {
+          const gone = forgetBill(reference);
+          const totals = totalsOf(gone.lines, gone.taxPercent);
+          return {
+            result: {
+              deleted: gone.number,
+              party: gone.party,
+              was: formatMoney(totals.totalMinor, gone.currency),
+              note: `Confirm which one went — ${gone.number}, ${gone.party}. The number won't be used again; two documents sharing a number is worse than a gap in the sequence.`,
+            },
+            log: { tool: name, summary: `Deleted bill ${gone.number} (${gone.party})`, ok: true },
+          };
+        }
+
+        const before = findBill(reference);
+        if (!before) {
+          throw new Error(`I can't find a bill matching "${reference}", sir — give me the number.`);
+        }
+        const bill = markPaid(reference, text(args.on));
+        const totals = totalsOf(bill.lines, bill.taxPercent);
+        return {
+          result: {
+            number: bill.number,
+            party: bill.party,
+            amount: formatMoney(totals.totalMinor, bill.currency),
+            paidOn: bill.paidOn,
+            direction: bill.direction,
+            note: "Confirm it back by number and amount, so a wrong match is caught straight away.",
+          },
+          log: {
+            tool: name,
+            summary: `${bill.number} (${bill.party}) marked paid — ${formatMoney(totals.totalMinor, bill.currency)}`,
+            ok: true,
+          },
+        };
+      }
+      case "design_phone_case": {
+        const openings = Array.isArray(args.openings)
+          ? (args.openings as Record<string, unknown>[]).map((opening, i): Opening => {
+              const side = text(opening.side);
+              if (side !== "bottom" && side !== "right" && side !== "top" && side !== "left") {
+                throw new Error(`Opening ${i + 1}: a side is bottom, right, top or left, sir.`);
+              }
+              return {
+                side: side as Side,
+                centreMm: count(opening.centre_mm) ?? 0,
+                widthMm: count(opening.width_mm) ?? 0,
+                label: text(opening.label) ?? "opening",
+              };
+            })
+          : undefined;
+
+        const made = designCase({
+          phone: text(args.phone),
+          widthMm: count(args.width_mm),
+          heightMm: count(args.height_mm),
+          thicknessMm: count(args.thickness_mm),
+          cornerRadiusMm: count(args.corner_radius_mm),
+          clearanceMm: count(args.clearance_mm),
+          wallMm: count(args.wall_mm),
+          backMm: count(args.back_mm),
+          lipMm: count(args.lip_mm),
+          cameraWindow: args.camera_window === undefined ? undefined : args.camera_window !== false,
+          openings,
+        });
+        lastModel = made.filename;
+
+        return {
+          result: {
+            file: made.path,
+            filename: made.filename,
+            folder: made.folder,
+            printable: made.watertight,
+            phone: made.spec.phone.name,
+            measurementsFrom: made.fromTable ? "published figures" : "his own measurements",
+            outsideMm: made.sizeMm.map((v) => Number(v.toFixed(1))),
+            pocketMm: made.cavityMm.map((v) => Number(v.toFixed(1))),
+            clearanceMm: made.spec.clearanceMm,
+            openings: made.spec.openings.map((o) => ({
+              what: o.label,
+              side: o.side,
+              widthMm: Number(o.widthMm.toFixed(0)),
+            })),
+            details: made.notes,
+            cautions: made.cautions,
+            note:
+              "Tell him it's on the projector and what size it came out. Then two things, every time: print it in TPU, and the clearance is the one number that decides the fit — 0.6 if it's tight, 0.3 if it's loose. " +
+              (made.fromTable
+                ? "Say plainly that these are published dimensions rather than measured ones, and offer to rebuild it from his own measurements."
+                : "You used his measurements, which is the right way round."),
+          },
+          log: {
+            tool: name,
+            summary: `Designed a case for the ${made.spec.phone.name} — ${made.sizeMm.map((v) => v.toFixed(0)).join(" x ")} mm`,
+            ok: true,
+            opens: "hologram",
+            model: made.filename,
           },
         };
       }

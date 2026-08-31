@@ -84,6 +84,19 @@ export const MATERIALS: Record<string, Material> = {
     density: 1.14,
     note: "Very tough, but it absorbs water and goes soft and floppy if it isn't kept dry.",
   },
+  tpu: {
+    name: "TPU",
+    // Rubber, not plastic. It stretches enormously before it tears, and its
+    // stiffness is a thousandth of PETG's — which is the whole point of it for
+    // anything that has to flex on and off something, and which makes any
+    // deflection figure for it meaningless.
+    strength: 25,
+    stiffness: 40,
+    printed: true,
+    brittle: false,
+    density: 1.21,
+    note: "Flexible. The right material for a phone case, a strap or a bumper — it stretches over things and grips them. Useless for anything that has to stay rigid.",
+  },
   aluminium: {
     name: "Aluminium 6061-T6",
     strength: 240,

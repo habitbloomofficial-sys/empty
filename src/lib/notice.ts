@@ -7,6 +7,7 @@ import { isGmailConfigured, searchEmails, isCalendarConfigured } from "./gmail";
 import { listEvents } from "./calendar";
 import { channelStats, configuredChannel, isYouTubeConfigured } from "./youtube";
 import { standings, trackedRivals } from "./competitors";
+import { daysLate, formatMoney, isoDay, position, totalsOf } from "./bills";
 
 // Axis speaking first.
 //
@@ -27,7 +28,7 @@ import { standings, trackedRivals } from "./competitors";
 // The second rule is about not being a nuisance: nothing is said twice, and
 // nothing is said sooner than the interval allows.
 
-export type NoticeKind = "email" | "channel" | "work" | "calendar" | "quiet";
+export type NoticeKind = "email" | "channel" | "work" | "calendar" | "money" | "quiet";
 
 export interface Notice {
   kind: NoticeKind;
@@ -165,6 +166,45 @@ async function channelNotices(state: State): Promise<Notice[]> {
       kind: "channel",
       key: `channel:${subscribers ?? "hidden"}:${stats.views}`,
       fact: `His channel "${stats.title}" is ${bits.join(", ")} since he was last told.`,
+    },
+  ];
+}
+
+/**
+ * Money that is late.
+ *
+ * The one thing on this list he would actually want interrupting for. An
+ * invoice nobody has paid does not chase itself, and a bill he has forgotten
+ * costs him a fee — so both directions are looked at, and the oldest is the one
+ * mentioned, because that is the one that has been ignored longest.
+ *
+ * The key carries the day, so it can be raised again tomorrow if it is still
+ * outstanding, but never twice in the same day.
+ */
+function billNotices(): Notice[] {
+  const today = isoDay(new Date());
+  const now = position(today);
+  const late = [...now.overdueOut, ...now.overdueIn];
+  if (late.length === 0) return [];
+
+  const worst = late.reduce((oldest, bill) => (bill.due < oldest.due ? bill : oldest), late[0]);
+  const days = daysLate(worst, today);
+  const { totalMinor } = totalsOf(worst.lines, worst.taxPercent);
+  const money = formatMoney(totalMinor, worst.currency);
+
+  const others =
+    late.length > 1
+      ? ` ${late.length - 1} other${late.length === 2 ? " is" : "s are"} overdue as well.`
+      : "";
+
+  return [
+    {
+      kind: "money",
+      key: `bill:${worst.number}:${today}`,
+      fact:
+        worst.direction === "outgoing"
+          ? `Invoice ${worst.number} to ${worst.party} for ${money} is ${days} day${days === 1 ? "" : "s"} overdue.${others}`
+          : `A bill from ${worst.party} for ${money} was due ${worst.due}, ${days} day${days === 1 ? "" : "s"} ago.${others}`,
     },
   ];
 }
@@ -338,6 +378,7 @@ export async function gatherNotices(): Promise<Gathered> {
     channelNotices(state),
     rivalNotices(),
     Promise.resolve(workNotices()),
+    Promise.resolve(billNotices()),
     calendarNotices(),
   ]);
 
@@ -391,7 +432,10 @@ Absolute rules:
 - If a fact says three unread emails, you may not guess what they are about beyond what is written.
 - NEVER volunteer general knowledge, trivia, encouragement, or an observation about the world.
   He is not interested in facts about animals, space or history. He is interested in his own work,
-  his own inbox, his own channel. If the facts do not support a remark, write exactly: SKIP
+  his own inbox, his own channel, and money he is owed or owes. If the facts do not support a
+  remark, write exactly: SKIP
+- Money that is late outranks everything else on the list. If a fact says an invoice or a bill is
+  overdue, lead with it and say how many days — that is the one thing here worth interrupting for.
 - Do not ask him a question he has to answer. You are remarking, not starting an interview.
   A short offer at the end is fine ("I can read it out if you like") but never a demand.
 - Do not greet him, do not say "just to let you know", do not apologise for interrupting.
