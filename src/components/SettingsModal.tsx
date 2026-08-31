@@ -285,6 +285,59 @@ export function SettingsModal({
   const [models, setModels] = useState<{ id: string; name: string; free?: boolean }[]>([]);
   const [busySection, setBusySection] = useState<string | null>(null);
   const [savedSection, setSavedSection] = useState<string | null>(null);
+  // Getting Axis onto the phone. The link is built from whatever address this
+  // page was opened on, because that is the address the phone will have to
+  // reach — a setting he would have to type is a setting he can get wrong.
+  const [phoneKeys, setPhoneKeys] = useState(false);
+  const [phoneQr, setPhoneQr] = useState(false);
+  // Read once, on mount. This panel only ever renders after a click, so there
+  // is always a window to read — and doing it here rather than in an effect
+  // avoids a second render for a value that never changes.
+  const [phoneLink] = useState(() =>
+    typeof window === "undefined"
+      ? "/api/phone-app"
+      : `${window.location.origin}/api/phone-app`
+  );
+
+  /**
+   * Fetch the copy and hand it to the browser as a download.
+   *
+   * A POST rather than a link, so the choice about the keys never rides in a
+   * URL — a query string ends up in history, and in the logs of anything the
+   * tunnel passes through.
+   */
+  async function downloadPhoneApp() {
+    setBusySection("phoneapp");
+    setError(null);
+    try {
+      const res = await fetch("/api/phone-app", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ keys: phoneKeys, home: window.location.origin }),
+      });
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(body.error || `The download failed (HTTP ${res.status}).`);
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "AXIS-PHONE.html";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      // Revoked on the next tick: revoking immediately can cancel the download
+      // in some browsers before it has started reading the blob.
+      setTimeout(() => URL.revokeObjectURL(url), 30_000);
+      setSavedSection("phoneapp");
+      setTimeout(() => setSavedSection((s) => (s === "phoneapp" ? null : s)), 2000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "The download failed.");
+    } finally {
+      setBusySection(null);
+    }
+  }
   const [checks, setChecks] = useState<Record<string, KeyCheck[]>>({});
   const [copiedRedirect, setCopiedRedirect] = useState(false);
   const [memories, setMemories] = useState<MemoryEntry[]>([]);
@@ -339,7 +392,7 @@ export function SettingsModal({
 
   const loadMemories = useCallback(async () => {
     setMemories(await fetchMemories());
-  }, []);
+  }, [setMemories]);
 
   useEffect(() => {
     // Same shape as the settings fetch above: an async read guarded against a
@@ -1457,6 +1510,96 @@ export function SettingsModal({
               to stay on — your phone is still a window onto the Axis running
               here.
             </p>
+          </Section>
+          <Section
+            icon={<PhoneIcon className="h-4 w-4" />}
+            title="Axis on your phone"
+            ok={Boolean(status?.passcodeSet)}
+          >
+            <p>
+              The whole of Axis in one file. Open it on your phone and he is
+              there — same voice, same memory, and every tool on this computer
+              through the link back to it.
+            </p>
+            <p className="text-[11px] text-sand-600">
+              The copy you get here is <b>already signed in</b>: it carries this
+              computer&apos;s address and a key of its own, so it opens connected
+              rather than to a form. Nothing has to be typed on a phone keyboard.
+              Changing your passcode signs it out along with everything else.
+            </p>
+
+            <label className="flex items-start gap-2 text-[11px] text-sand-500">
+              <input
+                type="checkbox"
+                checked={phoneKeys}
+                onChange={(e) => setPhoneKeys(e.target.checked)}
+                className="mt-0.5 accent-amber-500"
+              />
+              <span>
+                <b className="text-cream">Include my API keys</b>, so he still
+                thinks when this computer is off. Without them the phone is a
+                window onto this machine and needs it running. With them the file
+                holds your keys — treat it like a password.
+              </span>
+            </label>
+
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => void downloadPhoneApp()}
+                disabled={busySection === "phoneapp"}
+                className="rounded-full bg-amber-500 px-4 py-2 text-xs font-semibold text-white transition hover:bg-amber-400 disabled:opacity-50"
+              >
+                {busySection === "phoneapp" ? "Preparing…" : "Download the file"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setPhoneQr((v) => !v)}
+                className="rounded-full border border-amber-500/25 px-4 py-2 text-xs font-semibold text-sand-400 transition hover:bg-amber-500/10"
+              >
+                {phoneQr ? "Hide the code" : "Show a QR code"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  void navigator.clipboard?.writeText(phoneLink);
+                  setSavedSection("phonelink");
+                  setTimeout(() => setSavedSection(null), 1600);
+                }}
+                className="rounded-full border border-amber-500/25 px-4 py-2 text-xs font-semibold text-sand-400 transition hover:bg-amber-500/10"
+              >
+                {savedSection === "phonelink" ? "Copied" : "Copy the link"}
+              </button>
+            </div>
+
+            {phoneQr && (
+              <div className="flex flex-col items-center gap-2 rounded-none border border-amber-500/20 bg-white p-3">
+                {/* Rendered by the server, since the QR library lives there. */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={`/api/phone-qr?url=${encodeURIComponent(phoneLink)}`}
+                  alt="QR code to the phone download"
+                  className="h-44 w-44"
+                />
+                <p className="text-center text-[10px] text-slate-600">
+                  Point your camera at it. Your phone downloads the file; open it
+                  from Downloads and add it to your home screen.
+                </p>
+              </div>
+            )}
+
+            <p className="break-all font-mono text-[10px] text-sand-600">{phoneLink}</p>
+
+            <div className="rounded-none bg-amber-500/10 px-2.5 py-2 text-amber-300">
+              <p className="mb-1 font-semibold">Which address this uses</p>
+              <p>
+                Whatever you opened this page on. On your own Wi-Fi that is this
+                computer&apos;s address on it, and the file works at home. Open
+                Settings <i>through the tunnel</i> — the address from
+                START-AXIS-ANYWHERE — and the copy you download works from
+                anywhere instead.
+              </p>
+            </div>
           </Section>
           <Section
             icon={<FilmIcon className="h-4 w-4" />}

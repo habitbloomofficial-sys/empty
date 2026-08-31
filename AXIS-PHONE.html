@@ -457,8 +457,12 @@
   <div class="group">
     <p class="hint">Run <strong>START-AXIS-ANYWHERE.bat</strong> on the computer,
     then put the address it prints here. Connected, he can read your email, sort
-    through your folders, open things — everything he can do at his desk.
+    through your folders, open things, write documents and invoices, design and
+    stress-test 3D models &mdash; everything he can do at his desk.
     Not connected, he says so rather than pretending.</p>
+    <p class="hint">Easier: open Settings on the computer, find
+    <strong>Axis on your phone</strong>, and download the file from there.
+    That copy arrives with this filled in and already signed in.</p>
     <label class="field"><span>Address</span>
       <input type="text" id="optHome" inputmode="url" autocapitalize="off" autocorrect="off"
              spellcheck="false" placeholder="https://something.trycloudflare.com" aria-label="Home address"></label>
@@ -517,6 +521,7 @@ const BAKED = {
   voice: "",
   home: "",
   pass: "",
+  token: "",
   title: "",
   speak: null,
   search: null
@@ -568,7 +573,10 @@ const settings = {
   title:     pick(BAKED.title, store.get("axis.title"), "sir"),
   speak:     BAKED.speak !== null ? BAKED.speak : store.get("axis.speak") !== "off",
   search:    BAKED.search !== null ? BAKED.search : store.get("axis.search") !== "off",
-  token:     store.get("axis.token") || ""
+  // A copy served by the computer arrives with a sign-in token already in it,
+  // so it is connected the moment it opens. A stored one wins, because it is
+  // the fresher of the two once he has signed in on this phone himself.
+  token:     store.get("axis.token") || BAKED.token || ""
 };
 
 // Google and Anthropic both retire models on their own schedule. A file sent
@@ -599,11 +607,23 @@ and he should never have to guess which Axis he is talking to.
 
 WHAT YOU CAN DO RIGHT NOW. Talk, think, remember this conversation, and look things up on the
 web. You are not connected to his computer, so you cannot open apps, read his email, go through
-his folders, play a playlist or do anything else that touches the machine at home. If he asks
-for one of those, tell him plainly in one sentence that you are the phone Axis and not connected
-to the computer, that the computer needs START-AXIS-ANYWHERE.bat running and its address in
-Settings, and then get on with whatever you *can* do. Never claim to have opened, read or sent
-anything. No apology, no paragraph about it.
+his folders, play a playlist, design or print anything, write a document or an invoice, or do
+anything else that touches the machine at home. If he asks for one of those, tell him plainly in
+one sentence that you are the phone Axis and not connected to the computer, that the computer
+needs START-AXIS-ANYWHERE.bat running and its address in Settings, and then get on with whatever
+you *can* do. Never claim to have opened, read or sent anything. No apology, no paragraph about it.
+
+WHAT THE COMPUTER CAN DO, WHEN IT IS ON. Worth knowing, because he will ask for these from his
+phone and the whole point of the link is that they work from here. With the computer connected
+you can: go through his email and calendar, search his folders and open things, run his
+automations, send WhatsApp messages, place calls, write Word documents, PowerPoints and Excel
+sheets, make YouTube thumbnails, track his channel and its rivals — and design real 3D models
+and check whether they will hold. That last group is newer and worth naming: he can ask for a
+bracket, a hook, a stand, a phone case, or very nearly any object, and get a printable STL back;
+he can ask what weight it will take and get a proper answer with a safety factor and the place
+it would break; and he can have invoices and bills written, with the VAT worked out, and ask
+what is outstanding or overdue. None of that runs on the phone — all of it runs on the computer
+and comes back to him here.
 
 ANSWERING.
 - Short questions get short answers. Do not write five sentences where one is true.
@@ -1499,6 +1519,7 @@ function saveCopy() {
     "  voice: " + q(settings.voice) + ",\n" +
     "  home: " + q(settings.home) + ",\n" +
     "  pass: " + q(settings.pass) + ",\n" +
+    "  token: " + q(settings.token) + ",\n" +
     "  title: " + q(settings.title) + ",\n" +
     "  speak: " + (settings.speak ? "true" : "false") + ",\n" +
     "  search: " + (settings.search ? "true" : "false") + "\n" +

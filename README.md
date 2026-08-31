@@ -230,6 +230,31 @@ holes come from `tube`, from `plate` holes, from `extrude` cutouts, or from
 revolving a profile with the hollow already in it. That's a real limit, and the
 trade is a file that always slices.
 
+### Phone cases (no setup needed)
+
+*"Make me a case for my Samsung A35."*
+
+He has figures for the **Galaxy A35 and A55, iPhone 15 and 15 Pro, and Pixel 8**
+— and for anything else, measure yours and give him the width, height and
+thickness. Measured numbers always beat published ones.
+
+He builds the tray with rounded corners, a gap in the bottom for the charging
+port and speaker, a gap up the right side for the buttons, and a window in the
+back for the cameras. The A35 comes out **82.8 × 166.5 × 11.2 mm** with a
+0.4 mm clearance all round.
+
+Two things he'll tell you every time, because both save a wasted print:
+
+- **Print it in TPU.** A case has to stretch to go on. A rigid one in PLA or
+  PETG either won't go on or will snap doing it.
+- **The clearance is the fit.** One number. Too tight → ask for 0.6. Too loose
+  → ask for 0.3.
+
+Published dimensions are the body of the phone and don't include the camera
+bump, and different sources round them differently — so he says so, and offers
+to rebuild it from your own measurements. On a case, half a millimetre is the
+difference between it going on and not.
+
 ### Stress testing — will it actually hold? (no setup needed)
 
 *"Will that hold my coat?"* *"How much can it take?"* *"Where would it break?"*
@@ -324,6 +349,42 @@ and never weaker.
 
 The `.stl` is a proper closed solid — checked for open edges before it's
 written — so it drops straight into a slicer.
+
+### Bills and invoices (no setup needed)
+
+*"Invoice Anders 2500 for the website."* *"I've had a bill from the plumber for
+3400, due the 15th."* *"What do I owe?"* *"Who hasn't paid me?"*
+
+He writes the invoice, does the VAT, and **remembers it** — so it's a record
+before it's a document, and you can ask later.
+
+- **Two directions, never mixed up.** Invoices you send and bills that come in
+  are tracked separately, and never netted against each other. One combined
+  figure would be true and useless.
+- **Numbered in sequence** per year, and a number is never reused — not even
+  after you delete one. Two documents sharing a number is worse than a gap.
+- **Overdue is something he raises on his own.** An invoice nobody has paid
+  doesn't chase itself, and a bill you've forgotten costs you a fee. He'll
+  mention the oldest one, with how many days late — once a day, not on a loop.
+- VAT defaults to 25% and terms to 14 days, both settable, both overridable per
+  bill. Zero-rated lines are supported and shown separately, so a mixed bill
+  can be checked.
+
+**On the arithmetic.** Money is an integer count of øre from the moment it
+arrives to the moment it's printed — `0.1 + 0.2` is not `0.3` in any language
+with floating point in it, and an invoice one øre out is an invoice that gets
+queried. Tax is worked out **per rate on the summed base**, not per line:
+rounding each line and adding the results lands a couple of øre away from the
+tax on the total, and that difference is exactly what an accountant asks about.
+
+The document is written by code that does **no arithmetic of its own** — it
+asks for the totals and prints them. The paper and the answer he reads out
+cannot disagree.
+
+Your details, payment information, currency, VAT rate and terms go in
+**Settings → Invoicing**. None of it is required; filling it in is the
+difference between a document you can send and one you have to edit first.
+Invoices land in `Documents/Axis/Bills`.
 
 ### Spreadsheets
 
@@ -509,11 +570,39 @@ or without a key, and if Honcho is slow or down he simply answers without it.
 Every call is behind a timeout and a `catch` — **nothing about this can cost you
 a reply.**
 
+### Getting Axis onto your phone — one tap
+
+**Settings → Axis on your phone.** Download the file, or show a QR code and
+point your phone's camera at it.
+
+The copy you get is **already signed in**. It carries this computer's address
+and a key of its own, so it opens *connected* rather than to a form — nothing
+has to be typed on a phone keyboard.
+
+- **Your passcode is never in the file.** It can't be: it's stored as a scrypt
+  hash and can't be read back even by Axis. What's baked in is a sign-in token
+  instead, which is better anyway — changing your passcode revokes it along
+  with every other phone.
+- **The address is the one you're on.** Open Settings on your own Wi-Fi and the
+  copy works at home. Open Settings *through the tunnel* — the address from
+  START-AXIS-ANYWHERE — and the copy works from anywhere. A setting you'd have
+  to type is a setting you can get wrong.
+- **Your API keys are opt-in**, with a checkbox. Without them the phone is a
+  window onto this computer and needs it running. With them it also thinks for
+  itself when the computer is off — but then the file holds your keys, so treat
+  it like a password.
+
+**Every update reaches the phone automatically**, because the phone is a window
+onto this computer rather than a copy of it. 3D models, stress tests, phone
+cases, invoices — all of it runs here and comes back to your phone through the
+link. There's nothing to re-install when Axis gains a feature; only the file
+itself changes, and re-downloading takes one tap.
+
 ### The whole thing in one file (no computer needed)
 
 **AXIS-PHONE.html** is Axis in a single file. Send it to your phone however you
-like — WhatsApp, Discord, email, a cable — open it, and he's there. No server,
-no install, no build, and nothing has to be running at home.
+like — the download above, WhatsApp, Discord, email, a cable — open it, and he's
+there. No server, no install, no build, and nothing has to be running at home.
 
 Paste a free [Gemini key](https://aistudio.google.com/apikey) in once and he can
 talk, think, remember the conversation, listen, speak back, and search the web.
@@ -1725,6 +1814,8 @@ src/
       gmail/disconnect/ forget the stored Gmail token
       whatsapp/send/   direct WhatsApp send (used by the tool + testable directly)
       model/           serves a designed .stl to the projector, confined to Models/
+      phone-app/       hands out AXIS-PHONE.html, baked with this computer's address
+      phone-qr/        a QR code for that link, so nobody types a tunnel address
     page.tsx, layout.tsx, globals.css
   components/          Orb (3D), Hologram v3 (3D, pictures and parts), chat UI,
                        settings, top bar
@@ -1736,6 +1827,9 @@ src/
                        mesh.ts      triangulation, extrusion, watertightness, binary STL
                        bracket.ts   the bracket itself, built from what the sums decided
                        stl.ts       reads an .stl back, and frames it for the projector
+                       phoneCase.ts a case, parametric, with gaps by omission
+                       bills.ts     invoices and bills, in integer ore, never floats
+                       invoiceDoc.ts the same bill as a document, doing no sums of its own
 ```
 
 Security notes:
