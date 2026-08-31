@@ -359,6 +359,41 @@ baseline — otherwise it would quietly eat the change before you ever heard it.
 
 Needs a YouTube key and your own channel set, in **Settings → YouTube**.
 
+### He knows which device you're on (no setup needed)
+
+Opening Axis on a phone on a train isn't the same thing as opening him at the
+desk, and greeting both the same way is the tell that nothing is really paying
+attention. So he notices:
+
+> *"I see you're on your phone, sir. Is there anything I can do for you while
+> you're on the run?"*
+> *"You're on your phone, sir — want the headlines from your inbox?"*
+> *"On the move, sir. Say the word and I'll check what's on the computer for you."*
+> *"Travelling, sir? Anything you want me to have ready by the time you're back."*
+
+**Fifteen phone lines, five for a tablet, eight for the desk**, and he
+remembers the last several — six openings in a row give six different
+greetings.
+
+What he offers is shaped by the fact that you're *away from the machine*: your
+inbox, what's on the calendar, finding a file on the computer and sending it to
+you. Never "shall I open Spotify", which would start playing music in an empty
+room at home. And, exactly as with the other openers, **he only offers what's
+actually switched on** — with nothing connected he sticks to "anything I can do
+while you're out?", which always works.
+
+It carries into the conversation too, not just the hello: on a phone he keeps
+answers shorter and leads with the thing you asked for, and he's told to
+mention it *once* rather than every message — remarking on it every time isn't
+attentive, it's a tic.
+
+The detection is deliberately coarse. Precise device fingerprinting is a losing
+game — every browser lies, and iPads have claimed to be desktops since 2019 —
+but phone-versus-not comes down to a handful of tokens that have been stable
+for years, and that's all this needs. It reads iPhone, Android phone, iPad,
+Android tablet, Mac and Windows correctly, which is checked against their real
+user-agent strings.
+
 ### He offers to do things
 
 He answered well and started nothing, which made him a search box with a voice.

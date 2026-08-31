@@ -21,6 +21,7 @@ import { nextGreeting } from "@/lib/greeting";
 import { pickOffer } from "@/lib/offers";
 import { SpeechChunker } from "@/lib/speechChunks";
 import type { ActionLogEntry } from "@/lib/types";
+import type { DeviceKind } from "@/lib/device";
 import { SmallTalk, describeActions } from "@/lib/smallTalk";
 import { banterFor } from "@/lib/banter";
 import type { ChatMessage, IntegrationStatus, OrbState } from "@/lib/types";
@@ -57,6 +58,12 @@ export default function AxisApp() {
   // What he remembers of where things stood. undefined until the session has
   // been opened; "" once opened with nothing worth saying.
   const [briefing, setBriefing] = useState<string | undefined>(undefined);
+  // Which machine he is being used from. Taken from the session call rather
+  // than the status call, because it arrives with the briefing — and the
+  // greeting is spoken the moment the briefing lands, which is often before
+  // the status has come back. Reading it from the later of the two is how
+  // "I see you're on your phone" ends up never being said.
+  const [device, setDevice] = useState<DeviceKind>("computer");
   const [recap, setRecap] = useState<{ line: string; case: string } | null>(null);
   const [sessionDate, setSessionDate] = useState<string | null>(null);
   // Hands-free: pressing the microphone opens it and leaves it open, so a
@@ -463,6 +470,7 @@ export default function AxisApp() {
           briefing?: string;
           case?: string;
           date?: string;
+          device?: { kind?: DeviceKind };
           previous?: { date: string; summary: string } | null;
         }>(
           "/api/session",
@@ -470,6 +478,7 @@ export default function AxisApp() {
         );
         if (cancelled) return;
         const line = typeof data.briefing === "string" ? data.briefing : "";
+        if (data.device?.kind) setDevice(data.device.kind);
         setBriefing(line);
         if (typeof data.date === "string") setSessionDate(data.date);
         // Shown as well as spoken. He has remembered this all along; not
@@ -506,12 +515,19 @@ export default function AxisApp() {
     if (briefing === undefined) return;
 
     let greeted = false;
-    const greeting = nextGreeting();
+    // Shaped by the machine he is on: on a phone he says so, and offers the
+    // kind of thing that is useful away from the desk.
+    const greeting = nextGreeting(device, status);
     // Sometimes he offers to do something rather than waiting to be asked —
-    // but only ever something he can actually do, and never when he already
-    // has something to tell you. Two openings at once is a speech.
-    const offer = briefing ? null : pickOffer(status);
-    const line = briefing ? `${greeting} ${briefing}` : offer ? `${greeting} ${offer}` : greeting;
+    // but only ever something he can actually do, never when he already has
+    // something to tell you, and never on top of a greeting that has asked a
+    // question of its own. Two openings at once is a speech.
+    const offer = briefing || greeting.asks ? null : pickOffer(status);
+    const line = briefing
+      ? `${greeting.line} ${briefing}`
+      : offer
+        ? `${greeting.line} ${offer}`
+        : greeting.line;
 
     const say = async () => {
       if (greeted) return;
