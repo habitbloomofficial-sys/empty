@@ -272,6 +272,63 @@ console.log("Launchers…");
       }
     });
 
+    // A failure message that names a cause must not be shared by two DIFFERENT
+    // failures. REBUILD-AXIS.bat sent both "npm install failed" and "npm run
+    // build failed" to one label that blamed the internet — so a broken build
+    // told him his connection had dropped, and rerunning could never help.
+    //
+    // Reached twice is not itself the fault: START-AXIS-PHONE.bat checks the
+    // same firewall state before and after trying to fix it, and one message is
+    // right both times. What distinguishes them is the command each jump
+    // follows — two different commands failing into one explanation is the bug.
+    const blames = /\b(internet|connection|network|offline|wi-?fi)\b/i;
+    // The WHOLE command, not its first two words: "call npm install" and "call
+    // npm run build" are different failures, and a pattern that stops at the
+    // first space reads both as "call npm" and sees no difference at all.
+    const COMMAND = /^\s*((?:call|npm|node|git|powershell|netstat|where)\b.*)$/i;
+
+    const bodies = new Map();
+    let current = null;
+    for (const line of lines) {
+      const label = /^:([A-Za-z0-9_]+)/.exec(line.trim())?.[1]?.toLowerCase();
+      if (label) {
+        current = label;
+        bodies.set(current, "");
+      } else if (current) {
+        bodies.set(current, bodies.get(current) + line + "\n");
+      }
+    }
+
+    // For each jump, the command it is reacting to.
+    const causes = new Map();
+    lines.forEach((line, i) => {
+      if (/^\s*rem\b/i.test(line)) return;
+      const target = /\bgoto\s+:?([A-Za-z0-9_]+)/i.exec(line)?.[1]?.toLowerCase();
+      if (!target) return;
+      let cause = "(start of file)";
+      for (let back = i - 1; back >= 0 && back > i - 12; back--) {
+        const match = COMMAND.exec(lines[back]);
+        if (match) {
+          cause = match[1].trim().toLowerCase();
+          break;
+        }
+      }
+      if (!causes.has(target)) causes.set(target, new Set());
+      causes.get(target).add(cause);
+    });
+
+    for (const [label, body] of bodies) {
+      if (!blames.test(body)) continue;
+      const distinct = causes.get(label);
+      if (distinct && distinct.size > 1) {
+        problems.push(
+          `${file}: :${label} blames the connection but is reached after ${distinct.size} ` +
+            `different commands (${[...distinct].join(", ")}). Whichever one it isn't, the ` +
+            `message is wrong and rerunning cannot help. Give each failure its own label.`
+        );
+      }
+    }
+
     // Every goto must have a label to land on.
     const labels = new Set(
       lines.map((l) => /^:([A-Za-z0-9_]+)/.exec(l.trim())?.[1]?.toLowerCase()).filter(Boolean)
