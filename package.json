@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "next start -H 127.0.0.1",
     "lint": "eslint",
-    "phone": "next build && node scripts/phone-server.mjs"
+    "phone": "next build && node scripts/phone-server.mjs",
+    "verify": "node scripts/verify.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.120.0",

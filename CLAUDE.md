@@ -9,10 +9,19 @@ Useful commands:
 
 ```
 npm run dev            # http://127.0.0.1:3000
-npx tsc --noEmit       # types
-npx eslint             # lint
-npx next build --turbopack
+npm run verify         # every file, of every kind — run this before pushing
+npx tsc --noEmit       # types only
+npx eslint             # lint only
+npm run build          # what START-AXIS.bat runs. Test THIS, not --turbopack.
 ```
+
+`npm run verify` is the one that matters. TypeScript is two thirds of the files
+and none of the ones that have actually broken: the launcher is a `.bat`, the
+screen guide is Python, the phone is one enormous `.html`. It checks all of
+them — parses, compiles, lints, and reads each for the mistakes its own
+language makes — plus the batch traps that cannot be tested from Linux at all:
+LF line endings, a `goto` with no label, and a variable set and read inside the
+same parenthesised block.
 
 Settings and secrets live in `data/` (gitignored). Documents Axis writes go to
 `Documents/Axis/…`.
