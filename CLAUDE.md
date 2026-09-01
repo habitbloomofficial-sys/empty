@@ -26,6 +26,15 @@ same parenthesised block.
 Settings and secrets live in `data/` (gitignored). Documents Axis writes go to
 `Documents/Axis/…`.
 
+**One project per folder.** This repository has more than one branch in it —
+Axis on `claude/jarvis-email-whatsapp-agent-ro2zrn`, and a B2B webshop on
+`claude/b2b-webshop-access-code-vnlqfy`. They are different projects that
+happen to share a remote. Working on both in the same folder leaves files from
+one sitting in the other, and because `tsconfig` compiles everything under
+`src/`, the stray files are type-checked as though they belonged — producing a
+wall of "cannot find module" naming files this branch has never contained.
+`npm run verify` now catches exactly that, and so does the launcher.
+
 ---
 
 ## Screen guide

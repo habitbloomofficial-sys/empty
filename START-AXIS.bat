@@ -185,6 +185,27 @@ goto show_log
 echo.
 echo   Axis didn't build.
 echo.
+rem "Cannot find module" naming a folder Axis has never had means files from
+rem another project are sitting in src\. tsc compiles everything under there,
+rem so they break the build even though nothing in Axis imports them. Worth
+rem checking before he is sent to reinstall for the third time.
+git status --short src 2>nul | findstr /r "^??" >nul 2>nul
+if errorlevel 1 goto build_failed_plain
+echo   There are files in src\ that aren't part of Axis:
+echo.
+git status --short src 2>nul | findstr /r "^??"
+echo.
+echo   Those are left over from another project worked on in this folder.
+echo   Axis compiles everything under src\, so they break the build even
+echo   though nothing in Axis uses them.
+echo.
+echo   Look at the list above. If you don't want them here:
+echo       git clean -n -d src     (shows what would go - deletes nothing)
+echo       git clean -f -d src     (actually deletes them)
+echo.
+goto show_log
+
+:build_failed_plain
 echo   If the log mentions "type check" or a missing module, an update needs
 echo   installing: run REBUILD-AXIS.bat once and it will sort itself out.
 goto show_log

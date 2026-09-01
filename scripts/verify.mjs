@@ -87,6 +87,54 @@ console.log("TypeScript…");
   );
 }
 
+// --- Files that are here but are not part of Axis ---------------------------
+//
+// tsconfig compiles **/*.ts and **/*.tsx, so ANY stray TypeScript under src/
+// is type-checked as though it belonged — and a half-copy of another project
+// fails with forty lines of "cannot find module" that name files this
+// repository has never contained. That is a confusing way to learn that the
+// folder has two projects in it.
+
+console.log("Strays…");
+{
+  const trackedInSrc = new Set(tracked.filter((f) => f.startsWith("src/")));
+  const onDisk = [];
+  const walk = (dir) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (/\.(ts|tsx)$/.test(entry.name)) onDisk.push(full.replace(/\\/g, "/"));
+    }
+  };
+  if (fs.existsSync("src")) walk("src");
+
+  // Git decides what is ignored; asking it is more honest than reimplementing
+  // .gitignore here and getting it subtly wrong.
+  const untracked = onDisk.filter((f) => !trackedInSrc.has(f));
+  const strays = untracked.filter((f) => {
+    const ignored = run("git", ["check-ignore", "-q", f], { allowFail: true });
+    try {
+      execFileSync("git", ["check-ignore", "-q", f], { stdio: "pipe" });
+      return false; // ignored on purpose
+    } catch {
+      return true; // not ignored, not tracked — a stray
+    }
+    void ignored;
+  });
+
+  record(
+    `no stray TypeScript under src/ (${onDisk.length} files on disk)`,
+    strays.length === 0,
+    strays.length
+      ? `These are in the folder but are not part of Axis on this branch:\n  ${strays.join("\n  ")}\n\n` +
+        `  tsc compiles everything under src/, so they break the build even though\n` +
+        `  nothing in Axis imports them. They are most likely left over from another\n` +
+        `  project worked on in this same folder. Check with:  git status --short src\n` +
+        `  and, once you have looked at the list:  git clean -n -d src   (then -f to delete)`
+      : ""
+  );
+}
+
 // --- Python ----------------------------------------------------------------
 
 console.log("Python…");
