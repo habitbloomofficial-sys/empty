@@ -21,10 +21,13 @@ rem ---------------------------------------------------------------------------
 
 if not exist "data" mkdir "data"
 set "LOG=data\last-rebuild.log"
-echo Axis rebuild %DATE% %TIME% > "%LOG%"
+echo Axis rebuild %DATE% %TIME% (launcher 2026-09-01.3) > "%LOG%"
 
 echo.
 echo   Repairing Axis...
+echo.
+rem LAUNCHER VERSION 2026-09-01.3 - printed so it is obvious which copy is running.
+echo   launcher 2026-09-01.3
 echo.
 
 where node >nul 2>nul

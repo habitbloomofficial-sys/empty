@@ -7,6 +7,9 @@ echo.
 echo   Axis, from anywhere
 echo   -------------------
 echo.
+rem LAUNCHER VERSION 2026-09-01.3 - printed so it is obvious which copy is running.
+echo   launcher 2026-09-01.3
+echo.
 echo   This gives Axis a web address that works from any phone, on any
 echo   network, anywhere in the world. Leave this window open while you
 echo   are away - closing it takes him off the internet.

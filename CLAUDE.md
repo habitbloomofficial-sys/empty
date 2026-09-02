@@ -37,6 +37,39 @@ wall of "cannot find module" naming files this branch has never contained.
 
 ---
 
+## The launchers, and which copy is running
+
+There are five `.bat` files. `START-AXIS.bat` is the one he uses;
+`REBUILD-AXIS.bat` is the big hammer; `START-AXIS-PHONE.bat` and
+`START-AXIS-ANYWHERE.bat` serve him elsewhere; `CHECK-AXIS.bat` answers a
+question rather than doing anything.
+
+**Every one of them prints a version stamp**, and `npm run verify` fails if one
+doesn't, or if they disagree with each other:
+
+```
+rem LAUNCHER VERSION 2026-09-01.3 - printed so it is obvious which copy is running.
+echo   launcher 2026-09-01.3
+```
+
+Bump all five together when a launcher changes.
+
+This exists because of a day lost to a bug that was already fixed. The repaired
+`REBUILD-AXIS.bat` was on GitHub; the broken one was on his machine. He kept
+quoting a sentence back that no longer existed in the pushed file, and neither
+of us could see which copy he was running — so every symptom pointed at the fix
+being wrong rather than absent. **When he reports a launcher misbehaving, the
+first question is the stamp, not the symptom.** A pushed fix that hasn't been
+pulled looks exactly like a fix that didn't work.
+
+`CHECK-AXIS.bat` is the whole answer on one screen: folder, branch, commit, how
+many commits behind GitHub, the stamp in each launcher, stray files under
+`src\`, and node/npm versions — written to `data\last-check.log` so it can be
+sent rather than retyped. It reads and reports; it installs nothing and changes
+nothing.
+
+---
+
 ## Screen guide
 
 `screen-guide/guide.py` has two jobs:

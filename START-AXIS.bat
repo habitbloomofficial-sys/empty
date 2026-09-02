@@ -21,11 +21,14 @@ rem ---------------------------------------------------------------------------
 
 if not exist "data" mkdir "data"
 set "LOG=data\last-launch.log"
-echo Axis launch %DATE% %TIME% > "%LOG%"
+echo Axis launch %DATE% %TIME% (launcher 2026-09-01.3) > "%LOG%"
 
 echo.
 echo   A X I S
 echo   -------
+echo.
+rem LAUNCHER VERSION 2026-09-01.3 - printed so it is obvious which copy is running.
+echo   launcher 2026-09-01.3
 echo.
 
 rem --- the things Windows may not have ---------------------------------------

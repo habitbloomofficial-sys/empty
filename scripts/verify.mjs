@@ -225,6 +225,16 @@ console.log("Launchers…");
   const batch = byExtension(".bat");
   const problems = [];
 
+  // Every launcher says which version it is, on screen and in its log.
+  //
+  // This exists because of a day spent on a bug that was already fixed. The
+  // repaired REBUILD-AXIS.bat was on GitHub and the broken one was on his
+  // machine, and nothing either of us could see said so — the file gave no
+  // way to tell one copy from another, so every symptom pointed at the fix
+  // being wrong rather than absent. A stamp turns "it still says the old
+  // thing" into a number that settles it in one line.
+  const stamps = new Map();
+
   for (const file of batch) {
     const source = fs.readFileSync(file, "utf-8");
     const lines = source.split(/\r?\n/);
@@ -341,6 +351,32 @@ console.log("Launchers…");
         problems.push(`${file}:${i + 1}: goto ${target} — no such label`);
       }
     }
+
+    const stamp = /^rem LAUNCHER VERSION (\S+)/m.exec(source)?.[1];
+    if (!stamp) {
+      problems.push(
+        `${file}: no "rem LAUNCHER VERSION <version>" line. Without one there is no way to ` +
+          `tell, from the machine running it, whether this copy is the current one.`
+      );
+    } else if (!new RegExp(`echo\\s+launcher ${stamp}\\b`).test(source)) {
+      problems.push(
+        `${file}: stamped ${stamp} but never echoes it. A version only in a comment cannot ` +
+          `be read off the screen when the launcher fails, which is the moment it is wanted.`
+      );
+    } else {
+      stamps.set(file, stamp);
+    }
+  }
+
+  // One release, one number. Launchers stamped differently mean a half-applied
+  // update, which is the confusion this was built to end rather than cause.
+  const distinctStamps = new Set(stamps.values());
+  if (distinctStamps.size > 1) {
+    const listed = [...stamps].map(([file, stamp]) => `${file}=${stamp}`).join(", ");
+    problems.push(
+      `launchers carry ${distinctStamps.size} different versions (${listed}). ` +
+        `They ship together, so they should say the same thing.`
+    );
   }
   record(`batch launchers (${batch.length} files)`, problems.length === 0, problems.join("\n"));
 
