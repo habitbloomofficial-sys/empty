@@ -21,14 +21,14 @@ rem ---------------------------------------------------------------------------
 
 if not exist "data" mkdir "data"
 set "LOG=data\last-launch.log"
-echo Axis launch %DATE% %TIME% (launcher 2026-09-01.3) > "%LOG%"
+echo Axis launch %DATE% %TIME% (launcher 2026-09-02.1) > "%LOG%"
 
 echo.
 echo   A X I S
 echo   -------
 echo.
-rem LAUNCHER VERSION 2026-09-01.3 - printed so it is obvious which copy is running.
-echo   launcher 2026-09-01.3
+rem LAUNCHER VERSION 2026-09-02.1 - printed so it is obvious which copy is running.
+echo   launcher 2026-09-02.1
 echo.
 
 rem --- the things Windows may not have ---------------------------------------
@@ -188,6 +188,10 @@ goto show_log
 echo.
 echo   Axis didn't build.
 echo.
+rem The likeliest reason by far is that the fix for this was pulled and
+rem never arrived. Check that before blaming the code in front of us.
+git diff --quiet -- package.json package-lock.json 2>nul
+if errorlevel 1 goto build_failed_stuck
 rem "Cannot find module" naming a folder Axis has never had means files from
 rem another project are sitting in src\. tsc compiles everything under there,
 rem so they break the build even though nothing in Axis imports them. Worth
@@ -206,6 +210,17 @@ echo   Look at the list above. If you don't want them here:
 echo       git clean -n -d src     (shows what would go - deletes nothing)
 echo       git clean -f -d src     (actually deletes them)
 echo.
+goto show_log
+
+:build_failed_stuck
+echo   Before anything else: this folder cannot receive updates right now.
+echo   package.json and package-lock.json have local edits, which makes
+echo   "git pull" abort without doing anything - so the fix for whatever
+echo   is below may well be sitting on GitHub already.
+echo.
+echo       Run FIX-AXIS.bat, then REBUILD-AXIS.bat.
+echo.
+echo FAILED: build failed, and local package edits are blocking the pull >> "%LOG%"
 goto show_log
 
 :build_failed_plain

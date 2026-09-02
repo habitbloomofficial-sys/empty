@@ -7,8 +7,8 @@ echo.
 echo   Axis on your phone
 echo   --------------------
 echo.
-rem LAUNCHER VERSION 2026-09-01.3 - printed so it is obvious which copy is running.
-echo   launcher 2026-09-01.3
+rem LAUNCHER VERSION 2026-09-02.1 - printed so it is obvious which copy is running.
+echo   launcher 2026-09-02.1
 echo.
 echo   This serves Axis to your own Wi-Fi so your phone can reach it.
 echo   Leave this window open while you use it.

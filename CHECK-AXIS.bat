@@ -22,13 +22,13 @@ rem ---------------------------------------------------------------------------
 
 if not exist "data" mkdir "data"
 set "LOG=data\last-check.log"
-echo Axis check %DATE% %TIME% (launcher 2026-09-01.3) > "%LOG%"
+echo Axis check %DATE% %TIME% (launcher 2026-09-02.1) > "%LOG%"
 
 echo.
 echo   A X I S   -   C H E C K
 echo   -----------------------
-rem LAUNCHER VERSION 2026-09-01.3 - printed so it is obvious which copy is running.
-echo   launcher 2026-09-01.3
+rem LAUNCHER VERSION 2026-09-02.1 - printed so it is obvious which copy is running.
+echo   launcher 2026-09-02.1
 echo.
 
 rem --- where am I -------------------------------------------------------------
@@ -94,14 +94,31 @@ goto local_changes
 echo.
 echo   *** This folder is %BEHIND% update(s) BEHIND GitHub. ***
 echo.
-echo   That is the whole problem. The fix exists, it just isn't here yet.
-echo   Run this, in this folder, and then try Axis again:
+git diff --quiet -- package.json package-lock.json 2>nul
+if errorlevel 1 goto pull_blocked
+echo   The fix exists, it just is not here yet. Run this, in this folder:
 echo.
 echo       git pull
 echo.
 echo   If git pull prints an error, send me that error - it is the answer.
 echo.
 echo VERDICT: behind by %BEHIND% >> "%LOG%"
+goto local_changes
+
+:pull_blocked
+echo   And I can see exactly why it is stuck. package.json and
+echo   package-lock.json have local edits, which makes git pull abort
+echo   without doing anything at all:
+echo.
+echo       error: Your local changes to the following files would be
+echo              overwritten by merge ... Aborting
+echo.
+echo   That is why nothing has been reaching this computer, and why every
+echo   fix has looked like it did not work.
+echo.
+echo       Run FIX-AXIS.bat  -  it unsticks this without losing anything.
+echo.
+echo VERDICT: behind by %BEHIND%, pull blocked by local package edits >> "%LOG%"
 goto local_changes
 
 rem --- anything here that shouldn't be ---------------------------------------
@@ -121,11 +138,26 @@ echo   These break the build even though nothing in Axis imports them:
 echo       git clean -n -d src     shows what would go, deletes nothing
 echo       git clean -f -d src     actually deletes them
 echo.
-goto tools
+goto nested
 
 :no_strays
 echo   No stray files in src\.
 echo.
+
+goto nested
+
+rem --- a whole other project living inside this one -------------------------
+
+:nested
+if not exist "empty\package.json" goto tools
+echo   There is a SECOND project inside this folder:
+echo       %CD%\empty
+echo.
+echo   It has its own package.json and its own src folder, and it is not
+echo   part of Axis. Axis no longer compiles anything outside src\, so it
+echo   cannot break the build any more - but it should not be there.
+echo.
+echo Nested project at %CD%\empty >> "%LOG%"
 
 rem --- the tools Windows needs to have ---------------------------------------
 

@@ -22,13 +22,23 @@
       "@/*": ["./src/*"]
     }
   },
+  "//": [
+    "src/ and the two config files, rather than **/* — which used to mean",
+    "EVERY .ts under this folder, including a whole other project sitting in",
+    "a subfolder. A nested checkout that Axis does not import and does not",
+    "know about was compiled as though it belonged, and the build failed",
+    "naming modules Axis has never had. Nothing outside src/ is Axis, so",
+    "nothing outside src/ is compiled. Strays INSIDE src/ still break the",
+    "build - npm run verify and the launchers both look for those."
+  ],
   "include": [
     "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
+    "next.config.ts",
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "src/**/*.mts",
     ".next/types/**/*.ts",
-    ".next/dev/types/**/*.ts",
-    "**/*.mts"
+    ".next/dev/types/**/*.ts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", ".next", "**/node_modules"]
 }

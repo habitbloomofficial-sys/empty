@@ -21,13 +21,13 @@ rem ---------------------------------------------------------------------------
 
 if not exist "data" mkdir "data"
 set "LOG=data\last-rebuild.log"
-echo Axis rebuild %DATE% %TIME% (launcher 2026-09-01.3) > "%LOG%"
+echo Axis rebuild %DATE% %TIME% (launcher 2026-09-02.1) > "%LOG%"
 
 echo.
 echo   Repairing Axis...
 echo.
-rem LAUNCHER VERSION 2026-09-01.3 - printed so it is obvious which copy is running.
-echo   launcher 2026-09-01.3
+rem LAUNCHER VERSION 2026-09-02.1 - printed so it is obvious which copy is running.
+echo   launcher 2026-09-02.1
 echo.
 
 where node >nul 2>nul
@@ -38,18 +38,33 @@ if errorlevel 1 goto no_npm
 
 if not exist "package.json" goto wrong_folder
 
-echo   [1/3] Installing everything Axis needs...
+rem A pull that never landed cannot be rebuilt into working. Say so first,
+rem rather than spending five minutes reinstalling the same broken copy.
+git diff --quiet -- package.json package-lock.json 2>nul
+if errorlevel 1 goto pull_is_blocked
+
+echo   [1/4] Clearing the old libraries...
+rem node_modules is downloaded, never written by hand, so removing it loses
+rem nothing. It is also the only way to fix an install that no longer matches
+rem package-lock.json - which is what "could not find a declaration file"
+rem about a library usually means. npm install alone will not repair that.
+if exist "node_modules" echo         Removing node_modules - this is why the next step is slow.
+if exist "node_modules" rmdir /s /q "node_modules"
+if exist "data\.deps-stamp" del /q "data\.deps-stamp" >nul 2>nul
+
+echo.
+echo   [2/4] Installing everything Axis needs. This one takes a few minutes.
 echo Running npm install >> "%LOG%"
 call npm install >> "%LOG%" 2>&1
 if errorlevel 1 goto install_failed
 powershell -NoProfile -ExecutionPolicy Bypass -Command "(Get-FileHash 'package-lock.json' -Algorithm SHA256).Hash | Set-Content 'data\.deps-stamp'" >nul 2>nul
 
 echo.
-echo   [2/3] Clearing the old build...
+echo   [3/4] Clearing the old build...
 if exist ".next" rmdir /s /q ".next"
 
 echo.
-echo   [3/3] Building...
+echo   [4/4] Building...
 echo Running npm run build >> "%LOG%"
 call npm run build >> "%LOG%" 2>&1
 if errorlevel 1 goto build_failed
@@ -62,6 +77,21 @@ pause
 exit /b 0
 
 rem --- each failure, with its own cause --------------------------------------
+
+:pull_is_blocked
+echo   Stopping before I reinstall anything, because it would not help.
+echo.
+echo   package.json and package-lock.json have local edits in this folder.
+echo   That makes "git pull" abort without doing anything, so the fixes on
+echo   GitHub have not arrived - and rebuilding an old copy just rebuilds
+echo   an old copy.
+echo.
+echo   Run FIX-AXIS.bat first. It moves those edits somewhere safe, pulls,
+echo   and sends you back here. Then this file will do some good.
+echo.
+echo Stopped: local package edits are blocking the pull >> "%LOG%"
+pause
+exit /b 1
 
 :no_node
 echo   Node.js isn't installed on this computer.

@@ -35,14 +35,22 @@ one sitting in the other, and because `tsconfig` compiles everything under
 wall of "cannot find module" naming files this branch has never contained.
 `npm run verify` now catches exactly that, and so does the launcher.
 
+It happened again, worse: a whole second checkout at `empty\empty\`, with its
+own `package.json` and its own `src/`. `tsconfig` compiled `**/*.ts`, so every
+file in it was type-checked as part of Axis and the build died with fifty
+`TS2307`s naming a project this branch has never contained. **`tsconfig` is now
+scoped to `src/` plus `next.config.ts`**, so nothing outside `src/` can break
+the build at all. Strays *inside* `src/` still can, which is what the stray
+check is for.
+
 ---
 
 ## The launchers, and which copy is running
 
-There are five `.bat` files. `START-AXIS.bat` is the one he uses;
+There are six `.bat` files. `START-AXIS.bat` is the one he uses;
 `REBUILD-AXIS.bat` is the big hammer; `START-AXIS-PHONE.bat` and
 `START-AXIS-ANYWHERE.bat` serve him elsewhere; `CHECK-AXIS.bat` answers a
-question rather than doing anything.
+question rather than doing anything; `FIX-AXIS.bat` unsticks a blocked pull.
 
 **Every one of them prints a version stamp**, and `npm run verify` fails if one
 doesn't, or if they disagree with each other:
@@ -52,7 +60,7 @@ rem LAUNCHER VERSION 2026-09-01.3 - printed so it is obvious which copy is runni
 echo   launcher 2026-09-01.3
 ```
 
-Bump all five together when a launcher changes.
+Bump all six together when a launcher changes.
 
 This exists because of a day lost to a bug that was already fixed. The repaired
 `REBUILD-AXIS.bat` was on GitHub; the broken one was on his machine. He kept
@@ -64,9 +72,39 @@ pulled looks exactly like a fix that didn't work.
 
 `CHECK-AXIS.bat` is the whole answer on one screen: folder, branch, commit, how
 many commits behind GitHub, the stamp in each launcher, stray files under
-`src\`, and node/npm versions — written to `data\last-check.log` so it can be
-sent rather than retyped. It reads and reports; it installs nothing and changes
-nothing.
+`src\`, a second project nested in the folder, and node/npm versions — written
+to `data\last-check.log` so it can be sent rather than retyped. It reads and
+reports; it installs nothing and changes nothing.
+
+### The blocked pull
+
+This is the one that cost the most days, so it is worth knowing by heart:
+
+```
+error: Your local changes to the following files would be overwritten by merge:
+        package-lock.json
+        package.json
+Aborting
+```
+
+**When git says that, the pull does nothing.** Every fix stays on GitHub, the
+broken copy stays in his folder, and rerunning the launcher reruns the same
+broken copy. `npm` rewrites both files whenever it installs anything, so a
+stray `npm install` is enough to cause it — he never edited them on purpose.
+
+It is indistinguishable, from the outside, from a fix that didn't work. That is
+what made it expensive: every symptom pointed at the code.
+
+`FIX-AXIS.bat` handles it — `git stash push` on just those two files, then
+`git pull`. **Stash, never checkout:** his edits are kept and recoverable with
+`git stash pop`, because throwing away work he didn't know he had is not a
+repair. It shows the plan and waits for a keypress before touching anything.
+
+`START-AXIS.bat` and `REBUILD-AXIS.bat` both test for this state now and stop
+early, rather than spending five minutes rebuilding a copy that cannot be
+fixed by rebuilding. `REBUILD-AXIS.bat` also removes `node_modules` outright —
+`npm install` alone will not repair an install that no longer matches the lock
+file, which is what "could not find a declaration file for module X" means.
 
 ---
 

@@ -133,6 +133,47 @@ console.log("Strays…");
         `  and, once you have looked at the list:  git clean -n -d src   (then -f to delete)`
       : ""
   );
+
+  // A SECOND PROJECT NESTED INSIDE THIS ONE.
+  //
+  // The stray check above only ever looked under src/, and the thing that
+  // actually bit was one level up: a whole other checkout at C:\...\empty\empty,
+  // carrying its own package.json and its own src/. tsconfig used to compile
+  // **/*.ts, so every file in it was type-checked as part of Axis, and the
+  // build failed with fifty "cannot find module" lines naming a project this
+  // branch has never contained.
+  //
+  // tsconfig is now scoped to src/, so a folder like that can no longer break
+  // the build. It is still worth saying out loud, because everything else in
+  // the folder - git status, a search, the next person to look - is confused
+  // by it, and because nobody puts one there on purpose.
+  const nested = [];
+  const skip = new Set(["node_modules", ".next", ".git", "data", "Documents"]);
+  const hunt = (dir, depth) => {
+    if (depth > 3) return;
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (!entry.isDirectory() || skip.has(entry.name) || entry.name.startsWith(".")) continue;
+      const full = path.join(dir, entry.name);
+      if (fs.existsSync(path.join(full, "package.json"))) {
+        nested.push(full.replace(/\\/g, "/"));
+        continue; // named it; no need to walk inside it as well
+      }
+      hunt(full, depth + 1);
+    }
+  };
+  hunt(".", 0);
+
+  record(
+    `no second project nested in this folder`,
+    nested.length === 0,
+    nested.length
+      ? `Each of these is a folder with its own package.json inside the Axis folder:\n  ${nested.join("\n  ")}\n\n` +
+        `  That is a whole separate project sitting inside this one. One project per\n` +
+        `  folder: move it somewhere else, or delete it once you have looked at what\n` +
+        `  is in it. Nothing in Axis reads it, and leaving it there makes every\n` +
+        `  search, every git status and every build log harder to read.`
+      : ""
+  );
 }
 
 // --- Python ----------------------------------------------------------------
