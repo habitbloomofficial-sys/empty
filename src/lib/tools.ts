@@ -14,12 +14,32 @@ import {
   openApp,
   closeApp,
   openWebsite,
+  openTabs,
   isKnownApp,
   isDesktopControlEnabled,
   isSpotifyInstalled,
   isDiscordInstalled,
   openUri,
+  MAX_TABS,
+  type OpenWebsiteParams,
 } from "./desktop";
+import {
+  findWorkspace,
+  forgetWorkspace,
+  listWorkspaces,
+  pagesToOpen,
+  saveWorkspace,
+} from "./workspaces";
+import { arrangeWindows, focusWindow, isArrangement, listWindows } from "./windowControl";
+import {
+  findOrder,
+  isShopifyConfigured,
+  lowStock,
+  recentOrders,
+  salesSummary,
+  searchShopProducts,
+  shopInfo,
+} from "./shopify";
 import { forget, remember } from "./memory";
 import { noteLesson, searchSessions } from "./sessions";
 import {
@@ -92,6 +112,26 @@ const GMAIL_TOOLS = new Set([
   "read_email",
   "send_email",
   "create_email_draft",
+]);
+
+/** Everything that reaches out and touches the desktop. */
+const DESKTOP_TOOLS = new Set([
+  "open_tabs",
+  "open_workspace",
+  "save_workspace",
+  "list_workspaces",
+  "forget_workspace",
+  "list_windows",
+  "focus_window",
+  "arrange_windows",
+]);
+
+/** Everything that asks his shop a question. */
+const SHOPIFY_TOOLS = new Set([
+  "shopify_orders",
+  "shopify_order",
+  "shopify_summary",
+  "shopify_products",
 ]);
 
 export const toolDefinitions: OpenAI.Chat.Completions.ChatCompletionTool[] = [
@@ -898,6 +938,231 @@ export const toolDefinitions: OpenAI.Chat.Completions.ChatCompletionTool[] = [
   {
     type: "function",
     function: {
+      name: "open_tabs",
+      description:
+        "Open SEVERAL web pages at once, as tabs in one new browser window. This is the right tool the moment he wants more than one page — \"open my email, the calendar and the shop\", \"pull up everything for the meeting\", \"get me my morning tabs\". It is one browser launch rather than several, so a list of eight comes up together in about a second; calling open_website eight times instead is far slower and scatters them across eight windows. Each page is resolved the same way open_website resolves one, so names he uses work exactly as they do there. Up to 0MAXTABS at a time.",
+      parameters: {
+        type: "object",
+        properties: {
+          pages: {
+            type: "array",
+            description:
+              "The pages, in the order he wants them. Each entry is ONE page: give `site` for anything he named (\"gmail\", \"shopify\", \"google docs\"), `url` for an address, or `query` on its own for a web search. Mix them freely.",
+            items: {
+              type: "object",
+              properties: {
+                site: { type: "string", description: "A site by name, in his own words." },
+                url: { type: "string", description: "A full address or bare domain." },
+                query: {
+                  type: "string",
+                  description: "Search terms — within the site when one is given, otherwise the web.",
+                },
+              },
+            },
+          },
+        },
+        required: ["pages"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "open_workspace",
+      description:
+        "Open a saved set of pages by its name — \"open my morning\", \"bring up my work setup\", \"shop tabs please\". Workspaces are sets he saved himself with save_workspace. If he names one that doesn't exist, say which ones he has rather than guessing at pages he might have meant.",
+      parameters: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "The workspace name, in his words." },
+        },
+        required: ["name"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "save_workspace",
+      description:
+        "Remember a set of pages under a name, so he can open them all again by saying it. Use when he says \"save these as my morning\", \"call that my work tabs\", or describes a set he wants to keep. Saving over an existing name replaces it. This only stores the list — it does not open anything.",
+      parameters: {
+        type: "object",
+        properties: {
+          name: {
+            type: "string",
+            description: "What to call it — \"morning\", \"work\", \"shop\". Short and in his own words.",
+          },
+          pages: {
+            type: "array",
+            description:
+              "The pages, in the order he wants them. Each entry is ONE page: give `site` for anything he named (\"gmail\", \"shopify\", \"google docs\"), `url` for an address, or `query` on its own for a web search. Mix them freely.",
+            items: {
+              type: "object",
+              properties: {
+                site: { type: "string", description: "A site by name, in his own words." },
+                url: { type: "string", description: "A full address or bare domain." },
+                query: {
+                  type: "string",
+                  description: "Search terms — within the site when one is given, otherwise the web.",
+                },
+              },
+            },
+          },
+        },
+        required: ["name", "pages"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "list_workspaces",
+      description:
+        "The sets of tabs he has saved, and what is in each. Use before telling him a workspace doesn't exist, and when he asks what he has saved.",
+      parameters: { type: "object", properties: {}, required: [] },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "forget_workspace",
+      description: "Delete a saved set of tabs by name. Only when he asks for it to go.",
+      parameters: {
+        type: "object",
+        properties: { name: { type: "string", description: "The workspace to remove." } },
+        required: ["name"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "list_windows",
+      description:
+        "What is open on his screen right now — every window with a title, and which app it belongs to. Use it to answer \"what have I got open\", and before focus_window when you are not sure what he means by a name.",
+      parameters: { type: "object", properties: {}, required: [] },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "focus_window",
+      description:
+        "Bring an already-open window to the front — \"put Word in front\", \"switch to Chrome\", \"where's my email gone\". Matches on the window's title or its app name. This does not open anything and does not close anything; if nothing matches, say so rather than opening a new copy.",
+      parameters: {
+        type: "object",
+        properties: {
+          window: {
+            type: "string",
+            description: "Part of the window title or the app name — \"chrome\", \"invoice\", \"spotify\".",
+          },
+        },
+        required: ["window"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "arrange_windows",
+      description:
+        "Tidy the desk. \"side-by-side\" puts the open windows in vertical columns (what he wants for copying between two things), \"stacked\" puts them in horizontal rows, \"cascade\" overlaps them with all the title bars showing, \"minimise-all\" clears the screen, \"restore-all\" puts everything back as it was. Windows only.",
+      parameters: {
+        type: "object",
+        properties: {
+          how: {
+            type: "string",
+            enum: ["side-by-side", "stacked", "cascade", "minimise-all", "restore-all"],
+            description: "The arrangement.",
+          },
+        },
+        required: ["how"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "shopify_orders",
+      description:
+        "His Shopify orders — the recent ones, or just the ones still to be sent. Use for \"any orders today\", \"what's come in\", \"anything to post\", \"how many orders this week\". Returns the order number, who placed it, the total, whether it is paid and whether it has gone out, and what was in it. Read-only: this looks, it never changes an order.",
+      parameters: {
+        type: "object",
+        properties: {
+          limit: { type: "number", description: "How many to fetch, 1-50. Ten if not given." },
+          unfulfilled_only: {
+            type: "boolean",
+            description: "Only orders that still need sending. Use for \"what do I need to post\".",
+          },
+          since_days: {
+            type: "number",
+            description: "Only orders from the last N days — 1 for today, 7 for the week.",
+          },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "shopify_order",
+      description:
+        "One particular order, by its number — \"what was in order 1042\", \"has #1109 gone out yet\". Read-only.",
+      parameters: {
+        type: "object",
+        properties: {
+          order: { type: "string", description: "The order number, with or without the #." },
+        },
+        required: ["order"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "shopify_summary",
+      description:
+        "How the shop is doing: the store's own details, plus how many orders and how much money over a period, and how many are still to send. Use for \"how's the shop doing\", \"what have I taken this week\", \"which store am I connected to\". Read-only.",
+      parameters: {
+        type: "object",
+        properties: {
+          days: { type: "number", description: "The period in days. Seven if not given." },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "shopify_products",
+      description:
+        "Products in his shop — search them by name, or ask what is running out. Use for \"how many X have I got left\", \"what's low on stock\", \"is the blue one still listed\". Returns the title, whether it is active, the stock count and the price. Read-only.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: {
+            type: "string",
+            description: "Words from the product name. Leave out to list what there is.",
+          },
+          low_stock: {
+            type: "boolean",
+            description: "Only what is nearly out. Use for \"what needs restocking\".",
+          },
+          threshold: {
+            type: "number",
+            description: "With low_stock, what counts as low. Five if not given.",
+          },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "youtube_stats",
       description:
         "Look up statistics for a YouTube channel — his own unless he names another. Returns subscribers, total views and video count, and by default the most recent uploads with the views, likes and comments on each. Use this for anything about how the channel or its videos are doing.",
@@ -1324,6 +1589,12 @@ export function availableTools(): OpenAI.Chat.Completions.ChatCompletionTool[] {
     if (name === "open_app" || name === "close_app" || name === "open_website") {
       return isDesktopControlEnabled();
     }
+    // Tabs, saved sets of tabs, and moving windows about are all the same
+    // permission as opening one page, and ride on the same switch.
+    if (DESKTOP_TOOLS.has(name)) return isDesktopControlEnabled();
+    // Offering shop tools with no shop connected costs two round trips to
+    // discover what the absent setting already knows.
+    if (SHOPIFY_TOOLS.has(name)) return isShopifyConfigured();
     // Statistics need the API; opening a channel or a video does not. A
     // handle is a public URL and YouTube's own search takes a channel filter,
     // so gating the opening on a key meant it simply didn't work for anyone
@@ -1366,6 +1637,41 @@ export function availableTools(): OpenAI.Chat.Completions.ChatCompletionTool[] {
     if (name === "open_hologram") return true;
     return true;
   });
+}
+
+/**
+ * Turn a model's `pages` argument into a list the opener will accept.
+ *
+ * Everything here is defensive because everything here came off a stream: a
+ * page that is a bare string ("gmail") rather than an object is common enough
+ * to be worth handling, and an entry with none of the three fields set would
+ * otherwise reach resolveWebsiteTarget and throw a sentence about a missing
+ * site in the middle of opening eight other tabs.
+ */
+function readPages(value: unknown): OpenWebsiteParams[] {
+  if (!Array.isArray(value)) {
+    throw new Error("That needs a list of pages, sir, and none arrived.");
+  }
+  const pages = value
+    .map((entry): OpenWebsiteParams | null => {
+      // "open gmail, docs and the calendar" often arrives as bare strings.
+      if (typeof entry === "string") return text(entry) ? { site: entry.trim() } : null;
+      if (typeof entry !== "object" || entry === null) return null;
+      const row = entry as Record<string, unknown>;
+      const page: OpenWebsiteParams = {
+        site: text(row.site),
+        url: text(row.url),
+        query: text(row.query),
+      };
+      return page.site || page.url || page.query ? page : null;
+    })
+    .filter((page): page is OpenWebsiteParams => page !== null);
+
+  if (pages.length === 0) throw new Error("None of those were pages I could open, sir.");
+  if (pages.length > MAX_TABS) {
+    throw new Error(`That's ${pages.length} pages, sir — I'll open up to ${MAX_TABS} at a time.`);
+  }
+  return pages;
 }
 
 /** Read a string argument, treating blank and wrong-typed values as absent. */
@@ -1498,6 +1804,146 @@ export async function executeTool(
             summary: removed ? `Forgot: ${removed.text}` : "Nothing matched that to forget",
             ok: true,
           },
+        };
+      }
+      case "open_tabs": {
+        const result = await openTabs(readPages(args.pages));
+        return {
+          result,
+          log: {
+            tool: name,
+            summary: `Opened ${result.urls.length} tab${result.urls.length === 1 ? "" : "s"}`,
+            ok: true,
+          },
+        };
+      }
+      case "open_workspace": {
+        const wanted = text(args.name) ?? "";
+        const workspace = findWorkspace(wanted);
+        if (!workspace) {
+          const have = listWorkspaces().map((entry) => entry.name);
+          return {
+            result: {
+              opened: false,
+              saved: have,
+              note: have.length
+                ? `I've nothing saved as "${wanted}", sir. I have: ${have.join(", ")}.`
+                : `I've nothing saved as "${wanted}", sir — no workspaces at all yet.`,
+            },
+            log: { tool: name, summary: `No workspace named ${wanted}`, ok: false },
+          };
+        }
+        const result = await openTabs(pagesToOpen(workspace));
+        return {
+          result: { ...result, workspace: workspace.name },
+          log: {
+            tool: name,
+            summary: `Opened ${workspace.name} (${result.urls.length} tabs)`,
+            ok: true,
+          },
+        };
+      }
+      case "save_workspace": {
+        const pages = readPages(args.pages);
+        const saved = saveWorkspace(text(args.name) ?? "", pages);
+        return {
+          result: {
+            saved: saved.name,
+            pages: saved.pages.length,
+            note: `Saved ${saved.pages.length} page${saved.pages.length === 1 ? "" : "s"} as "${saved.name}", sir.`,
+          },
+          log: { tool: name, summary: `Saved workspace ${saved.name}`, ok: true },
+        };
+      }
+      case "list_workspaces": {
+        const all = listWorkspaces();
+        return {
+          result: {
+            workspaces: all.map((entry) => ({
+              name: entry.name,
+              pages: entry.pages.map((page) => page.site ?? page.url ?? page.query ?? "?"),
+            })),
+          },
+          log: { tool: name, summary: `${all.length} workspaces`, ok: true },
+        };
+      }
+      case "forget_workspace": {
+        const gone = forgetWorkspace(text(args.name) ?? "");
+        return {
+          result: gone
+            ? { forgot: gone.name, note: `"${gone.name}" is gone, sir.` }
+            : { forgot: null, note: "I had nothing saved under that name, sir." },
+          log: {
+            tool: name,
+            summary: gone ? `Forgot workspace ${gone.name}` : "No such workspace",
+            ok: Boolean(gone),
+          },
+        };
+      }
+      case "list_windows": {
+        const windows = await listWindows();
+        return {
+          result: { windows, count: windows.length },
+          log: { tool: name, summary: `${windows.length} windows open`, ok: true },
+        };
+      }
+      case "focus_window": {
+        const result = await focusWindow(text(args.window) ?? "");
+        return {
+          result,
+          log: { tool: name, summary: result.note, ok: result.focused },
+        };
+      }
+      case "arrange_windows": {
+        const how = (text(args.how) ?? "").toLowerCase();
+        if (!isArrangement(how)) {
+          throw new Error(`I don't know that arrangement, sir: "${how}".`);
+        }
+        const result = await arrangeWindows(how);
+        return { result, log: { tool: name, summary: result.note, ok: true } };
+      }
+      case "shopify_orders": {
+        const orders = await recentOrders({
+          limit: count(args.limit),
+          unfulfilledOnly: args.unfulfilled_only === true,
+          sinceDays: count(args.since_days),
+        });
+        return {
+          result: { orders, count: orders.length },
+          log: { tool: name, summary: `${orders.length} orders`, ok: true },
+        };
+      }
+      case "shopify_order": {
+        const reference = text(args.order) ?? "";
+        const order = await findOrder(reference);
+        return {
+          result: order ?? { found: false, note: `No order ${reference} in the shop, sir.` },
+          log: {
+            tool: name,
+            summary: order ? `Order ${order.name}` : `No order ${reference}`,
+            ok: Boolean(order),
+          },
+        };
+      }
+      case "shopify_summary": {
+        const [info, sales] = await Promise.all([shopInfo(), salesSummary(count(args.days) ?? 7)]);
+        return {
+          result: { shop: info, sales },
+          log: {
+            tool: name,
+            summary: `${info.name}: ${sales.orders} orders in ${sales.days} days`,
+            ok: true,
+          },
+        };
+      }
+      case "shopify_products": {
+        const products =
+          args.low_stock === true
+            ? await lowStock(count(args.threshold) ?? 5)
+            : await searchShopProducts(text(args.query) ?? "");
+        return {
+          result: { products, count: products.length },
+          log: { tool: name, summary: `${products.length} products`, ok: true },
         };
       }
       case "open_website": {

@@ -65,6 +65,8 @@ export const SETTING_KEYS = [
   "INVOICE_TAX_PERCENT",
   "INVOICE_TERMS_DAYS",
   "INVOICE_PAYMENT_DETAILS",
+  "SHOPIFY_STORE",
+  "SHOPIFY_TOKEN",
 ] as const;
 
 export type SettingKey = (typeof SETTING_KEYS)[number];
@@ -81,6 +83,8 @@ const SECRET_KEYS = new Set<SettingKey>([
   "TWILIO_AUTH_TOKEN",
   "YOUTUBE_API_KEY",
   "GOOGLE_SEARCH_KEY",
+  // An Admin API token reads every order and every customer in the shop.
+  "SHOPIFY_TOKEN",
 ]);
 
 export function isSecretKey(key: SettingKey): boolean {

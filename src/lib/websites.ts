@@ -105,6 +105,9 @@ export const WEBSITES: Website[] = [
   { key: "chatgptcode", name: "Replit", home: "https://replit.com", aliases: ["replit"] },
 
   // --- shopping and life ---
+  // admin.shopify.com is Shopify's own router: signed in, it lands on his
+  // store's admin without this file having to know the store's handle.
+  { key: "shopify", name: "his Shopify admin", home: "https://admin.shopify.com", aliases: ["shopify", "shopify admin", "my shop", "my store", "the shop", "shop admin", "store admin"] },
   { key: "amazon", name: "Amazon", home: "https://www.amazon.com", search: "https://www.amazon.com/s?k=" },
   { key: "ebay", name: "eBay", home: "https://www.ebay.com", search: "https://www.ebay.com/sch/i.html?_nkw=", aliases: ["e bay"] },
   { key: "booking", name: "Booking.com", home: "https://www.booking.com", aliases: ["booking com", "booking"] },

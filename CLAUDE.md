@@ -108,6 +108,69 @@ file, which is what "could not find a declaration file for module X" means.
 
 ---
 
+## What he can do to the computer
+
+Three capabilities beyond opening one page at a time, all on the same
+`DESKTOP_CONTROL` switch:
+
+- **`open_tabs`** — several pages in ONE new window, one browser launch. Six
+  pages come up in about a second. Calling `open_website` six times instead is
+  slower and scatters them across six windows. Capped at 15.
+- **Workspaces** — a named set of tabs, saved in `data/workspaces.json`.
+  "Save these as my morning", then "open my morning". Name matching is
+  deliberately loose: "my morning setup" finds `Morning`.
+- **Window control** (`src/lib/windowControl.ts`) — focus by name, tile side by
+  side or stacked, cascade, minimise all, restore all.
+
+Two things are absent **by construction**, and `npm run verify` fails if either
+comes back:
+
+- **Nothing closes a window.** A window holds unsaved work, a wrong guess about
+  which one he meant destroys it silently, and there is no undo. Opening and
+  arranging are recoverable; closing is not.
+- **Nothing writes to Shopify.** `src/lib/shopify.ts` has no mutation in it —
+  no refund, no cancellation, no price change, no fulfilment. "Check my store"
+  is what was asked for, and a mistake in a file with a write in it costs a
+  customer's money. If he wants Axis to change the shop, that is a separate
+  decision made out loud, not a capability that arrives quietly beside reading
+  the order list.
+
+Window titles come from web pages, emails and file names — attacker-shaped
+text. They reach PowerShell through an **environment variable**, read back as
+data, never interpolated into a script. `focus_window` matches in TypeScript
+over a list PowerShell already returned, so the search text never enters a
+shell at all.
+
+### Shopify
+
+`SHOPIFY_STORE` + `SHOPIFY_TOKEN` in Settings. The token is an Admin API access
+token from a custom app (`shpat_…`), needing only `read_orders`,
+`read_products`, `read_customers`. Only the `myshopify.com` host authenticates,
+so `storeHost()` reduces whatever he pasted to that and **refuses a custom
+domain** rather than guessing.
+
+---
+
+## Running the code, not just reading it
+
+`scripts/behaviour.mjs`, check 15 of `npm run verify`.
+
+Everything else in `verify` reads the code — tsc proves the types agree, eslint
+the style, the build that it compiles — and **not one of them runs a line**.
+Every bug that has actually reached him passed all three and then quietly did
+the wrong thing: end caps facing inward, a torus inside out, a 34mm gap that
+came out 38mm.
+
+`scripts/tsresolve.mjs` lets plain `node` import the real `src/` modules
+(extensionless imports, and the `@/` alias), so the suite tests the shipping
+code rather than a copy of its logic.
+
+**Add a case whenever something breaks in a way nothing caught**, and prove the
+case fails before trusting it — two of the checks in there were written wrong
+the first time and passed anyway.
+
+---
+
 ## Screen guide
 
 `screen-guide/guide.py` has two jobs:

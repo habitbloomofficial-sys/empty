@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import {
+  BagIcon,
   BrainIcon,
   ChatIcon,
   ClockIcon,
@@ -1169,6 +1170,71 @@ export function SettingsModal({
               busy={busySection === "whatsapp"}
               saved={savedSection === "whatsapp"}
               checks={checks.whatsapp}
+            />
+          </Section>
+          <Section
+            icon={<BagIcon className="h-4 w-4" />}
+            title="Shopify"
+            ok={Boolean(status?.shopify)}
+          >
+            <p>
+              Lets him check the shop: orders that have come in, what still needs
+              posting, what is running low. He can <b>look but not touch</b> —
+              nothing here can refund, cancel, or change a price.
+            </p>
+            <div className="rounded-none bg-amber-500/10 px-2.5 py-2 text-amber-300">
+              <p className="mb-1 font-semibold">Where the token comes from</p>
+              <ol className="ml-4 list-decimal space-y-0.5">
+                <li>
+                  In your Shopify admin, go to <b>Settings</b> →{" "}
+                  <b>Apps and sales channels</b> → <b>Develop apps</b>.
+                </li>
+                <li>
+                  <b>Create an app</b>, name it Axis, then{" "}
+                  <b>Configure Admin API scopes</b>.
+                </li>
+                <li>
+                  Tick <code>read_orders</code>, <code>read_products</code> and{" "}
+                  <code>read_customers</code>. Nothing that writes.
+                </li>
+                <li>
+                  <b>Install app</b>, then reveal the <b>Admin API access token</b>.
+                  It starts with <code>shpat_</code> and is shown{" "}
+                  <b>only once</b>.
+                </li>
+              </ol>
+            </div>
+            <Field
+              label="Store address"
+              view={views.SHOPIFY_STORE}
+              value={draft("SHOPIFY_STORE")}
+              onChange={(v) => setDraft("SHOPIFY_STORE", v)}
+              placeholder="your-shop.myshopify.com"
+              hint={
+                status?.shopifyStore
+                  ? `Connected to ${status.shopifyStore}.`
+                  : "The myshopify.com one, not your own domain — only that address can sign in."
+              }
+            />
+            <Field
+              label="Admin API access token"
+              view={views.SHOPIFY_TOKEN}
+              value={draft("SHOPIFY_TOKEN")}
+              onChange={(v) => setDraft("SHOPIFY_TOKEN", v)}
+              placeholder={views.SHOPIFY_TOKEN?.display || "shpat_…"}
+            />
+            <SaveButton
+              onClick={() =>
+                save("shopify", {
+                  SHOPIFY_STORE: draft("SHOPIFY_STORE"),
+                  ...(draft("SHOPIFY_TOKEN").trim()
+                    ? { SHOPIFY_TOKEN: draft("SHOPIFY_TOKEN") }
+                    : {}),
+                })
+              }
+              busy={busySection === "shopify"}
+              saved={savedSection === "shopify"}
+              checks={checks.shopify}
             />
           </Section>
           <Section

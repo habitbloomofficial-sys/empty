@@ -373,14 +373,32 @@ export function preferredBrowser(): BrowserChoice | null {
  * a preference that fails silently when the browser is uninstalled is worse
  * than no preference.
  */
-function browserCommands(): { file: string; args: (url: string) => string[] }[] {
+/**
+ * How one browser wants to be told about several pages at once.
+ *
+ * Chromium — Chrome, Edge, Opera, Brave — takes any number of URLs as bare
+ * arguments and makes a tab of each. Firefox takes the first and SILENTLY
+ * DROPS the rest unless every one after it is introduced by -new-tab, which is
+ * the worst possible failure here: "open my six morning tabs" opens one, and
+ * nothing anywhere says why.
+ *
+ * Exported because that is a difference worth a test rather than a comment.
+ */
+export function tabArguments(browser: BrowserChoice, urls: string[]): string[] {
+  if (browser !== "firefox") return urls;
+  return [urls[0], ...urls.slice(1).flatMap((url) => ["-new-tab", url])];
+}
+
+function browserCommands(): { file: string; args: (urls: string[]) => string[] }[] {
   const chosen = preferredBrowser();
   const order: BrowserChoice[] = chosen
     ? [chosen, ...BROWSER_CHOICES.filter((name) => name !== chosen)]
     : [...BROWSER_CHOICES];
 
-  const commands: { file: string; args: (url: string) => string[] }[] = [];
+  const commands: { file: string; args: (urls: string[]) => string[] }[] = [];
   for (const browser of order) {
+    const spread = (urls: string[]): string[] => tabArguments(browser, urls);
+
     for (const file of pathsFor(browser)) {
       commands.push(
         process.platform === "darwin"
@@ -388,24 +406,35 @@ function browserCommands(): { file: string; args: (url: string) => string[] }[] 
               // On macOS the paths are .app bundles, which are opened rather
               // than executed.
               file: "open",
-              args: (url: string) => ["-na", file, "--args", "--new-window", url],
+              args: (urls: string[]) => ["-na", file, "--args", "--new-window", ...spread(urls)],
             }
           : // Chrome, Edge, Opera and Brave are all Chromium underneath, and
             // Firefox understands --new-window too.
-            { file, args: (url: string) => ["--new-window", url] }
+            { file, args: (urls: string[]) => ["--new-window", ...spread(urls)] }
       );
     }
   }
   return commands;
 }
 
-async function openInNewWindow(url: string): Promise<boolean> {
+/**
+ * Open every one of these in ONE new browser window, as tabs.
+ *
+ * One spawn, not one per page. Launching a browser six times races six copies
+ * of the same process against each other: they either fight over the profile
+ * lock and lose pages, or land in six separate windows, and either way it
+ * takes seconds per page instead of being instant. Handing the whole list to a
+ * single invocation is both faster and the only way to be sure they end up
+ * together.
+ */
+async function openInNewWindow(urls: string[]): Promise<boolean> {
+  if (urls.length === 0) return false;
   for (const { file, args } of browserCommands()) {
     // On Windows and Linux these are real paths or commands; skip missing ones
     // rather than paying for a failed spawn each time.
     if (path.isAbsolute(file) && !fs.existsSync(file)) continue;
     try {
-      const child = execFile(file, args(url), { windowsHide: false });
+      const child = execFile(file, args(urls), { windowsHide: false });
       child.unref();
       return true;
     } catch {
@@ -495,7 +524,7 @@ export async function openWebsite(params: OpenWebsiteParams): Promise<OpenWebsit
 
   // A window of its own by default — that's what's usually wanted of an
   // assistant, and it doesn't disturb whatever you already had open.
-  const inWindow = params.newWindow !== false && (await openInNewWindow(url));
+  const inWindow = params.newWindow !== false && (await openInNewWindow([url]));
   if (!inWindow) await launch(url);
 
   return {
@@ -683,4 +712,65 @@ export function isDiscordInstalled(): boolean {
 export async function openLocalPath(target: string): Promise<void> {
   requireDesktopControl();
   await launch(target);
+}
+
+/** How many pages he can be sent at once. */
+export const MAX_TABS = 15;
+
+export interface OpenTabsResult {
+  opened: boolean;
+  urls: string[];
+  /** The proper names of the ones he knew, in the same order. */
+  labels: string[];
+  note: string;
+}
+
+/**
+ * Open a whole set of pages at once, as tabs in one new window.
+ *
+ * Each entry is resolved the same way a single one is — by name where he knows
+ * the site, as a search where he doesn't — so "gmail, my shopify orders, the
+ * calendar" lands on three real pages rather than three searches.
+ *
+ * The cap is not a formality. This is a tool a model calls with a list it
+ * wrote, and a list it wrote can be wrong in a way that opens two hundred
+ * windows and needs a reboot to clear. Fifteen is more than anyone means by
+ * "open my morning tabs", so refusing above it costs nothing real.
+ */
+export async function openTabs(entries: OpenWebsiteParams[]): Promise<OpenTabsResult> {
+  requireDesktopControl();
+  if (entries.length === 0) throw new Error("Which pages would you like open, sir?");
+  if (entries.length > MAX_TABS) {
+    throw new Error(
+      `That's ${entries.length} pages, sir — I'll open up to ${MAX_TABS} at a time.`
+    );
+  }
+
+  const urls: string[] = [];
+  const labels: string[] = [];
+  for (const entry of entries) {
+    const { target, label } = resolveWebsiteTarget(entry);
+    const url = normalizeWebUrl(target);
+    // The same page twice is a mistake in the list, not a request for two tabs.
+    if (urls.includes(url)) continue;
+    urls.push(url);
+    labels.push(label ?? url);
+  }
+
+  const together = await openInNewWindow(urls);
+  if (!together) {
+    // No browser we recognise. Fall back to handing each to Windows, which is
+    // slower and scatters them, but does open the pages he asked for.
+    for (const url of urls) await launch(url);
+  }
+
+  return {
+    opened: true,
+    urls,
+    labels,
+    note:
+      urls.length === 1
+        ? `Opened ${labels[0]}.`
+        : `Opened ${urls.length} tabs: ${labels.join(", ")}.`,
+  };
 }

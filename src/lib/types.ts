@@ -56,6 +56,10 @@ export interface IntegrationStatus {
   /** The redirect URI that must be registered in the Google OAuth client. */
   gmailRedirectUri: string;
   whatsapp: boolean;
+  /** The Shopify store is connected and can be asked about orders. */
+  shopify: boolean;
+  /** Which store, so he can see at a glance that it is the right one. */
+  shopifyStore: string | null;
   /** Whether Axis can place a call and connect you to it. */
   phone: boolean;
   /** Names you can ask him to call. */

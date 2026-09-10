@@ -26,6 +26,7 @@ import { isPasscodeSet } from "@/lib/passcode";
 import { requestZone } from "@/lib/network";
 import { listSessionDates } from "@/lib/sessions";
 import { humour, userTitle } from "@/lib/address";
+import { isShopifyConfigured, storeHost } from "@/lib/shopify";
 import type { IntegrationStatus } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -44,6 +45,8 @@ export async function GET(req: NextRequest) {
     gmailCredentials: areGmailCredentialsConfigured(),
     gmailRedirectUri: redirectUri(),
     whatsapp: isWhatsAppConfigured(),
+    shopify: isShopifyConfigured(),
+    shopifyStore: storeHost(),
     phone: isPhoneConfigured(),
     phoneContacts: isPhoneConfigured() ? savedContacts().map((c) => c.name) : [],
     calendar: isCalendarConfigured(),

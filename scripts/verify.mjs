@@ -17,7 +17,7 @@
 import { execFileSync, execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 process.chdir(ROOT);
@@ -452,6 +452,35 @@ console.log("Secrets…");
     }
   }
   record("no secrets committed", found.length === 0, found.join("\n"));
+}
+
+// --- What the code actually DOES -------------------------------------------
+//
+// Everything above this line reads the code. tsc proves the types agree,
+// eslint proves the style does, the build proves it compiles — and not one of
+// them runs a line of it. The bugs that have actually reached him were all of
+// the kind that pass every one of those and then quietly do the wrong thing:
+// end caps facing inward, a torus inside out, a gap 4mm wider than asked for.
+// scripts/behaviour.mjs runs the decisions and checks their answers.
+
+console.log("Behaviour…");
+{
+  const ran = run("node", [
+    "--experimental-strip-types",
+    "--import",
+    // The hook that lets plain node import this project's TypeScript.
+    `data:text/javascript,import{register}from'node:module';register(${JSON.stringify(
+      pathToFileURL(path.join("scripts", "tsresolve.mjs")).href
+    )});`,
+    "scripts/behaviour.mjs",
+  ]);
+  // Node prints its own experimental warnings to stderr; they are not failures.
+  const said = ran.out
+    .split("\n")
+    .filter((line) => !/ExperimentalWarning|trace-warnings|MODULE_TYPELESS|Reparsing|To eliminate/.test(line))
+    .join("\n")
+    .trim();
+  record("library behaviour", ran.ok, said);
 }
 
 // --- The build the launcher actually runs ----------------------------------

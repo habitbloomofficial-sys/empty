@@ -278,3 +278,22 @@ export function FilmIcon({ className }: IconProps) {
     </svg>
   );
 }
+
+export function BagIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className}>
+      <path
+        d="M5.2 8.5h13.6l-1 10a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8l-1-10Z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M8.8 8.5v-1.8a3.2 3.2 0 0 1 6.4 0v1.8"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
