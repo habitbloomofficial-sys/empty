@@ -77,7 +77,7 @@ const PROVIDER_KEYS: Record<Provider, string> = {
 /**
  * What each one costs, said on the button itself.
  *
- * This matters more than it looks. Three of the four cost nothing to run Axis
+ * This matters more than it looks. Three of the four cost nothing to run Jarvis
  * on, and the one that does is the one listed first because it is the best —
  * which is exactly the arrangement that leaves someone assuming the whole app
  * needs a card on file. It doesn't, and it never has.
@@ -286,7 +286,7 @@ export function SettingsModal({
   const [models, setModels] = useState<{ id: string; name: string; free?: boolean }[]>([]);
   const [busySection, setBusySection] = useState<string | null>(null);
   const [savedSection, setSavedSection] = useState<string | null>(null);
-  // Getting Axis onto the phone. The link is built from whatever address this
+  // Getting Jarvis onto the phone. The link is built from whatever address this
   // page was opened on, because that is the address the phone will have to
   // reach — a setting he would have to type is a setting he can get wrong.
   const [phoneKeys, setPhoneKeys] = useState(false);
@@ -324,7 +324,7 @@ export function SettingsModal({
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = "AXIS-PHONE.html";
+      link.download = "JARVIS-PHONE.html";
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -468,8 +468,8 @@ export function SettingsModal({
             key: "PASSCODE" as never,
             ok: true,
             message: passcode
-              ? "Passcode set. Axis will ask for it when he's reached from the internet."
-              : "Passcode removed. Axis will no longer answer from the internet at all.",
+              ? "Passcode set. Jarvis will ask for it when he's reached from the internet."
+              : "Passcode removed. Jarvis will no longer answer from the internet at all.",
           },
         ],
       }));
@@ -577,7 +577,7 @@ export function SettingsModal({
             title="AI brain"
             ok={Boolean(status?.brain)}
           >
-            <p>Paste an API key below to give Axis a brain. You only need one.</p>
+            <p>Paste an API key below to give Jarvis a brain. You only need one.</p>
 
             <div className="flex gap-1.5 rounded-full bg-black/30 p-1">
               {(Object.keys(PROVIDER_LABELS) as Provider[]).map((p) => (
@@ -727,7 +727,7 @@ export function SettingsModal({
                 <div className="rounded-none bg-amber-500/10 px-2.5 py-2 text-amber-300">
                   <p className="mb-1 font-semibold">Free, and the best free option.</p>
                   <p>
-                    No card, no credit, no trial that runs out. It gives Axis a
+                    No card, no credit, no trial that runs out. It gives Jarvis a
                     brain <i>and</i> the ability to search the web, both on
                     Google&apos;s free tier. If money is the question, this is the
                     answer — it takes about thirty seconds.
@@ -755,7 +755,7 @@ export function SettingsModal({
                   <p className="mb-1 font-semibold">Free models available.</p>
                   <p>
                     The model list below marks free models and sorts them to the
-                    top. Pick one of those and Axis costs nothing to run — you
+                    top. Pick one of those and Jarvis costs nothing to run — you
                     only ever spend if you deliberately choose a paid model.
                   </p>
                 </div>
@@ -769,7 +769,7 @@ export function SettingsModal({
                 >
                   openrouter.ai/keys
                 </a>
-                  . Only models that can call tools are listed, since Axis needs
+                  . Only models that can call tools are listed, since Jarvis needs
                   them to open apps and read email — and the free ones are marked
                   and sorted to the top.
                 </p>
@@ -902,7 +902,7 @@ export function SettingsModal({
             ok
           >
             <p>
-              How Axis speaks to you. Both apply everywhere — spoken replies,
+              How Jarvis speaks to you. Both apply everywhere — spoken replies,
               typed ones, and the little things he says while he works.
             </p>
             <Field
@@ -957,7 +957,7 @@ export function SettingsModal({
               saved={savedSection === "personality"}
             />
             <p className="text-[10px] text-sand-600">
-              Some things are fixed: say “Hey Axis, daddy&apos;s home” and the
+              Some things are fixed: say “Hey Jarvis, daddy&apos;s home” and the
               answer is always, exactly, “Welcome home,{" "}
               {draft("USER_TITLE") || status?.title || "sir"}.”
             </p>
@@ -971,7 +971,7 @@ export function SettingsModal({
             {status?.gmail ? (
               <>
                 <p className="rounded-none bg-amber-500/10 px-2.5 py-1.5 text-amber-300">
-                  ✓ Connected — Axis can search, read, draft, reply to, and send
+                  ✓ Connected — Jarvis can search, read, draft, reply to, and send
                   email.
                 </p>
                 {status.calendar ? (
@@ -984,7 +984,7 @@ export function SettingsModal({
                   // Better to say so here than to let him discover it.
                   <p className="rounded-none bg-amber-500/10 px-2.5 py-1.5 text-amber-300">
                     Calendar isn&apos;t included in this connection — it was made
-                    before Axis could read it. Disconnect and connect again, and
+                    before Jarvis could read it. Disconnect and connect again, and
                     the consent screen will ask for your calendar this time.
                   </p>
                 )}
@@ -1190,7 +1190,7 @@ export function SettingsModal({
                   <b>Apps and sales channels</b> → <b>Develop apps</b>.
                 </li>
                 <li>
-                  <b>Create an app</b>, name it Axis, then{" "}
+                  <b>Create an app</b>, name it Jarvis, then{" "}
                   <b>Configure Admin API scopes</b>.
                 </li>
                 <li>
@@ -1243,7 +1243,7 @@ export function SettingsModal({
             ok={Boolean(status?.youtube)}
           >
             <p>
-              Lets Axis report on your channel — subscribers, total views, and how
+              Lets Jarvis report on your channel — subscribers, total views, and how
               your recent uploads are doing. Ask him &quot;how&apos;s the channel
               doing?&quot; once this is set.
             </p>
@@ -1304,7 +1304,7 @@ export function SettingsModal({
           >
             <p>
               Say <i>&quot;call the pizza place&quot;</i> and your phone rings — answer
-              it and you&apos;re connected. <b>You</b> do the talking; Axis places the
+              it and you&apos;re connected. <b>You</b> do the talking; Jarvis places the
               call and gets out of the way. Twilio charges per minute for this, on
               both legs of the call.
             </p>
@@ -1385,7 +1385,7 @@ export function SettingsModal({
             ok={(status?.zaps?.length ?? 0) > 0}
           >
             <p>
-              Anything Zapier connects to — thousands of apps — by giving Axis a
+              Anything Zapier connects to — thousands of apps — by giving Jarvis a
               Zap to pull the trigger on. Say <i>&quot;run my morning
               routine&quot;</i> and he fires it.
             </p>
@@ -1437,7 +1437,7 @@ export function SettingsModal({
             ok={Boolean(status?.webSearch)}
           >
             <p>
-              Lets Axis look things up instead of guessing — today&apos;s news,
+              Lets Jarvis look things up instead of guessing — today&apos;s news,
               prices, opening hours, anything that happened after his brain was
               built. He can already <b>read</b> any page you give him; this is the
               part that lets him <b>find</b> one.
@@ -1516,7 +1516,7 @@ export function SettingsModal({
             ok={Boolean(status?.passcodeSet)}
           >
             <p>
-              Reaching Axis when you&apos;re nowhere near this computer — on a
+              Reaching Jarvis when you&apos;re nowhere near this computer — on a
               train, on holiday, anywhere with a signal. It needs two things: a
               passcode here, and a tunnel running on this computer.
             </p>
@@ -1529,7 +1529,7 @@ export function SettingsModal({
             <div className="rounded-none bg-amber-500/10 px-2.5 py-2 text-amber-300">
               <p className="mb-1 font-semibold">The passcode is not optional.</p>
               <p>
-                Axis reads your email, places calls, runs your automations and
+                Jarvis reads your email, places calls, runs your automations and
                 opens things on this computer. Reachable from the internet
                 without a passcode he is all of that for whoever finds the
                 address — so he refuses to answer the internet at all until one
@@ -1570,20 +1570,20 @@ export function SettingsModal({
               }
             />
             <p className="text-[10px] text-sand-600">
-              Then run <b>START-AXIS-ANYWHERE.bat</b> on this computer instead of
+              Then run <b>START-JARVIS-ANYWHERE.bat</b> on this computer instead of
               the usual launcher. It gives you a web address that works from
               anywhere and a QR code to carry it to your phone. The computer has
-              to stay on — your phone is still a window onto the Axis running
+              to stay on — your phone is still a window onto the Jarvis running
               here.
             </p>
           </Section>
           <Section
             icon={<PhoneIcon className="h-4 w-4" />}
-            title="Axis on your phone"
+            title="Jarvis on your phone"
             ok={Boolean(status?.passcodeSet)}
           >
             <p>
-              The whole of Axis in one file. Open it on your phone and he is
+              The whole of Jarvis in one file. Open it on your phone and he is
               there — same voice, same memory, and every tool on this computer
               through the link back to it.
             </p>
@@ -1662,7 +1662,7 @@ export function SettingsModal({
                 Whatever you opened this page on. On your own Wi-Fi that is this
                 computer&apos;s address on it, and the file works at home. Open
                 Settings <i>through the tunnel</i> — the address from
-                START-AXIS-ANYWHERE — and the copy you download works from
+                START-JARVIS-ANYWHERE — and the copy you download works from
                 anywhere instead.
               </p>
             </div>
@@ -1710,7 +1710,7 @@ export function SettingsModal({
             </div>
             <p className="text-[10px] text-sand-600">
               Leave the model empty and he picks the cheapest one your key can
-              use. Videos land in Documents\Axis\Videos.
+              use. Videos land in Documents\Jarvis\Videos.
             </p>
           </Section>
           <Section
@@ -1831,7 +1831,7 @@ export function SettingsModal({
               Nothing here is required — he will write an invoice without any of
               it. Filling it in is the difference between a document you can send
               and one you have to edit first. Invoices are numbered in sequence
-              per year and land in Documents\Axis\Bills.
+              per year and land in Documents\Jarvis\Bills.
             </p>
           </Section>
           <GroupHeading title="THIS COMPUTER" blurb="What he may do on the machine he runs on." />
@@ -1841,7 +1841,7 @@ export function SettingsModal({
             ok={Boolean(status?.desktopControl)}
           >
             <p>
-              Lets Axis open things on this computer — &quot;open Spotify&quot;,
+              Lets Jarvis open things on this computer — &quot;open Spotify&quot;,
               &quot;put on some Bowie&quot;, &quot;open YouTube&quot;, &quot;search
               YouTube for lo-fi&quot;, or any site you name. Spotify opens to a search;
               pressing play is still yours.
@@ -1957,7 +1957,7 @@ export function SettingsModal({
             ok={(status?.fileRoots?.length ?? 0) > 0}
           >
             <p>
-              Axis can find files in your own folders — ask him &quot;where&apos;s
+              Jarvis can find files in your own folders — ask him &quot;where&apos;s
               my tax return?&quot; or &quot;find the video I downloaded
               yesterday&quot; — and open what he finds. He can see where files are,
               not what is inside them.
@@ -2026,14 +2026,14 @@ export function SettingsModal({
             </label>
             <div className="rounded-none bg-amber-500/10 px-2.5 py-2 text-amber-300">
               <p className="mb-1 font-semibold">
-                If &quot;Hey Axis&quot; never works, this is the first thing to check.
+                If &quot;Hey Jarvis&quot; never works, this is the first thing to check.
               </p>
               <p>
                 This used to follow your browser&apos;s own language, which is a
                 different thing entirely — it&apos;s the language of the menus,
-                not the one you speak to Axis in. On a Danish Mac that meant
+                not the one you speak to Jarvis in. On a Danish Mac that meant
                 Chrome was listening in Danish, and Danish speech-to-text will
-                never return the word &quot;Axis&quot;. Every part of the wake
+                never return the word &quot;Jarvis&quot;. Every part of the wake
                 word worked; the name simply never arrived. <b>His name is
                 English, so leave this on English</b> unless you genuinely speak
                 to him in something else.
@@ -2052,7 +2052,7 @@ export function SettingsModal({
             ok={Boolean(status?.idleTalk)}
           >
             <p>
-              Lets Axis start a conversation instead of only answering one —
+              Lets Jarvis start a conversation instead of only answering one —
               unread mail, your channel moving, the essay or deck you were last
               working on, something in the diary within the hour.
             </p>
@@ -2112,7 +2112,7 @@ export function SettingsModal({
               on, and Google Calendar what is coming up. With none of them
               connected there is nothing for him to notice, so he stays quiet.
               <b> WhatsApp is not among them</b> — Twilio can send messages but
-              never tells Axis about arriving ones, so he has no way to know
+              never tells Jarvis about arriving ones, so he has no way to know
               whether you have any, and won&apos;t pretend to.
             </p>
           </Section>
@@ -2123,7 +2123,7 @@ export function SettingsModal({
             ok={Boolean(status?.honcho)}
           >
             <p>
-              Axis&apos;s own memory below lives in a file on this machine. Honcho
+              Jarvis&apos;s own memory below lives in a file on this machine. Honcho
               is a service that keeps a longer, richer picture of you — one that
               would follow him onto your phone and survive a reinstall.
             </p>
@@ -2160,7 +2160,7 @@ export function SettingsModal({
             ok={memories.length > 0}
           >
             <p>
-              Things Axis has learned about you, kept between sessions. He saves
+              Things Jarvis has learned about you, kept between sessions. He saves
               these himself as they come up — names, preferences, how you like things
               done — and you can ask him to forget any of them.
             </p>

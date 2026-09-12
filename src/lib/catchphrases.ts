@@ -42,7 +42,7 @@ export function normalisePhrase(text: string): string {
 /**
  * The fixed reply for something said, or null.
  *
- * The wake word is stripped first, so "Hey Axis, daddy's home" and "daddy's
+ * The wake word is stripped first, so "Hey Jarvis, daddy's home" and "daddy's
  * home" are the same phrase — and the trigger has to be the whole of what was
  * said, so mentioning it inside a longer sentence doesn't fire it.
  */

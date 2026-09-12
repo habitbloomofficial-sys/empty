@@ -2,7 +2,7 @@ import type OpenAI from "openai";
 
 // One conversation turn, whoever is thinking.
 //
-// Axis has always talked to his brain in OpenAI's chat-completions shape,
+// Jarvis has always talked to his brain in OpenAI's chat-completions shape,
 // because OpenAI, Gemini and OpenRouter all speak it. Anthropic does not: the
 // Messages API has its own request shape, its own streaming events, and its own
 // way of carrying a tool call. Bending it through an OpenAI-compatible shim

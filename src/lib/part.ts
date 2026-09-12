@@ -332,7 +332,7 @@ export function writeModel(spec: ModelSpec): WrittenModel & { built: BuiltModel 
   fs.mkdirSync(folder, { recursive: true });
 
   const target = uniquePath(folder, safeFilename((spec.name || "model").slice(0, 60), "stl"));
-  fs.writeFileSync(target, toStl(built.triangles, `Axis — ${spec.name}`));
+  fs.writeFileSync(target, toStl(built.triangles, `Jarvis — ${spec.name}`));
 
   return {
     built,

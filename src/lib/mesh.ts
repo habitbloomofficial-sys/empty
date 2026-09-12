@@ -305,7 +305,7 @@ function normal(t: Triangle): Vec3 {
 }
 
 /** Binary STL: smaller than the text kind, and every slicer reads it. */
-export function toStl(triangles: Triangle[], title = "Axis"): Buffer {
+export function toStl(triangles: Triangle[], title = "Jarvis"): Buffer {
   const buffer = Buffer.alloc(84 + triangles.length * 50);
   buffer.write(title.slice(0, 79).padEnd(80, " "), 0, 80, "ascii");
   buffer.writeUInt32LE(triangles.length, 80);

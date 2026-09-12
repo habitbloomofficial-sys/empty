@@ -1,6 +1,6 @@
 import type { IntegrationStatus } from "./types";
 
-// Things Axis offers to do, unprompted, when you open him.
+// Things Jarvis offers to do, unprompted, when you open him.
 //
 // He answers well and starts nothing, which makes him feel like a search box
 // with a voice. A line like "need an essay in Word doing for tomorrow?" costs

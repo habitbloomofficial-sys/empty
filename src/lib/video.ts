@@ -14,7 +14,7 @@ import { outputFolder, safeFilename, uniquePath } from "./documents";
 // video, every time.** Somewhere between one and three dollars for eight
 // seconds, depending on the model, and there is no free tier for it anywhere —
 // not Google's, not anyone's. Video generation is the single most expensive
-// thing Axis can be asked to do, and a spoken assistant that can spend three
+// thing Jarvis can be asked to do, and a spoken assistant that can spend three
 // dollars on a misheard sentence is a bad idea.
 //
 // So it is off until switched on, it names its price before it starts, and it

@@ -1,6 +1,6 @@
 // Where a request came from, and how much that is worth trusting.
 //
-// Three zones, and the difference between them decides whether Axis answers at
+// Three zones, and the difference between them decides whether Jarvis answers at
 // all:
 //
 //   loopback  this machine. Nobody else can reach it, ever.
@@ -8,7 +8,7 @@
 //             house, and by nothing on the internet.
 //   public    the open internet. Anyone, from anywhere.
 //
-// Axis can read your email, place calls, fire automations and open things on
+// Jarvis can read your email, place calls, fire automations and open things on
 // your computer. On the public internet that is not an app, it is a way in —
 // so a request from there is refused unless it carries proof of a passcode.
 
@@ -74,7 +74,7 @@ export function clientAddress(headers: Headers, fallback?: string | null): strin
  * The zone a request belongs to.
  *
  * A forwarding header means something is in front of us, and the only things
- * that sit in front of Axis are tunnels to the internet. So its mere presence
+ * that sit in front of Jarvis are tunnels to the internet. So its mere presence
  * rules out loopback, even when the address it names looks local — that is
  * exactly what a forged header would say.
  */

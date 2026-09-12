@@ -1,4 +1,4 @@
-// "Hey Axis" is never what the recogniser actually hears. Across a room, on
+// "Hey Jarvis" is never what the recogniser actually hears. Across a room, on
 // a laptop microphone, it comes back as "hey Travis", "hi Jarvis", "a service",
 // "jarvis." with a full stop. Matching the literal string would mean the wake
 // word almost never works; matching too loosely would mean he wakes up during
@@ -6,19 +6,22 @@
 // enough, as a word of its own, and near the start of what was said.
 
 /**
- * He answers to Axis, and still to Jarvis.
+ * He answers to Jarvis, and still to Axis.
  *
- * Keeping the old name costs nothing and saves the weeks of saying it out of
- * habit. Axis is the harder of the two for a microphone: it is short, and its
+ * Jarvis is the name now. Axis stays because it was the name for a while and
+ * nobody unlearns one in a day — keeping it costs nothing, and the alternative
+ * is him ignoring the weeks of saying it out of habit.
+ *
+ * Axis is the harder of the two for a microphone: it is short, and its
  * commonest mishearing — "access" — is an ordinary English word, so it is
- * accepted only as an alias in the leading position, where "access my email"
- * cannot reach it.
+ * accepted only in the leading position, where "access my email" cannot reach
+ * it.
  */
-const WAKE_NAMES = ["axis", "jarvis"];
+const WAKE_NAMES = ["jarvis", "axis"];
 
 /** Mishearings common enough to accept outright. */
 const ALIASES = new Set([
-  // Axis
+  // Axis, the old name, still answered to
   "axis",
   "axes",
   "access",
@@ -26,7 +29,7 @@ const ALIASES = new Set([
   "axus",
   "acksis",
   "axiss",
-  // Jarvis, kept
+  // Jarvis
   "jarvis",
   "travis",
   "jervis",
@@ -126,7 +129,7 @@ export function detectWakeWord(transcript: string): WakeMatch {
 export type StandbyOrder = "standby" | "resume" | null;
 
 /**
- * "Axis, standby" and "Axis, wake up".
+ * "Jarvis, standby" and "Jarvis, wake up".
  *
  * Deliberately built on detectWakeWord rather than beside it: the name has to
  * be recognised the same way here as anywhere else, mishearings and all, or

@@ -43,7 +43,7 @@ export function UnlockScreen({ noPasscode }: { noPasscode: boolean }) {
             <div className="h-2 w-2 animate-blink bg-amber-300 shadow-[0_0_10px_#ff7a00]" />
           </div>
           <div className="text-[19px] font-medium leading-none tracking-[0.42em] text-cream">
-            AXIS
+            JARVIS
           </div>
           <div className="ax-label text-[8px]">
             {noPasscode ? "NO PASSCODE SET" : "LOCKED"}
@@ -52,7 +52,7 @@ export function UnlockScreen({ noPasscode }: { noPasscode: boolean }) {
 
         {noPasscode ? (
           <p className="border border-amber-500/25 bg-amber-500/10 px-3 py-2.5 text-[12px] leading-relaxed text-amber-300">
-            Axis is reachable from the internet, but no passcode has been set —
+            Jarvis is reachable from the internet, but no passcode has been set —
             so he won&apos;t answer at all. Open him on the computer he runs on,
             go to <b>Settings → Remote access</b>, and set one. Then come back
             here.
@@ -85,7 +85,7 @@ export function UnlockScreen({ noPasscode }: { noPasscode: boolean }) {
         )}
 
         <p className="mt-8 text-center text-[10px] leading-relaxed text-sand-700">
-          You&apos;re reaching Axis from outside his own network, so he asks
+          You&apos;re reaching Jarvis from outside his own network, so he asks
           first.
         </p>
       </div>

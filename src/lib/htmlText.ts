@@ -4,7 +4,7 @@
 // share buttons, a newsletter box, and three scripts for every paragraph. Hand
 // all of that to a language model and you pay for it twice — once in tokens,
 // once in the model losing the thread. So the page is cut down here, on the
-// server, before Axis ever sees it.
+// server, before Jarvis ever sees it.
 //
 // This is deliberately a small hand-written pass rather than a parser library.
 // It has to survive broken markup without throwing, and it only ever produces

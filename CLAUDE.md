@@ -1,7 +1,7 @@
-# Axis — working notes
+# Jarvis — working notes
 
 This is a Next.js 16 app (App Router, TypeScript, Tailwind v4) that runs a
-personal assistant called Axis on the owner's own machine. **The owner is on
+personal assistant called Jarvis on the owner's own machine. **The owner is on
 Windows.** There are macOS launchers in the repository from a spell on a
 MacBook; leave them, but write new tooling for Windows first.
 
@@ -12,7 +12,7 @@ npm run dev            # http://127.0.0.1:3000
 npm run verify         # every file, of every kind — run this before pushing
 npx tsc --noEmit       # types only
 npx eslint             # lint only
-npm run build          # what START-AXIS.bat runs. Test THIS, not --turbopack.
+npm run build          # what START-JARVIS.bat runs. Test THIS, not --turbopack.
 ```
 
 `npm run verify` is the one that matters. TypeScript is two thirds of the files
@@ -23,11 +23,11 @@ language makes — plus the batch traps that cannot be tested from Linux at all:
 LF line endings, a `goto` with no label, and a variable set and read inside the
 same parenthesised block.
 
-Settings and secrets live in `data/` (gitignored). Documents Axis writes go to
-`Documents/Axis/…`.
+Settings and secrets live in `data/` (gitignored). Documents Jarvis writes go to
+`Documents/Jarvis/…`.
 
 **One project per folder.** This repository has more than one branch in it —
-Axis on `claude/jarvis-email-whatsapp-agent-ro2zrn`, and a B2B webshop on
+Jarvis on `claude/jarvis-email-whatsapp-agent-ro2zrn`, and a B2B webshop on
 `claude/b2b-webshop-access-code-vnlqfy`. They are different projects that
 happen to share a remote. Working on both in the same folder leaves files from
 one sitting in the other, and because `tsconfig` compiles everything under
@@ -37,7 +37,7 @@ wall of "cannot find module" naming files this branch has never contained.
 
 It happened again, worse: a whole second checkout at `empty\empty\`, with its
 own `package.json` and its own `src/`. `tsconfig` compiled `**/*.ts`, so every
-file in it was type-checked as part of Axis and the build died with fifty
+file in it was type-checked as part of Jarvis and the build died with fifty
 `TS2307`s naming a project this branch has never contained. **`tsconfig` is now
 scoped to `src/` plus `next.config.ts`**, so nothing outside `src/` can break
 the build at all. Strays *inside* `src/` still can, which is what the stray
@@ -47,10 +47,18 @@ check is for.
 
 ## The launchers, and which copy is running
 
-There are six `.bat` files. `START-AXIS.bat` is the one he uses;
-`REBUILD-AXIS.bat` is the big hammer; `START-AXIS-PHONE.bat` and
-`START-AXIS-ANYWHERE.bat` serve him elsewhere; `CHECK-AXIS.bat` answers a
-question rather than doing anything; `FIX-AXIS.bat` unsticks a blocked pull.
+**He is called Jarvis.** He was Axis for a while; that name is gone from the
+code, and the only places it survives are deliberate: the six `START-AXIS…`
+forwarders, and `"axis"` in the wake-word alias list, because nobody unlearns a
+name in a day. Note that `Axis` is ALSO the geometry type in `section.ts` and
+`stress.ts` (`"x" | "y" | "z"`) — those two files were excluded from the rename
+and must stay that way.
+
+There are six real `.bat` files plus six forwarders under the old names.
+`START-JARVIS.bat` is the one he uses;
+`REBUILD-JARVIS.bat` is the big hammer; `START-JARVIS-PHONE.bat` and
+`START-JARVIS-ANYWHERE.bat` serve him elsewhere; `CHECK-JARVIS.bat` answers a
+question rather than doing anything; `FIX-JARVIS.bat` unsticks a blocked pull.
 
 **Every one of them prints a version stamp**, and `npm run verify` fails if one
 doesn't, or if they disagree with each other:
@@ -60,17 +68,17 @@ rem LAUNCHER VERSION 2026-09-01.3 - printed so it is obvious which copy is runni
 echo   launcher 2026-09-01.3
 ```
 
-Bump all six together when a launcher changes.
+Bump all twelve together when a launcher changes — the forwarders are stamped too.
 
 This exists because of a day lost to a bug that was already fixed. The repaired
-`REBUILD-AXIS.bat` was on GitHub; the broken one was on his machine. He kept
+`REBUILD-JARVIS.bat` was on GitHub; the broken one was on his machine. He kept
 quoting a sentence back that no longer existed in the pushed file, and neither
 of us could see which copy he was running — so every symptom pointed at the fix
 being wrong rather than absent. **When he reports a launcher misbehaving, the
 first question is the stamp, not the symptom.** A pushed fix that hasn't been
 pulled looks exactly like a fix that didn't work.
 
-`CHECK-AXIS.bat` is the whole answer on one screen: folder, branch, commit, how
+`CHECK-JARVIS.bat` is the whole answer on one screen: folder, branch, commit, how
 many commits behind GitHub, the stamp in each launcher, stray files under
 `src\`, a second project nested in the folder, and node/npm versions — written
 to `data\last-check.log` so it can be sent rather than retyped. It reads and
@@ -95,14 +103,14 @@ stray `npm install` is enough to cause it — he never edited them on purpose.
 It is indistinguishable, from the outside, from a fix that didn't work. That is
 what made it expensive: every symptom pointed at the code.
 
-`FIX-AXIS.bat` handles it — `git stash push` on just those two files, then
+`FIX-JARVIS.bat` handles it — `git stash push` on just those two files, then
 `git pull`. **Stash, never checkout:** his edits are kept and recoverable with
 `git stash pop`, because throwing away work he didn't know he had is not a
 repair. It shows the plan and waits for a keypress before touching anything.
 
-`START-AXIS.bat` and `REBUILD-AXIS.bat` both test for this state now and stop
+`START-JARVIS.bat` and `REBUILD-JARVIS.bat` both test for this state now and stop
 early, rather than spending five minutes rebuilding a copy that cannot be
-fixed by rebuilding. `REBUILD-AXIS.bat` also removes `node_modules` outright —
+fixed by rebuilding. `REBUILD-JARVIS.bat` also removes `node_modules` outright —
 `npm install` alone will not repair an install that no longer matches the lock
 file, which is what "could not find a declaration file for module X" means.
 
@@ -131,7 +139,7 @@ comes back:
 - **Nothing writes to Shopify.** `src/lib/shopify.ts` has no mutation in it —
   no refund, no cancellation, no price change, no fulfilment. "Check my store"
   is what was asked for, and a mistake in a file with a write in it costs a
-  customer's money. If he wants Axis to change the shop, that is a separate
+  customer's money. If he wants Jarvis to change the shop, that is a separate
   decision made out loud, not a capability that arrives quietly beside reading
   the order list.
 
@@ -168,6 +176,60 @@ code rather than a copy of its logic.
 **Add a case whenever something breaks in a way nothing caught**, and prove the
 case fails before trusting it — two of the checks in there were written wrong
 the first time and passed anyway.
+
+---
+
+## Teaching, plans, and the telephone
+
+- **Exam and revision help gives the ANSWER.** Not a hint, not "what do you
+  think" — he is an adult under time pressure. Answer in one line, then the
+  rule that produces it, then the trap the question was built around. Work
+  every step when it is worked; if he got it wrong, say *where* ("the sign
+  flipped at line three"), not that it is wrong. Say plainly when uncertain —
+  a confident wrong answer in revision gets learned and repeated in the exam.
+- **A learning plan is a PDF**, made with `create_document` kind `guide`. Real
+  numbered steps, one a day, each a specific thing to DO. A fortnight is
+  fourteen entries; three bullets and "repeat daily" is not a plan.
+- **`call_me_with_update`** rings his own phone, reads a message aloud twice,
+  and hangs up — nothing is dialled afterwards. Only when he has asked to be
+  told. It must say the answer itself, aloud, in sentences; a call announcing
+  that an update exists has wasted the call. Capped at
+  `MAX_SPOKEN_UPDATE` characters and shares the one-minute call cooldown.
+
+## The PDF writer
+
+`src/lib/pdf.ts`, **no dependency**. Not pride — every dependency has to survive
+an `npm install` on his machine, and the last one that didn't cost a fortnight
+of "Failed to type check" with the fix unreachable on GitHub. A PDF that needs
+nothing installed works the moment he pulls.
+
+It is less magic than it sounds: a PDF is objects, a table of their byte
+offsets, and a trailer pointing at the table. The fourteen standard fonts need
+no embedding. The only real work is the Helvetica width tables, which are what
+let a line be measured before it is drawn.
+
+Two things that broke and are now checked:
+
+- **The xref offsets.** Every entry is a byte offset; one wrong and a reader
+  opens nothing. `behaviour.mjs` re-derives them and follows each.
+- **WinAnsi encoding.** The file is one byte per character, and an em dash is
+  not latin1 — written naively it becomes a *hole in the sentence*, exactly
+  where the sentence turns. Same for the bullet glyph. `escapePdf` maps them.
+
+## A bug worth remembering
+
+`create_document`'s dispatch copied `heading`, `paragraphs` and `bullets` out of
+the model's arguments and stopped — while the schema declared `layout` and
+`figures`, the prompt described them at length, and `documents.ts` read them.
+They were chosen correctly and thrown away one line before use. **Every deck
+came out as plain bullets and no chart was ever drawn**, which is the opposite
+of what he asked for, and nothing said so.
+
+The lesson generalises: a field is not wired up because it exists in the schema
+and in the writer. Something has to carry it between them, and nothing type-
+checks that gap — the dispatch built a fresh object literal, so the missing
+fields were simply `undefined`, which is legal. `behaviour.mjs` now runs
+`executeTool` end to end and reads the written file.
 
 ---
 
@@ -302,7 +364,7 @@ which means there is one place that decides and no way to forget.
 
 ## The assistant's own voice
 
-Axis is an English butler: impeccably polite, unflappable, razor-witted. That
+Jarvis is an English butler: impeccably polite, unflappable, razor-witted. That
 lives in `src/lib/systemPrompt.ts` and `src/lib/address.ts` (the `HUMOUR`
 setting is the dial: `dry`, `playful`, `off`).
 

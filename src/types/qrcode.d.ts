@@ -1,4 +1,4 @@
-// The sliver of `qrcode` that Axis actually uses.
+// The sliver of `qrcode` that Jarvis actually uses.
 //
 // The package ships no types of its own. Depending on @types/qrcode for this
 // works, but it is a devDependency that exists solely to describe one function

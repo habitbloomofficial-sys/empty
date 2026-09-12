@@ -7,7 +7,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Axis</title>
+<title>Jarvis</title>
 
 <!--
   A X I S  -  the whole thing, in one file.
@@ -21,8 +21,8 @@
   phone. He can talk, remember, listen, speak, and search the web. He cannot
   touch your computer, and says so rather than pretending.
 
-  CONNECTED TO HOME. If the computer is running START-AXIS-ANYWHERE.bat, put
-  its address and passcode into Settings and he talks to the real Axis instead:
+  CONNECTED TO HOME. If the computer is running START-JARVIS-ANYWHERE.bat, put
+  its address and passcode into Settings and he talks to the real Jarvis instead:
   your email, your folders, your playlists, everything he can do at his desk.
   The phone becomes a window rather than a substitute.
 
@@ -230,7 +230,7 @@
   }
   .msg.axis { align-self: flex-start; color: var(--cream); }
   .msg.axis::before {
-    content: "AXIS";
+    content: "JARVIS";
     display: block;
     font-size: 0.6rem;
     letter-spacing: 0.22em;
@@ -351,7 +351,7 @@
 
 <!-- ------------------------------------------------------------- setup -->
 <section id="setup">
-  <h1>AXIS</h1>
+  <h1>JARVIS</h1>
   <p><strong>One key and he's awake.</strong> Pick what he thinks with, and paste
   its key. Everything else is optional and lives in Settings afterwards.</p>
 
@@ -388,7 +388,7 @@
     nowhere else. There's no server in this file — it <em>is</em> the whole app.</p>
     <p style="margin:0">On his own he can talk, think, remember, listen, speak
     and search the web. To reach your <em>email, folders and computer</em> he has
-    to connect to the Axis at home — there's a place for that in Settings.</p>
+    to connect to the Jarvis at home — there's a place for that in Settings.</p>
   </div>
 </section>
 
@@ -397,7 +397,7 @@
   <header>
     <canvas id="orb" width="68" height="68" aria-hidden="true"></canvas>
     <div class="who">
-      <div class="name">AXIS <span class="link" id="linkBadge">ON HIS OWN</span></div>
+      <div class="name">JARVIS <span class="link" id="linkBadge">ON HIS OWN</span></div>
       <div class="state" id="state">Ready.</div>
     </div>
     <button class="icon" id="speakBtn" aria-pressed="true" title="Speak replies aloud" aria-label="Speak replies aloud">♪</button>
@@ -408,7 +408,7 @@
 
   <form id="form">
     <button type="button" class="icon mic" id="micBtn" title="Speak" aria-label="Speak" hidden>●</button>
-    <textarea id="input" rows="1" placeholder="Say something to Axis…"
+    <textarea id="input" rows="1" placeholder="Say something to Jarvis…"
               aria-label="Message" autocapitalize="sentences"></textarea>
     <button type="submit" class="send" aria-label="Send">↑</button>
   </form>
@@ -455,13 +455,13 @@
 
   <h2>HIS COMPUTER AT HOME</h2>
   <div class="group">
-    <p class="hint">Run <strong>START-AXIS-ANYWHERE.bat</strong> on the computer,
+    <p class="hint">Run <strong>START-JARVIS-ANYWHERE.bat</strong> on the computer,
     then put the address it prints here. Connected, he can read your email, sort
     through your folders, open things, write documents and invoices, design and
     stress-test 3D models &mdash; everything he can do at his desk.
     Not connected, he says so rather than pretending.</p>
     <p class="hint">Easier: open Settings on the computer, find
-    <strong>Axis on your phone</strong>, and download the file from there.
+    <strong>Jarvis on your phone</strong>, and download the file from there.
     That copy arrives with this filled in and already signed in.</p>
     <label class="field"><span>Address</span>
       <input type="text" id="optHome" inputmode="url" autocapitalize="off" autocorrect="off"
@@ -476,7 +476,7 @@
   <div class="group">
     <label class="check"><input type="checkbox" id="optSearch" checked> Let him search the web himself</label>
     <label class="field"><span>What he calls you</span>
-      <input type="text" id="optTitle" placeholder="sir" maxlength="24" aria-label="What Axis calls you"></label>
+      <input type="text" id="optTitle" placeholder="sir" maxlength="24" aria-label="What Jarvis calls you"></label>
     <label class="field"><span>Honcho key — memory that follows him</span>
       <input type="password" id="optHoncho" autocomplete="off" placeholder="your Honcho key"
              aria-label="Honcho API key">
@@ -485,7 +485,7 @@
       into Settings there. On his own he uses the conversation above instead.</small>
     </label>
     <button class="ghost" id="saveCopy">Save a copy with my keys already in it</button>
-    <p class="hint">Writes a fresh <strong>AXIS-PHONE.html</strong> with everything
+    <p class="hint">Writes a fresh <strong>JARVIS-PHONE.html</strong> with everything
     filled in. Keep that one and it opens ready — useful if this phone won't
     remember settings between opens.</p>
     <button class="ghost" id="wipe">Forget this conversation</button>
@@ -494,7 +494,7 @@
   <div class="cant">
     <p class="hint" style="color:var(--sand)"><strong>On his own, he can't reach your computer.</strong></p>
     <p class="hint">Opening apps, reading Gmail, going through folders — those are
-    the computer's Axis acting on the computer. Connect him above and they all
+    the computer's Jarvis acting on the computer. Connect him above and they all
     work. Until then he'll tell you so instead of pretending.</p>
   </div>
 
@@ -594,7 +594,7 @@ let home = { connected: false, checkedAt: 0 };
 
 function systemPrompt() {
   const title = settings.title || "sir";
-  return `You are Axis, a private AI assistant built for one person: your principal.
+  return `You are Jarvis, a private AI assistant built for one person: your principal.
 You address him as "${title}" — naturally, without comment, as you would any form of address.
 
 Your tone is composed, economical, and never padded. You do not ramble and you do not fill
@@ -603,14 +603,14 @@ is welcome where it costs nothing; it never comes at the expense of an answer.
 
 WHERE HE IS. He is holding his phone, and you are running inside a single file on it. Say so
 naturally when it matters — what you can do for him differs from what you can do at his desk,
-and he should never have to guess which Axis he is talking to.
+and he should never have to guess which Jarvis he is talking to.
 
 WHAT YOU CAN DO RIGHT NOW. Talk, think, remember this conversation, and look things up on the
 web. You are not connected to his computer, so you cannot open apps, read his email, go through
 his folders, play a playlist, design or print anything, write a document or an invoice, or do
 anything else that touches the machine at home. If he asks for one of those, tell him plainly in
-one sentence that you are the phone Axis and not connected to the computer, that the computer
-needs START-AXIS-ANYWHERE.bat running and its address in Settings, and then get on with whatever
+one sentence that you are the phone Jarvis and not connected to the computer, that the computer
+needs START-JARVIS-ANYWHERE.bat running and its address in Settings, and then get on with whatever
 you *can* do. Never claim to have opened, read or sent anything. No apology, no paragraph about it.
 
 WHAT THE COMPUTER CAN DO, WHEN IT IS ON. Worth knowing, because he will ask for these from his
@@ -867,7 +867,7 @@ async function checkHome() {
 }
 
 /**
- * Hand the conversation to the real Axis and read back what he does.
+ * Hand the conversation to the real Jarvis and read back what he does.
  *
  * Nothing is reimplemented here. The computer has the tools, the memory, the
  * mail and the folders; the phone is a window onto it. The reply arrives as
@@ -1097,7 +1097,7 @@ function speakInBrowser(text) {
     utter.rate = 1.02;
     utter.pitch = 0.95;
     speechSynthesis.speak(utter);
-  } catch { /* a silent Axis is still an Axis */ }
+  } catch { /* a silent Jarvis is still an Jarvis */ }
 }
 
 /**
@@ -1471,7 +1471,7 @@ function wirePanel() {
 function explainHome(err) {
   const message = String((err && err.message) || err);
   if (/Failed to fetch|NetworkError|Load failed/i.test(message)) {
-    return "Nothing at that address. Is START-AXIS-ANYWHERE.bat still running? The address changes every restart.";
+    return "Nothing at that address. Is START-JARVIS-ANYWHERE.bat still running? The address changes every restart.";
   }
   if (/isn't the passcode|That isn't/i.test(message)) return "That's not the passcode.";
   return message;
@@ -1534,7 +1534,7 @@ function saveCopy() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "AXIS-PHONE.html";
+    a.download = "JARVIS-PHONE.html";
     document.body.appendChild(a);
     a.click();
     a.remove();

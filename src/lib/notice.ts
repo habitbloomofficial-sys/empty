@@ -9,7 +9,7 @@ import { channelStats, configuredChannel, isYouTubeConfigured } from "./youtube"
 import { standings, trackedRivals } from "./competitors";
 import { daysLate, formatMoney, isoDay, position, totalsOf } from "./bills";
 
-// Axis speaking first.
+// Jarvis speaking first.
 //
 // He has only ever answered. This is the other half: noticing something and
 // mentioning it, the way anyone who works for you would.
@@ -422,7 +422,7 @@ export function quietFor(now = Date.now()): number {
  * everything that stops this from becoming a trivia generator is in these
  * lines, and they belong beside the code that gathers the facts they refer to.
  */
-export const NOTICE_SYSTEM = `You are Axis, a private assistant, speaking to your principal without being asked.
+export const NOTICE_SYSTEM = `You are Jarvis, a private assistant, speaking to your principal without being asked.
 
 You are given one or more FACTS that have just been gathered from his own accounts and files.
 Write ONE remark, at most two short sentences, mentioning what is worth mentioning.

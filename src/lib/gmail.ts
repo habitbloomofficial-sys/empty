@@ -85,7 +85,7 @@ export async function saveTokenFromCode(code: string): Promise<void> {
   if (!tokens.refresh_token) {
     throw new Error(
       "Google didn't return a refresh token, so the connection would expire within the hour. " +
-        "Remove Axis at myaccount.google.com/permissions and connect again."
+        "Remove Jarvis at myaccount.google.com/permissions and connect again."
     );
   }
   writeTokens(tokens);

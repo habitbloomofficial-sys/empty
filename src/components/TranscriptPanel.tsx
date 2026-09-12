@@ -6,7 +6,7 @@ import type { ChatMessage, ReplyTimings } from "@/lib/types";
 const seconds = (ms: number) => `${(ms / 1000).toFixed(1)}s`;
 
 /**
- * Where the wait actually went. Cheap to show, and it turns "Axis feels
+ * Where the wait actually went. Cheap to show, and it turns "Jarvis feels
  * slow" into a specific stage worth looking at.
  */
 function Timings({ timings }: { timings: ReplyTimings }) {
@@ -53,7 +53,7 @@ export function TranscriptPanel({ messages }: { messages: ChatMessage[] }) {
           >
             {m.role === "assistant" && (
               <div className="mb-1 text-[10px] font-semibold tracking-[0.16em] text-amber-400">
-                Axis
+                Jarvis
               </div>
             )}
             <p className="whitespace-pre-wrap">{m.content}</p>

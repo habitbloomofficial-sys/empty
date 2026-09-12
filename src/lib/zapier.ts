@@ -5,10 +5,10 @@ import { getSetting } from "./settings";
 // A Zap that starts with "Webhooks by Zapier → Catch Hook" hands you a URL.
 // Anything that POSTs to it starts the Zap. That is the whole integration: no
 // key, no OAuth, no account linking, and it reaches every one of the thousands
-// of apps Zapier connects to — because you built the Zap, Axis only pulls the
+// of apps Zapier connects to — because you built the Zap, Jarvis only pulls the
 // trigger.
 //
-// The safety rule that matters: Axis fires a Zap **by name**, from a list you
+// The safety rule that matters: Jarvis fires a Zap **by name**, from a list you
 // saved, and never by URL. A webhook URL is a loaded action with no
 // confirmation step, so one arriving mid-conversation — in an email he read,
 // on a page he opened — must never be something he can call.
@@ -113,7 +113,7 @@ export async function runZap(name: string, data?: Record<string, unknown>): Prom
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        source: "Axis",
+        source: "Jarvis",
         firedAt: new Date().toISOString(),
         ...(data ?? {}),
       }),

@@ -3,7 +3,7 @@
 // Two different features lean on this and both of them are places where a
 // wrong answer is expensive. Opening a URL hands it to Windows, which resolves
 // some schemes through registered protocol handlers — a few of those have been
-// used to execute code. Fetching a URL happens from inside the machine Axis
+// used to execute code. Fetching a URL happens from inside the machine Jarvis
 // runs on, which sits behind the home router and inside the network: an
 // address pointing at 192.168.x.x or the router's admin page is not a web
 // page, it's a way of reaching something that trusted this machine.

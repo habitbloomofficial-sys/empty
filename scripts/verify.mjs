@@ -87,7 +87,7 @@ console.log("TypeScript…");
   );
 }
 
-// --- Files that are here but are not part of Axis ---------------------------
+// --- Files that are here but are not part of Jarvis ---------------------------
 //
 // tsconfig compiles **/*.ts and **/*.tsx, so ANY stray TypeScript under src/
 // is type-checked as though it belonged — and a half-copy of another project
@@ -126,9 +126,9 @@ console.log("Strays…");
     `no stray TypeScript under src/ (${onDisk.length} files on disk)`,
     strays.length === 0,
     strays.length
-      ? `These are in the folder but are not part of Axis on this branch:\n  ${strays.join("\n  ")}\n\n` +
+      ? `These are in the folder but are not part of Jarvis on this branch:\n  ${strays.join("\n  ")}\n\n` +
         `  tsc compiles everything under src/, so they break the build even though\n` +
-        `  nothing in Axis imports them. They are most likely left over from another\n` +
+        `  nothing in Jarvis imports them. They are most likely left over from another\n` +
         `  project worked on in this same folder. Check with:  git status --short src\n` +
         `  and, once you have looked at the list:  git clean -n -d src   (then -f to delete)`
       : ""
@@ -139,7 +139,7 @@ console.log("Strays…");
   // The stray check above only ever looked under src/, and the thing that
   // actually bit was one level up: a whole other checkout at C:\...\empty\empty,
   // carrying its own package.json and its own src/. tsconfig used to compile
-  // **/*.ts, so every file in it was type-checked as part of Axis, and the
+  // **/*.ts, so every file in it was type-checked as part of Jarvis, and the
   // build failed with fifty "cannot find module" lines naming a project this
   // branch has never contained.
   //
@@ -167,10 +167,10 @@ console.log("Strays…");
     `no second project nested in this folder`,
     nested.length === 0,
     nested.length
-      ? `Each of these is a folder with its own package.json inside the Axis folder:\n  ${nested.join("\n  ")}\n\n` +
+      ? `Each of these is a folder with its own package.json inside the Jarvis folder:\n  ${nested.join("\n  ")}\n\n` +
         `  That is a whole separate project sitting inside this one. One project per\n` +
         `  folder: move it somewhere else, or delete it once you have looked at what\n` +
-        `  is in it. Nothing in Axis reads it, and leaving it there makes every\n` +
+        `  is in it. Nothing in Jarvis reads it, and leaving it there makes every\n` +
         `  search, every git status and every build log harder to read.`
       : ""
   );
@@ -269,7 +269,7 @@ console.log("Launchers…");
   // Every launcher says which version it is, on screen and in its log.
   //
   // This exists because of a day spent on a bug that was already fixed. The
-  // repaired REBUILD-AXIS.bat was on GitHub and the broken one was on his
+  // repaired REBUILD-JARVIS.bat was on GitHub and the broken one was on his
   // machine, and nothing either of us could see said so — the file gave no
   // way to tell one copy from another, so every symptom pointed at the fix
   // being wrong rather than absent. A stamp turns "it still says the old
@@ -324,11 +324,11 @@ console.log("Launchers…");
     });
 
     // A failure message that names a cause must not be shared by two DIFFERENT
-    // failures. REBUILD-AXIS.bat sent both "npm install failed" and "npm run
+    // failures. REBUILD-JARVIS.bat sent both "npm install failed" and "npm run
     // build failed" to one label that blamed the internet — so a broken build
     // told him his connection had dropped, and rerunning could never help.
     //
-    // Reached twice is not itself the fault: START-AXIS-PHONE.bat checks the
+    // Reached twice is not itself the fault: START-JARVIS-PHONE.bat checks the
     // same firewall state before and after trying to fix it, and one message is
     // right both times. What distinguishes them is the command each jump
     // follows — two different commands failing into one explanation is the bug.

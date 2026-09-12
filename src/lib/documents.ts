@@ -3,19 +3,20 @@ import os from "node:os";
 import path from "node:path";
 import { getSetting } from "./settings";
 import { motif, pickTheme, titleMotif, type Mark } from "./docTheme";
+import { layout, renderPdf } from "./pdf";
 
 // Making a real file rather than talking about one.
 //
 // "Write me an essay" should end with a document you can open, print and hand
-// in — not three screens of chat you then have to copy somewhere. So Axis
+// in — not three screens of chat you then have to copy somewhere. So Jarvis
 // writes the content and this renders it: Word for prose, PowerPoint for
 // slides, Excel for tables, Markdown for notes.
 //
-// Everything lands in Documents/Axis, which is already inside the folders he
+// Everything lands in Documents/Jarvis, which is already inside the folders he
 // can search, so "open the essay you wrote" works straight afterwards with no
 // extra plumbing.
 
-export type DocumentKind = "essay" | "slides" | "spreadsheet" | "notes";
+export type DocumentKind = "essay" | "slides" | "spreadsheet" | "notes" | "guide";
 
 export interface Section {
   heading?: string;
@@ -34,6 +35,11 @@ export interface Section {
   figures?: { label: string; value: number }[];
   /** Attribution, for a quote. */
   attribution?: string;
+  /**
+   * Numbered things to do, in order — days of a plan, steps of a method. Only
+   * a "guide" uses these; everything else ignores them.
+   */
+  steps?: { marker?: string; title: string; detail?: string }[];
 }
 
 export interface Sheet {
@@ -71,7 +77,7 @@ export interface WrittenDocument {
 export function outputFolder(): string {
   const configured = getSetting("DOCUMENTS_FOLDER")?.trim();
   if (configured) return configured;
-  return path.join(os.homedir(), "Documents", "Axis");
+  return path.join(os.homedir(), "Documents", "Jarvis");
 }
 
 /**
@@ -583,7 +589,38 @@ const EXTENSIONS: Record<DocumentKind, string> = {
   slides: "pptx",
   spreadsheet: "xlsx",
   notes: "md",
+  guide: "pdf",
 };
+
+/**
+ * A PDF, for the things he will read away from the computer.
+ *
+ * A guide gets to be a PDF rather than a .docx because a PDF opens on his
+ * phone, on a printer, and on anything he might hand it to, looking the same
+ * on all of them. See pdf.ts for why it is written by hand.
+ */
+function writeGuide(request: DocumentRequest, target: string): string {
+  const sections = (request.sections ?? []).map((section) => ({
+    heading: section.heading,
+    paragraphs: section.paragraphs,
+    bullets: section.bullets,
+    steps: section.steps,
+  }));
+
+  const pdf = renderPdf({
+    title: request.title,
+    subtitle: request.subtitle,
+    sections,
+    footer: "Jarvis",
+  });
+  fs.writeFileSync(target, pdf);
+
+  const steps = sections.reduce((sum, section) => sum + (section.steps?.length ?? 0), 0);
+  const pages = layout({ title: request.title, subtitle: request.subtitle, sections }).length;
+  return steps
+    ? `${pages} page${pages === 1 ? "" : "s"}, ${steps} steps`
+    : `${pages} page${pages === 1 ? "" : "s"}`;
+}
 
 export async function createDocument(request: DocumentRequest): Promise<WrittenDocument> {
   const title = request.title?.trim();
@@ -606,6 +643,7 @@ export async function createDocument(request: DocumentRequest): Promise<WrittenD
   if (request.kind === "essay") size = await writeEssay(request, target);
   else if (request.kind === "slides") size = await writeSlides(request, target);
   else if (request.kind === "spreadsheet") size = await writeSpreadsheet(request, target);
+  else if (request.kind === "guide") size = writeGuide(request, target);
   else size = writeNotes(request, target);
 
   return {

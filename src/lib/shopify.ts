@@ -6,7 +6,7 @@ import { getSetting } from "./settings";
 // refund, no cancellation, no price change, no fulfilment — not because the API
 // lacks them, but because "check my store" is what he asked for, and a mistake
 // in this file with a write in it costs a customer's money rather than a wasted
-// second. If he wants Axis to change something in the shop, that is a separate
+// second. If he wants Jarvis to change something in the shop, that is a separate
 // decision made out loud, not a capability that arrives quietly alongside
 // reading the order list.
 //

@@ -50,8 +50,8 @@ import {
   recentVideos,
 } from "./youtube";
 import { isFileSearchEnabled, openFile, searchFiles } from "./files";
-import { isPhoneConfigured, placeCall } from "./phone";
-import { createDocument, outputFolder, type DocumentKind } from "./documents";
+import { callWithUpdate, isPhoneConfigured, placeCall } from "./phone";
+import { createDocument, outputFolder, type DocumentKind, type Section } from "./documents";
 import { isZapierConfigured, runZap } from "./zapier";
 import { isWebSearchConfigured, readPage, searchWeb } from "./web";
 import { learn, unlearn } from "./learned";
@@ -300,7 +300,7 @@ export const toolDefinitions: OpenAI.Chat.Completions.ChatCompletionTool[] = [
     function: {
       name: "open_hologram",
       description:
-        "Open Hologram v3, the holographic projector built into Axis. It's a window where the user drops in a picture and sees it projected as a rotating 3D hologram. Use it whenever he mentions the hologram, Hologram v3, or projecting a picture. Once it's open he loads the picture himself.",
+        "Open Hologram v3, the holographic projector built into Jarvis. It's a window where the user drops in a picture and sees it projected as a rotating 3D hologram. Use it whenever he mentions the hologram, Hologram v3, or projecting a picture. Once it's open he loads the picture himself.",
       parameters: { type: "object", properties: {}, required: [] },
     },
   },
@@ -1306,6 +1306,25 @@ export const toolDefinitions: OpenAI.Chat.Completions.ChatCompletionTool[] = [
   {
     type: "function",
     function: {
+      name: "call_me_with_update",
+      description:
+        "Ring HIS OWN phone and read something out loud, then hang up. Nothing is dialled afterwards — this is for when he is away from the screen and wants an answer in his ear. Use it when he says 'call me when you know', 'ring me if anything changes', 'phone me the numbers', or has asked you to watch something and tell him. Say the ACTUAL ANSWER, not that you have one: \"Three orders this morning, sir, totalling nine hundred and forty kroner, two still to post\" — never \"your update is ready\". Write it to be HEARD, not read: no bullet points, no symbols, no URLs, and numbers as words where it helps. He hears it twice. Keep it under about a hundred and twenty words. Do not ring him without being asked to; this is a telephone call, not a notification.",
+      parameters: {
+        type: "object",
+        properties: {
+          message: {
+            type: "string",
+            description:
+              "Exactly what to say, in full sentences, as you would speak it. This is the whole content of the call.",
+          },
+        },
+        required: ["message"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "list_calendar_events",
       description:
         "Look at his Google Calendar — what's on today, this week, or in any range he asks about. Use it for anything about his schedule, whether he's free, or when something is.",
@@ -1402,9 +1421,9 @@ export const toolDefinitions: OpenAI.Chat.Completions.ChatCompletionTool[] = [
         properties: {
           kind: {
             type: "string",
-            enum: ["essay", "slides", "spreadsheet", "notes"],
+            enum: ["essay", "slides", "spreadsheet", "notes", "guide"],
             description:
-              "essay = Word (.docx) for prose; slides = PowerPoint (.pptx); spreadsheet = Excel (.xlsx); notes = Markdown (.md).",
+              "essay = Word (.docx) for prose; slides = PowerPoint (.pptx); spreadsheet = Excel (.xlsx); notes = Markdown (.md); guide = PDF, for anything he will FOLLOW rather than read once — a plan for learning a skill, a revision schedule, a method, step-by-step instructions. A PDF because it opens on his phone and prints properly, which is where a plan is actually used. Use `steps` in each section for a guide.",
           },
           title: { type: "string", description: "The title. Also becomes the file name." },
           subtitle: { type: "string" },
@@ -1422,6 +1441,27 @@ export const toolDefinitions: OpenAI.Chat.Completions.ChatCompletionTool[] = [
                   description: "Prose, one string per paragraph. Write them properly, not as notes.",
                 },
                 bullets: { type: "array", items: { type: "string" } },
+                steps: {
+                  type: "array",
+                  description:
+                    "Guides only, and the whole point of one. Numbered things to DO, in order. Be specific and concrete: \"Day 3 — write out the 12 irregular verbs from memory, then check\" is a step; \"practise verbs\" is not. Give a plan enough steps to be real — a fortnight is fourteen entries, not three with 'repeat daily' after them.",
+                  items: {
+                    type: "object",
+                    properties: {
+                      marker: {
+                        type: "string",
+                        description: "What numbers it — \"Day 1\", \"Step 3\", \"Week 2\".",
+                      },
+                      title: { type: "string", description: "The thing to do, in one line." },
+                      detail: {
+                        type: "string",
+                        description:
+                          "A sentence or two on how to do it, or what people get wrong. Optional, but it is what makes the difference between a plan and a list.",
+                      },
+                    },
+                    required: ["title"],
+                  },
+                },
                 layout: {
                   type: "string",
                   enum: ["bullets", "statement", "columns", "quote"],
@@ -1601,7 +1641,7 @@ export function availableTools(): OpenAI.Chat.Completions.ChatCompletionTool[] {
     // without one.
     if (name === "youtube_stats") return isYouTubeConfigured();
     if (name === "open_youtube") return isDesktopControlEnabled();
-    if (name === "call_number") return isPhoneConfigured();
+    if (name === "call_number" || name === "call_me_with_update") return isPhoneConfigured();
     if (name === "run_zap") return isZapierConfigured();
     if (name === "search_web") return isWebSearchConfigured();
     if (name === "make_video") return isVideoEnabled();
@@ -1960,6 +2000,14 @@ export async function executeTool(
       }
       case "create_document": {
         const kind = (text(args.kind) ?? "essay").toLowerCase() as DocumentKind;
+        // Everything the writer understands, not just the text.
+        //
+        // This used to copy across heading, paragraphs and bullets and stop —
+        // so `layout` and `figures` were declared in the schema, described at
+        // length in the prompt, chosen correctly by the model, and then thrown
+        // away one line before they were used. Every deck came out as plain
+        // bullets and no chart was ever drawn, which is the exact opposite of
+        // what he asked for, and nothing anywhere said so.
         const sections = Array.isArray(args.sections)
           ? (args.sections as Record<string, unknown>[]).map((section) => ({
               heading: text(section.heading),
@@ -1968,6 +2016,27 @@ export async function executeTool(
                 : undefined,
               bullets: Array.isArray(section.bullets)
                 ? (section.bullets as unknown[]).map(String)
+                : undefined,
+              layout: text(section.layout) as Section["layout"],
+              attribution: text(section.attribution),
+              figures: Array.isArray(section.figures)
+                ? (section.figures as Record<string, unknown>[])
+                    .map((figure) => ({
+                      label: text(figure.label) ?? "",
+                      value: count(figure.value) ?? Number.NaN,
+                    }))
+                    // A bar with no number is not a bar. Drop it rather than
+                    // drawing a chart with a hole where a value should be.
+                    .filter((figure) => figure.label && Number.isFinite(figure.value))
+                : undefined,
+              steps: Array.isArray(section.steps)
+                ? (section.steps as Record<string, unknown>[])
+                    .map((step) => ({
+                      marker: text(step.marker),
+                      title: text(step.title) ?? "",
+                      detail: text(step.detail),
+                    }))
+                    .filter((step) => step.title)
                 : undefined,
             }))
           : undefined;
@@ -2866,6 +2935,13 @@ export async function executeTool(
         return {
           result,
           log: { tool: name, summary: `Calling ${result.label} — ${result.to}`, ok: true },
+        };
+      }
+      case "call_me_with_update": {
+        const result = await callWithUpdate(text(args.message) ?? "");
+        return {
+          result,
+          log: { tool: name, summary: `Rang him: ${result.spoken.slice(0, 60)}`, ok: true },
         };
       }
       case "list_calendar_events": {

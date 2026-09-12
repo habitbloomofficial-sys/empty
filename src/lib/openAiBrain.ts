@@ -14,7 +14,7 @@ import type { Brain, BrainInput, BrainReply, BrainToolCall } from "./brain";
 
 // OpenAI, Gemini and OpenRouter, which all speak chat-completions.
 //
-// This is the code Axis has always run; it moved here so the tool loop could be
+// This is the code Jarvis has always run; it moved here so the tool loop could be
 // written once and shared with Anthropic, which does not speak it.
 
 /** One accumulating tool call, reassembled from streamed fragments. */

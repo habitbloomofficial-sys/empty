@@ -13,7 +13,7 @@ import type { Brain, BrainInput, BrainReply, BrainToolCall } from "./brain";
 //
 // Thinking is left alone. Claude Opus 5 thinks by default and turning it off
 // has a specific failure mode — the model writes a tool call into its visible
-// text instead of actually calling it, which in Axis's loop means telling you
+// text instead of actually calling it, which in Jarvis's loop means telling you
 // Spotify is open when nothing happened. Depth is controlled with `effort`
 // instead, which defaults to low here: deciding to open Spotify does not
 // warrant deliberation, and every second of thinking is a second of silence

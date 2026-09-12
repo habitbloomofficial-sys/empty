@@ -25,7 +25,7 @@ export function TopBar({
   return (
     <header className="sticky top-0 z-20 flex h-[52px] items-center justify-between border-b border-amber-500/[0.13] bg-gradient-to-b from-[rgba(8,8,8,0.92)] to-[rgba(2,2,2,0.55)] px-4 backdrop-blur-md sm:px-5">
       <div className="flex items-center gap-3.5">
-        {/* The Axis mark: a bracketed square with a core that breathes while
+        {/* The Jarvis mark: a bracketed square with a core that breathes while
             he's connected, and sits dark when he has no brain. */}
         <div className="grid h-[22px] w-[22px] place-items-center border border-amber-400/50 shadow-[inset_0_0_14px_rgba(255,122,0,0.18)]">
           <div
@@ -39,7 +39,7 @@ export function TopBar({
 
         <div className="flex flex-col gap-[3px]">
           <div className="text-[15px] font-medium leading-none tracking-[0.42em] text-cream">
-            AXIS
+            JARVIS
           </div>
           {/* Wraps to two lines on a phone at the full wording, which throws
               the header out; the short form says the same thing. */}

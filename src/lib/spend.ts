@@ -1,6 +1,6 @@
 // Asking before spending his money.
 //
-// Axis can do two things that cost real money per go: make a video, and make a
+// Jarvis can do two things that cost real money per go: make a video, and make a
 // thumbnail. He has always been *told* to warn first, in the prompt. A prompt
 // is an instruction, and an instruction is something a model can forget on the
 // one turn where it matters — the turn that costs three dollars.

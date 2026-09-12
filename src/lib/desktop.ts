@@ -6,7 +6,7 @@ import { getSetting } from "./settings";
 import { normalizeWebUrl } from "./webUrl";
 import { findWebsite, looksLikeDomain } from "./websites";
 
-// Axis runs on your own machine, so he can open desktop apps on it. That is
+// Jarvis runs on your own machine, so he can open desktop apps on it. That is
 // also why this file is deliberately narrow: the model can ask for exactly the
 // actions enumerated here and nothing else. There is no "run this command"
 // path, no shell, and no way for text from a conversation to become an
@@ -89,7 +89,7 @@ async function launch(target: string): Promise<void> {
   }
 }
 
-// The apps Axis may open and close. A registry rather than a pile of
+// The apps Jarvis may open and close. A registry rather than a pile of
 // special cases: adding one is a table entry, and nothing anywhere else can
 // name an executable or a process to kill.
 
@@ -327,7 +327,7 @@ const DEFAULT_SEARCH = "https://www.google.com/search?q=";
  * one of these, a URL handed to the OS lands as another tab in whatever is
  * already open — which is not what "open me a window" means.
  */
-/** Browsers Axis can hand a page to, in the order he tries them. */
+/** Browsers Jarvis can hand a page to, in the order he tries them. */
 export const BROWSER_CHOICES = ["chrome", "edge", "firefox", "opera", "brave"] as const;
 export type BrowserChoice = (typeof BROWSER_CHOICES)[number];
 
@@ -367,7 +367,7 @@ export function preferredBrowser(): BrowserChoice | null {
  * Every browser worth trying, best first.
  *
  * "Best" means the one you asked for. Before this, the list was fixed and
- * Chrome was always at the top of it — so an Opera user watched Axis open
+ * Chrome was always at the top of it — so an Opera user watched Jarvis open
  * YouTube in a browser they don't use, every time, with no way to say
  * otherwise. A chosen browser goes first; the rest stay as fallbacks, because
  * a preference that fails silently when the browser is uninstalled is worse
@@ -688,7 +688,7 @@ export async function closeApp(id: AppId): Promise<AppActionResult> {
  *
  * A `spotify:` or `discord:` URI is the nicer way in when the app exists and a
  * dead end when it doesn't — Windows answers with "no app is associated with
- * this link", which reads as Axis being broken. So the choice is made by
+ * this link", which reads as Jarvis being broken. So the choice is made by
  * looking rather than hoping.
  */
 export function isAppInstalled(id: AppId): boolean {

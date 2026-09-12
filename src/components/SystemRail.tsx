@@ -5,7 +5,7 @@ import type { IntegrationStatus, OrbState } from "@/lib/types";
 /**
  * The instrument rail from the design, down the right-hand edge.
  *
- * Every reading on it is something Axis actually knows. The original mockup
+ * Every reading on it is something Jarvis actually knows. The original mockup
  * had CPU, GPU and temperature gauges, and those are omitted deliberately:
  * this app does not measure them, and a dial showing a number nobody computed
  * is worse than no dial — it teaches you to distrust the ones that are real.
@@ -130,7 +130,7 @@ export function SystemRail({
       <Reading label="LINK" value={(status?.device?.kind ?? "computer").toUpperCase()} />
 
       <div className="mt-auto border-t border-amber-500/[0.13] px-3 py-3">
-        <div className="ax-label text-[8px]">AXIS CORE</div>
+        <div className="ax-label text-[8px]">JARVIS CORE</div>
         <div className="ax-label mt-1 text-[8px]">
           {status?.brain ? "ALL SYSTEMS NOMINAL" : "AWAITING A BRAIN"}
         </div>

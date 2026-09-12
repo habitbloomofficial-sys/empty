@@ -39,7 +39,7 @@ function realDirectory(candidate: string): string | null {
 }
 
 /**
- * Every folder Axis may look in. Anything outside this list is invisible to
+ * Every folder Jarvis may look in. Anything outside this list is invisible to
  * him — not filtered out of the results, never visited.
  */
 export function searchRoots(): SearchRoot[] {

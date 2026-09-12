@@ -188,7 +188,7 @@ await check("a window title never reaches PowerShell as script text", () => {
   // Titles come from web pages, emails and file names. They travel as an
   // environment variable, read back as data, so punctuation stays punctuation.
   const source = fs.readFileSync(path.join("src", "lib", "windowControl.ts"), "utf-8");
-  assert.ok(source.includes("$env:AXIS_WINDOW_PID"), "focus goes through the environment");
+  assert.ok(source.includes("$env:JARVIS_WINDOW_PID"), "focus goes through the environment");
 
   // Only the scripts matter. A template literal in a sentence he reads is not
   // a script, so the check reads the argument to powershell() rather than
@@ -203,6 +203,154 @@ await check("a window title never reaches PowerShell as script text", () => {
       );
     }
   }
+});
+
+// --- the PDF, written by hand ----------------------------------------------
+
+const pdf = await import("../src/lib/pdf.ts");
+
+await check("a guide is a structurally valid PDF", () => {
+  const file = pdf.renderPdf({
+    title: "A plan",
+    subtitle: "For something",
+    sections: [{ heading: "One", paragraphs: ["Some prose."], bullets: ["A point"] }],
+    footer: "Jarvis",
+  });
+  const text = file.toString("latin1");
+  assert.ok(text.startsWith("%PDF-1.4"), "no PDF header");
+  assert.ok(text.trimEnd().endsWith("%%EOF"), "no EOF marker");
+
+  // The xref table is where a hand-written PDF actually breaks: every entry is
+  // a byte offset, and a reader that finds the wrong byte there opens nothing.
+  const startxref = Number(/startxref\s+(\d+)/.exec(text)?.[1]);
+  assert.ok(Number.isFinite(startxref), "no startxref");
+  assert.equal(text.slice(startxref, startxref + 4), "xref", "startxref points at the wrong byte");
+
+  const offsets = [...text.matchAll(/^(\d{10}) 00000 n $/gm)].map((hit) => Number(hit[1]));
+  assert.ok(offsets.length >= 5, `only ${offsets.length} objects in the xref`);
+  for (const [index, at] of offsets.entries()) {
+    assert.match(
+      text.slice(at, at + 24),
+      /^\d+ 0 obj/,
+      `xref entry ${index} points at "${text.slice(at, at + 16)}" rather than an object`
+    );
+  }
+});
+
+await check("every /Length matches the stream it describes", () => {
+  // Declare the wrong length and a reader stops mid-page, usually silently.
+  const file = pdf
+    .renderPdf({
+      title: "Lengths",
+      sections: [{ paragraphs: ["Text with (brackets) and a backslash \\ in it."] }],
+    })
+    .toString("latin1");
+  const streams = [...file.matchAll(/<< \/Length (\d+) >>\nstream\n([\s\S]*?)\nendstream/g)];
+  assert.ok(streams.length > 0, "no streams found");
+  for (const [, declared, body] of streams) {
+    assert.equal(Buffer.byteLength(body, "latin1"), Number(declared), "declared length is wrong");
+  }
+});
+
+await check("typographic characters survive as WinAnsi, not as holes", () => {
+  // latin1 has no em dash or bullet. Written naively they vanish from the page,
+  // and a dash always sits exactly where the sentence turns.
+  const file = pdf
+    .renderPdf({ title: "Dashes \u2014 and \u2019quotes\u2019", sections: [{ bullets: ["A point"] }] })
+    .toString("latin1");
+  assert.ok(file.includes("\\227"), "em dash did not become its WinAnsi byte");
+  assert.ok(file.includes("\\222"), "curly apostrophe did not become its WinAnsi byte");
+  assert.ok(file.includes("\\225"), "bullet glyph did not become its WinAnsi byte");
+});
+
+await check("wrapping fits the page, and never breaks a long URL", () => {
+  const lines = pdf.wrap("the quick brown fox jumps over the lazy dog ".repeat(20), "regular", 11);
+  assert.ok(lines.length > 5, "did not wrap at all");
+
+  const url = "https://example.com/" + "a/".repeat(80);
+  const kept = pdf.wrap(`See ${url} for more`, "regular", 11);
+  assert.ok(kept.some((line) => line.includes(url)), "a long URL was broken across lines");
+});
+
+// --- what the model sends reaching what writes the file ---------------------
+
+const { executeTool } = await import("../src/lib/tools.ts");
+
+await check("a guide's steps reach the page", async () => {
+  // This is the shape of the bug that was found: the schema declared fields,
+  // the writer used them, and the dispatch between the two quietly dropped
+  // them — so decks came out as plain bullets and no chart was ever drawn.
+  const out = await executeTool(
+    "create_document",
+    JSON.stringify({
+      kind: "guide",
+      title: "Learning something",
+      sections: [
+        {
+          heading: "Week one",
+          steps: [
+            { marker: "Day 1", title: "Do the first thing.", detail: "And here is how." },
+            { title: "A step with no marker still counts." },
+            { marker: "Day 3", detail: "No title, so this one is dropped." },
+          ],
+        },
+      ],
+    })
+  );
+  const made = out.result;
+  try {
+    const text = fs.readFileSync(made.path).toString("latin1");
+    assert.ok(text.includes("Day 1"), "step marker missing from the PDF");
+    assert.ok(text.includes("Do the first thing."), "step title missing");
+    assert.ok(text.includes("And here is how."), "step detail missing");
+    assert.ok(!text.includes("Day 3"), "a step with no title should be dropped");
+    assert.match(made.size, /step/, `size should mention steps, said "${made.size}"`);
+  } finally {
+    fs.rmSync(made.path, { force: true });
+  }
+});
+
+await check("figures are coerced, and the unusable ones dropped", async () => {
+  const out = await executeTool(
+    "create_document",
+    JSON.stringify({
+      kind: "guide",
+      title: "Figures",
+      sections: [
+        {
+          heading: "Numbers",
+          // A model sends a number as a string often enough to matter.
+          figures: [
+            { label: "Direct", value: 42 },
+            { label: "Search", value: "27" },
+            { label: "Broken", value: "not a number" },
+            { value: 9 },
+          ],
+        },
+      ],
+    })
+  );
+  const made = out.result;
+  try {
+    const text = fs.readFileSync(made.path).toString("latin1");
+    // A guide does not draw charts, but NaN must never reach the file either way.
+    assert.ok(!text.includes("NaN"), "NaN leaked into a document");
+  } finally {
+    fs.rmSync(made.path, { force: true });
+  }
+});
+
+// --- ringing him ------------------------------------------------------------
+
+await check("a spoken update is refused when it is too long to hear", async () => {
+  const phone = await import("../src/lib/phone.ts");
+  await assert.rejects(() => phone.callWithUpdate(""), /nothing to tell you/);
+  await assert.rejects(
+    () => phone.callWithUpdate("word ".repeat(400)),
+    /short version/,
+    "an essay down the telephone should be refused"
+  );
+  assert.ok(phone.MAX_SPOKEN_UPDATE <= 1500, "spoken cap is longer than anyone listens");
 });
 
 // --- report -----------------------------------------------------------------

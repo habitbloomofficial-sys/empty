@@ -60,15 +60,15 @@ export interface IntegrationStatus {
   shopify: boolean;
   /** Which store, so he can see at a glance that it is the right one. */
   shopifyStore: string | null;
-  /** Whether Axis can place a call and connect you to it. */
+  /** Whether Jarvis can place a call and connect you to it. */
   phone: boolean;
   /** Names you can ask him to call. */
   phoneContacts: string[];
   /** Whether the Google connection includes the calendar. */
   calendar: boolean;
-  /** Named Zapier automations Axis can fire. */
+  /** Named Zapier automations Jarvis can fire. */
   zaps: string[];
-  /** Whether Axis may open or close apps on this machine. */
+  /** Whether Jarvis may open or close apps on this machine. */
   desktopControl: boolean;
   /** A Honcho key is saved. Stored only — see the Settings panel. */
   honcho: boolean;
@@ -93,7 +93,7 @@ export interface IntegrationStatus {
   youtube: boolean;
   /** The channel reported on by default, if one is set. */
   youtubeChannel: string | null;
-  /** The folders Axis is allowed to search, by label. */
+  /** The folders Jarvis is allowed to search, by label. */
   fileRoots: string[];
   /** Which of your machines you're reading this on. */
   device: { kind: "phone" | "tablet" | "computer"; label: string; remote: boolean };

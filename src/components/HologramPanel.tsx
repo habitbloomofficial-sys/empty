@@ -61,7 +61,7 @@ export function HologramPanel({
   weakPoint,
 }: {
   onClose: () => void;
-  /** A part Axis has designed, projected instead of a picture. */
+  /** A part Jarvis has designed, projected instead of a picture. */
   modelPath?: string;
   /** Where a stress test found it weakest, marked on the part itself. */
   weakPoint?: {

@@ -2,7 +2,7 @@ import { getSetting } from "./settings";
 
 // Memory that outlives this computer.
 //
-// Axis already remembers things — memory.ts keeps facts he has been told, and
+// Jarvis already remembers things — memory.ts keeps facts he has been told, and
 // sessions.ts keeps a log of what happened. Both are files on one machine. Wipe
 // Windows, or pick up your phone, and they are not there.
 //
@@ -89,7 +89,7 @@ async function ensure(): Promise<void> {
 export interface Exchange {
   /** What he said. */
   said: string;
-  /** What Axis answered. */
+  /** What Jarvis answered. */
   replied: string;
 }
 
@@ -133,8 +133,8 @@ interface ContextResponse {
  *
  * `peer_representation` is Honcho's reasoning about the principal — the part
  * that is worth more than a transcript. The summary is the conversation so far
- * condensed. Both are asked for from Axis's point of view, which is what
- * `peer_perspective` means: what *Axis* should know about him.
+ * condensed. Both are asked for from Jarvis's point of view, which is what
+ * `peer_perspective` means: what *Jarvis* should know about him.
  */
 export async function recall(): Promise<string> {
   if (!isHonchoConfigured()) return "";

@@ -10,7 +10,7 @@
 // worth testing on its own — a stray radius or a NaN produces a sphere with a
 // spike through it, or nothing at all, and neither is obvious from reading the
 // code. And it is generated from a fixed seed, so the core looks the same every
-// time Axis opens rather than being a different tangle on every reload.
+// time Jarvis opens rather than being a different tangle on every reload.
 
 /** A small, fast, deterministic generator. Same seed, same core, every time. */
 export function seededRandom(seed: number): () => number {

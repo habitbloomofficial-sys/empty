@@ -18,11 +18,11 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Axis",
+  title: "Jarvis",
   description: "Your personal AI assistant.",
   manifest: "/manifest.webmanifest",
   // So an installed window and an iPhone home-screen icon both look right.
-  appleWebApp: { capable: true, title: "Axis", statusBarStyle: "black-translucent" },
+  appleWebApp: { capable: true, title: "Jarvis", statusBarStyle: "black-translucent" },
   other: {
     // Next emits the modern `mobile-web-app-capable`. iOS before 15.4 only
     // understands the Apple-prefixed one, and without it a home-screen icon

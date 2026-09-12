@@ -8,7 +8,7 @@ import { requestZone } from "@/lib/network";
 // and it is the one place every request passes through before anything else
 // runs.
 //
-// Every request to Axis passes through here — pages and API routes alike —
+// Every request to Jarvis passes through here — pages and API routes alike —
 // because a lock on the page with the API left open is not a lock. Written once
 // in this file rather than repeated at the top of eighteen route handlers,
 // where the nineteenth would be the one that got forgotten.
@@ -18,7 +18,7 @@ import { requestZone } from "@/lib/network";
 //   from this computer, or from your own network  →  through, as always
 //   from the internet                             →  passcode, no exceptions
 //
-// The second case is not a preference. Axis reads email, places calls, fires
+// The second case is not a preference. Jarvis reads email, places calls, fires
 // automations and opens things on your desktop; reachable from the internet
 // without a passcode, he is a remote control for your life that anyone who
 // finds the address may pick up.
@@ -30,7 +30,7 @@ export const config = {
   matcher: ["/((?!_next/static|_next/image|favicon.ico|icons/|manifest.webmanifest|sw.js|offline.html).*)"],
 };
 
-// Axis on a phone is a page opened from the phone's own storage, so its
+// Jarvis on a phone is a page opened from the phone's own storage, so its
 // requests carry `Origin: null` and are cross-origin by definition. Two things
 // follow, and both are here rather than spread through the route handlers.
 //
@@ -90,7 +90,7 @@ export default function proxy(req: NextRequest) {
     return refuse(
       req,
       "no-passcode",
-      "Axis is reachable from the internet but has no passcode set. " +
+      "Jarvis is reachable from the internet but has no passcode set. " +
         "Set one on the computer he runs on — Settings, under Remote access — " +
         "and this page will let you in.",
       503
@@ -101,7 +101,7 @@ export default function proxy(req: NextRequest) {
     return isApi ? withCors(NextResponse.next()) : NextResponse.next();
   }
 
-  return refuse(req, "locked", "Axis is locked.", 401);
+  return refuse(req, "locked", "Jarvis is locked.", 401);
 }
 
 /**

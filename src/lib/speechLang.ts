@@ -3,7 +3,7 @@ import { getSetting } from "./settings";
 // Which language the browser listens in.
 //
 // This was navigator.language, which is the browser's *interface* language and
-// has nothing to do with what you speak to Axis. On a Danish Mac that means
+// has nothing to do with what you speak to Jarvis. On a Danish Mac that means
 // Chrome's recogniser is asked for Danish, and Danish speech-to-text will never
 // return the token "axis" — it returns Danish words that happen to sound
 // similar. The wake word then appears broken while every part of it works: the

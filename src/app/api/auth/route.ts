@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
 
   if (!isPasscodeSet()) {
     return NextResponse.json(
-      { error: "No passcode has been set on the computer Axis runs on.", reason: "no-passcode" },
+      { error: "No passcode has been set on the computer Jarvis runs on.", reason: "no-passcode" },
       { status: 503 }
     );
   }
@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
 
   clearFailures(key);
 
-  // A cross-origin caller — Axis on a phone, opened from the phone's own
+  // A cross-origin caller — Jarvis on a phone, opened from the phone's own
   // storage — cannot be given a cookie: its origin is `null`, and the CORS
   // rules that let it call at all forbid credentials. So it is handed the same
   // signed token to carry in an Authorization header instead. Only ever to a
@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
  * Set or change the passcode.
  *
  * Only from the computer itself or your own network — never from the internet.
- * Allowing it from outside would mean that the moment Axis is reachable and has
+ * Allowing it from outside would mean that the moment Jarvis is reachable and has
  * no passcode, the first stranger to find him could set one and lock you out of
  * your own machine. The one thing a public caller may do is answer a passcode
  * that already exists.
@@ -97,7 +97,7 @@ export async function POST(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   if (requestZone(req.headers) === "public") {
     return NextResponse.json(
-      { error: "A passcode can only be set from the computer Axis runs on." },
+      { error: "A passcode can only be set from the computer Jarvis runs on." },
       { status: 403 }
     );
   }

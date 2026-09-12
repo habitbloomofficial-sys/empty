@@ -1,6 +1,6 @@
 # Screen guide
 
-Three small tools that let Axis look at your screen, point at things on it,
+Three small tools that let Jarvis look at your screen, point at things on it,
 speak, and — when you explicitly hand him the controls — click and type.
 
 Windows. Python 3.9+. Only Pillow to install, and it installs itself.
@@ -45,7 +45,7 @@ python hands.py key ctrl+n
 no permission dialog. Typing sends Unicode characters rather than key
 positions, so it is correct on a Danish keyboard as well as a US one.
 
-**The rules that govern when Axis may use this are in `../CLAUDE.md`**, and they
+**The rules that govern when Jarvis may use this are in `../CLAUDE.md`**, and they
 are the important part of this folder. He drives only on "take over and …",
 shows a plan first, moves one step at a time, stops dead on "stop", and refuses
 payments, passwords, deleting files, and sending anything unread.

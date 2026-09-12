@@ -129,10 +129,10 @@ export async function focusWindow(search: string): Promise<FocusResult> {
 
   // AppActivate takes a process id, so nothing of his text reaches PowerShell.
   await powershell(
-    "$id = [int]$env:AXIS_WINDOW_PID; " +
+    "$id = [int]$env:JARVIS_WINDOW_PID; " +
       "$shell = New-Object -ComObject WScript.Shell; " +
       "$null = $shell.AppActivate($id)",
-    { AXIS_WINDOW_PID: String(target.pid) }
+    { JARVIS_WINDOW_PID: String(target.pid) }
   );
 
   return {

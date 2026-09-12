@@ -78,7 +78,7 @@ export default function AxisApp() {
   const voicePlayer = useVoicePlayer();
 
   async function handleSend(text: string, transcribeMs?: number) {
-    // "Axis, standby" is an instruction to Axis, not a question for the model.
+    // "Jarvis, standby" is an instruction to Jarvis, not a question for the model.
     // Handled here rather than only in the wake listener so that typing it
     // works too, and so it never costs a request to answer.
     const order = detectStandbyOrder(text);
@@ -335,7 +335,7 @@ export default function AxisApp() {
       stopFillers();
       setIsThinking(false);
       // Same treatment as the Settings panel: a request that never reached the
-      // server says "Failed to fetch" and nothing else, which reads as Axis
+      // server says "Failed to fetch" and nothing else, which reads as Jarvis
       // being broken rather than the terminal having been closed.
       setError(describeClientFetchError(err));
     } finally {
@@ -365,7 +365,7 @@ export default function AxisApp() {
     // closed is not, so that one has to earn it:
     //
     //   - straight after his own reply, a follow-up needs no name, because
-    //     having to say "Axis" before every sentence isn't a conversation;
+    //     having to say "Jarvis" before every sentence isn't a conversation;
     //   - but cutting into a reply already under way always takes his name,
     //     since interrupting himself over a noise is the worst version of
     //     getting this wrong.
@@ -443,7 +443,7 @@ export default function AxisApp() {
         return;
       }
       // Any address at all brings him back: being told to wake up is the point
-      // of a wake word, and "Axis" alone is how anyone would do it.
+      // of a wake word, and "Jarvis" alone is how anyone would do it.
       if (standby) {
         leaveStandby();
         if (command.trim().length > 2 && order !== "resume") void handleSend(command.trim());
@@ -451,7 +451,7 @@ export default function AxisApp() {
       }
       if (order === "resume") return;   // Already awake; nothing to do.
 
-      // "Hey Axis, open YouTube" shouldn't need saying twice — if the
+      // "Hey Jarvis, open YouTube" shouldn't need saying twice — if the
       // instruction came in the same breath, act on it directly.
       if (command.trim().length > 2) void handleSend(command.trim());
       else void speech.start();
@@ -459,7 +459,7 @@ export default function AxisApp() {
   });
 
   useEffect(() => {
-    // Opening Axis opens a session. He works out whether this is a new day,
+    // Opening Jarvis opens a session. He works out whether this is a new day,
     // a session being picked up, or one that stopped without saying so, and
     // hands back a line about where things stood — which is the difference
     // between an assistant who greets you and one who remembers you.
@@ -776,7 +776,7 @@ export default function AxisApp() {
             microphone that has stopped working. */}
         {ignored?.reason === "not-addressed" && (
           <div className="glass mt-3 max-w-md rounded-none px-4 py-2 text-center text-xs text-sand-500">
-            Heard “{ignored.text.slice(0, 60)}” — start with <b>“Hey Axis”</b> if that
+            Heard “{ignored.text.slice(0, 60)}” — start with <b>“Hey Jarvis”</b> if that
             was meant for me.
           </div>
         )}

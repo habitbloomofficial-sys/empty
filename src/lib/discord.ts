@@ -10,7 +10,7 @@ import { getSetting } from "./settings";
 //
 // So this works the way the Spotify playlists and the phone contacts do: a list
 // of "Name = link" lines written once. Say the name, land in the server. For a
-// name he hasn't saved, Axis opens Discord itself and says plainly that he
+// name he hasn't saved, Jarvis opens Discord itself and says plainly that he
 // doesn't have a link for it — there is no honest search to fall back on, and a
 // guessed URL that lands on nothing is worse than an admission.
 

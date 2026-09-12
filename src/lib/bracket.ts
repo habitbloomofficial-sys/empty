@@ -234,7 +234,7 @@ export function designBracket(request: DesignRequest): DesignedBracket {
     folder,
     safeFilename(`${request.itemName} bracket`.slice(0, 60), "stl")
   );
-  fs.writeFileSync(target, toStl(triangles, `Axis bracket for ${request.itemName}`));
+  fs.writeFileSync(target, toStl(triangles, `Jarvis bracket for ${request.itemName}`));
 
   return {
     path: target,

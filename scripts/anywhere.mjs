@@ -1,7 +1,7 @@
-// Axis on the open internet, for as long as this window is open.
+// Jarvis on the open internet, for as long as this window is open.
 //
 // cloudflared opens an outbound connection to Cloudflare and gets back a public
-// https address that forwards to Axis on this machine. Nothing is opened on
+// https address that forwards to Jarvis on this machine. Nothing is opened on
 // your router, no port is forwarded, and the address stops existing the moment
 // this stops running.
 //
@@ -29,7 +29,7 @@ export function findTunnelUrl(line) {
   return match ? match[0] : null;
 }
 
-/** Wait for Axis himself to be answering before pointing the world at him. */
+/** Wait for Jarvis himself to be answering before pointing the world at him. */
 async function waitForAxis(attempts = 60) {
   for (let i = 0; i < attempts; i++) {
     try {
@@ -124,12 +124,12 @@ function askSecret(question) {
 /**
  * Set the passcode here, rather than sending him somewhere else to do it.
  *
- * This used to refuse to start and tell him to open Axis on the computer, go to
+ * This used to refuse to start and tell him to open Jarvis on the computer, go to
  * Settings, find Remote access and set one — four steps away from the window he
  * was already looking at, which is three more than anybody follows. The lock is
  * not negotiable, but where you fit it is.
  *
- * It goes through Axis's own API rather than writing the file directly, so
+ * It goes through Jarvis's own API rather than writing the file directly, so
  * there is one piece of code that decides how a passcode is stored, and this
  * isn't a second one that could drift from it.
  */
@@ -148,7 +148,7 @@ export async function ensurePasscode() {
   console.log("   First, a passcode.");
   console.log("  ------------------------------------------------------------");
   console.log("");
-  console.log("  In a moment Axis will have a web address that works from");
+  console.log("  In a moment Jarvis will have a web address that works from");
   console.log("  anywhere in the world. He reads your mail and opens things on");
   console.log("  this computer, so that address needs a lock on it - and this is");
   console.log("  the only thing standing between your computer and whoever else");
@@ -196,7 +196,7 @@ export async function ensurePasscode() {
 function announce(url) {
   console.log("");
   console.log("  ================================================");
-  console.log("   AXIS IS ON THE INTERNET");
+  console.log("   JARVIS IS ON THE INTERNET");
   console.log("  ================================================");
   console.log("");
   console.log("  1. Point your phone's camera at this square.");
@@ -226,7 +226,7 @@ async function main() {
   if (!fs.existsSync(CLOUDFLARED)) {
     console.error(
       "  The tunnel program isn't here. Run " +
-        (process.platform === "win32" ? "START-AXIS-ANYWHERE.bat" : "START-AXIS-ANYWHERE.command") +
+        (process.platform === "win32" ? "START-JARVIS-ANYWHERE.bat" : "START-JARVIS-ANYWHERE.command") +
         " rather than this file."
     );
     process.exit(1);
@@ -234,8 +234,8 @@ async function main() {
 
   const ready = await waitForAxis();
   if (!ready) {
-    console.error("  Axis didn't start, so there is nothing to put on the internet.");
-    console.error("  Try START-AXIS.bat on its own first and see what it says.");
+    console.error("  Jarvis didn't start, so there is nothing to put on the internet.");
+    console.error("  Try START-JARVIS.bat on its own first and see what it says.");
     process.exit(1);
   }
 

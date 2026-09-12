@@ -10,7 +10,7 @@ import { MAX_TABS, type OpenWebsiteParams } from "./desktop";
 //
 // These live in data/workspaces.json rather than in settings.json, because
 // they are a list that grows rather than a value with a slot — and because a
-// workspace is his, not configuration. Settings are things Axis needs; these
+// workspace is his, not configuration. Settings are things Jarvis needs; these
 // are things he made.
 
 const STORE = path.join(process.cwd(), "data", "workspaces.json");

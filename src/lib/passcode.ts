@@ -5,8 +5,8 @@ import { writeFileAtomic } from "./atomicWrite";
 
 // The lock on the front door.
 //
-// It exists for one reason: the moment Axis is reachable from the internet, an
-// unlocked Axis is a stranger's remote control for your computer, your inbox
+// It exists for one reason: the moment Jarvis is reachable from the internet, an
+// unlocked Jarvis is a stranger's remote control for your computer, your inbox
 // and your phone bill. So reaching him from outside your own network requires a
 // passcode, and there is no way to turn that off — the setting is *what* the
 // passcode is, not *whether* there is one.
@@ -142,7 +142,7 @@ export function isValidToken(token: string | undefined | null, now = Date.now())
 // --- guessing --------------------------------------------------------------
 
 // In memory, per process. Someone with a list of passcodes to try gets a few
-// goes a minute rather than thousands, and a restart of Axis is not something
+// goes a minute rather than thousands, and a restart of Jarvis is not something
 // an attacker can cause.
 const attempts = new Map<string, { count: number; until: number }>();
 const WINDOW_MS = 15 * 60 * 1000;

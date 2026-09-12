@@ -115,12 +115,12 @@ export function ChatDock({
             // what it last heard is the fact that tells you whether the
             // microphone is dead, or simply listening in the wrong language.
             !wakeEnabled
-              ? 'Click to listen for "Hey Axis"'
+              ? 'Click to listen for "Hey Jarvis"'
               : !wakeListening
                 ? "Switched on, but the browser isn't listening — check the microphone permission."
                 : wakeLastHeard
-                  ? `Listening for "Hey Axis". Last heard: "${wakeLastHeard}"`
-                  : 'Listening for "Hey Axis" — click to switch off'
+                  ? `Listening for "Hey Jarvis". Last heard: "${wakeLastHeard}"`
+                  : 'Listening for "Hey Jarvis" — click to switch off'
           }
         >
           {/* A quiet pulse while the listener is actually running. */}
@@ -136,7 +136,7 @@ export function ChatDock({
           type="button"
           onClick={onLeaveStandby}
           className="shrink-0 rounded-full border border-amber-500/30 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-amber-400/80 transition-colors hover:bg-amber-500/10"
-          title='Standing by — say "Axis, wake up", or click here'
+          title='Standing by — say "Jarvis, wake up", or click here'
         >
           Standby
         </button>
@@ -146,7 +146,7 @@ export function ChatDock({
         value={inputValue}
         onChange={(e) => setValue(e.target.value)}
         disabled={isListening || isTranscribing}
-        placeholder="Ask Axis anything…"
+        placeholder="Ask Jarvis anything…"
         className="min-w-0 flex-1 bg-transparent font-mono text-[13px] text-cream placeholder:text-sand-700 focus:outline-none disabled:italic"
       />
 

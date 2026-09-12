@@ -6,11 +6,11 @@ import { isPasscodeSet, issueToken } from "@/lib/passcode";
 
 export const runtime = "nodejs";
 
-// Handing the phone version of Axis to the phone.
+// Handing the phone version of Jarvis to the phone.
 //
-// AXIS-PHONE.html is the whole assistant in one file, and getting it onto a
+// JARVIS-PHONE.html is the whole assistant in one file, and getting it onto a
 // phone used to mean finding it in the repository and sending it over Discord.
-// This serves it from Axis himself, which means the link is one he can open on
+// This serves it from Jarvis himself, which means the link is one he can open on
 // the phone directly — and, more usefully, that the copy he gets already knows
 // where this computer is and how to get in.
 //
@@ -103,7 +103,7 @@ export function homeAddress(req: NextRequest): string {
 }
 
 function readSource(): string {
-  return fs.readFileSync(path.join(process.cwd(), "AXIS-PHONE.html"), "utf-8");
+  return fs.readFileSync(path.join(process.cwd(), "JARVIS-PHONE.html"), "utf-8");
 }
 
 function serve(baked: string): NextResponse {
@@ -112,8 +112,8 @@ function serve(baked: string): NextResponse {
       "content-type": "text/html; charset=utf-8",
       // Downloaded rather than opened: opening it here would run it inside
       // this origin, where it is not what he wants and would put two copies of
-      // Axis on the same screen.
-      "content-disposition": 'attachment; filename="AXIS-PHONE.html"',
+      // Jarvis on the same screen.
+      "content-disposition": 'attachment; filename="JARVIS-PHONE.html"',
       "cache-control": "no-store",
     },
   });
@@ -167,7 +167,7 @@ export async function GET(req: NextRequest) {
     file = readSource();
   } catch {
     return NextResponse.json(
-      { error: "AXIS-PHONE.html isn't next to Axis on this computer, sir." },
+      { error: "JARVIS-PHONE.html isn't next to Jarvis on this computer, sir." },
       { status: 404 }
     );
   }
@@ -189,7 +189,7 @@ export async function POST(req: NextRequest) {
     file = readSource();
   } catch {
     return NextResponse.json(
-      { error: "AXIS-PHONE.html isn't next to Axis on this computer, sir." },
+      { error: "JARVIS-PHONE.html isn't next to Jarvis on this computer, sir." },
       { status: 404 }
     );
   }

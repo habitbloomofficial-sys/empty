@@ -509,7 +509,7 @@ export function designCase(request: CaseRequest): DesignedCase {
   const folder = path.join(outputFolder(), "Models");
   fs.mkdirSync(folder, { recursive: true });
   const target = uniquePath(folder, safeFilename(`${resolved.name} case`.slice(0, 60), "stl"));
-  fs.writeFileSync(target, toStl(built.triangles, `Axis — case for ${resolved.name}`));
+  fs.writeFileSync(target, toStl(built.triangles, `Jarvis — case for ${resolved.name}`));
 
   const notes = [
     `Outside ${built.sizeMm[0].toFixed(1)} × ${built.sizeMm[1].toFixed(1)} × ${built.sizeMm[2].toFixed(1)} mm.`,

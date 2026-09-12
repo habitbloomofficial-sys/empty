@@ -58,7 +58,7 @@ export function useWakeWord({
   onWake,
 }: {
   enabled: boolean;
-  /** Held off while Axis is speaking or already listening for a command. */
+  /** Held off while Jarvis is speaking or already listening for a command. */
   paused: boolean;
   /** Language tag to listen in. See speechLang.ts — this is not navigator.language. */
   lang: string;
@@ -71,7 +71,7 @@ export function useWakeWord({
    * The last thing it heard that was not his name.
    *
    * Here so a wake word that never fires stops being invisible: if the
-   * recogniser is returning "hej aksel" every time you say "hey Axis", that is
+   * recogniser is returning "hej aksel" every time you say "hey Jarvis", that is
    * the one fact that explains it, and nobody can guess it from the outside.
    */
   const [lastHeard, setLastHeard] = useState<string | null>(null);

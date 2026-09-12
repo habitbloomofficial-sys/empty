@@ -3,7 +3,7 @@ import path from "node:path";
 import { writeFileAtomic } from "./atomicWrite";
 import { MEMORY_DIR } from "./memory";
 
-// The fourth memory layer: what Axis has learned.
+// The fourth memory layer: what Jarvis has learned.
 //
 //   MEMORY.md   facts about you        — your sister's name, how you take coffee
 //   USER.md     who you are            — standing preferences
@@ -27,7 +27,7 @@ const MAX_ENTRIES = 300;
 /** How much of the prompt this layer may occupy. */
 const PROMPT_BUDGET = 900;
 
-const HEADER = `# What Axis has learned
+const HEADER = `# What Jarvis has learned
 
 > Things he has looked up, been told, or worked out — about the world, and
 > about how to do this job well. One per line, with where it came from. Edit or

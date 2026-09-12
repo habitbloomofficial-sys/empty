@@ -5,7 +5,7 @@ import { getSetting } from "./settings";
 // There is no free, key-free way to look a playlist up by name — Spotify's
 // search needs a developer app, and your *own* playlists need you to log in to
 // one. What there is, and what costs nothing, is a link. Every playlist has
-// one, it is two taps to copy, and once Axis has it he can go straight there
+// one, it is two taps to copy, and once Jarvis has it he can go straight there
 // for ever after.
 //
 // So this works the way the phone contacts and the Zaps do: a list of

@@ -2,7 +2,7 @@ import OpenAI from "openai";
 import { geminiModel } from "./geminiModel";
 import { getSetting } from "./settings";
 
-// Axis's brain can run on either OpenAI or Google's Gemini — Gemini exposes
+// Jarvis's brain can run on either OpenAI or Google's Gemini — Gemini exposes
 // an OpenAI-compatible endpoint, so the same "openai" SDK and the same
 // chat-completions + tool-calling code in api/chat/route.ts work for both.
 export type AIProvider = "openai" | "gemini" | "openrouter" | "anthropic";
@@ -127,7 +127,7 @@ export function getAI(): OpenAI {
       baseURL: OPENROUTER_BASE_URL,
       // OpenRouter attributes traffic by these; harmless, and it keeps the
       // request identifiable in your own dashboard.
-      defaultHeaders: { "HTTP-Referer": "http://localhost:3000", "X-Title": "Axis" },
+      defaultHeaders: { "HTTP-Referer": "http://localhost:3000", "X-Title": "Jarvis" },
     });
   } else {
     cachedClient = new OpenAI({ apiKey });
@@ -138,7 +138,7 @@ export function getAI(): OpenAI {
 
 /**
  * Gemini 2.5+ "thinks" before answering by default, which can add many seconds
- * to a reply as trivial as "hello". Axis is a conversational assistant, not a
+ * to a reply as trivial as "hello". Jarvis is a conversational assistant, not a
  * reasoning benchmark, so we ask for the lowest effort that still leaves it
  * able to decide whether to reach for a tool.
  */

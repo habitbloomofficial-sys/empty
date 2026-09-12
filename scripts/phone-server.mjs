@@ -1,11 +1,11 @@
-// Axis on your phone, over your own Wi-Fi.
+// Jarvis on your phone, over your own Wi-Fi.
 //
 // Two things have to be true for this to work, and the second is the one that
 // catches people out.
 //
 // The server has to listen on the network rather than only on localhost — that
 // part is easy. But browsers refuse the microphone on an insecure origin, and
-// localhost is the *only* exception. Reach Axis from your phone over plain
+// localhost is the *only* exception. Reach Jarvis from your phone over plain
 // http and you get a mute assistant with no explanation. So this serves HTTPS
 // with a certificate generated on your own machine.
 //
@@ -104,7 +104,7 @@ async function ensureCertificate(addresses) {
   }
 
   console.log("  Making a certificate for this computer...");
-  const attributes = [{ name: "commonName", value: "Axis" }];
+  const attributes = [{ name: "commonName", value: "Jarvis" }];
   // selfsigned v5 returns a promise; v4 and earlier returned the object
   // directly. Awaiting handles both, and getting this wrong fails at the point
   // where the private key is written rather than where it is generated.
@@ -175,7 +175,7 @@ function narrate(server, best) {
     if (served || explained) return;
     explained = true;
     console.log("");
-    console.log(`  >> A device (${ip}) reached Axis, then stopped.`);
+    console.log(`  >> A device (${ip}) reached Jarvis, then stopped.`);
     console.log("     That is the certificate warning, and it means the hard");
     console.log("     part is already working - your phone found this computer.");
     console.log("     On the phone: tap Advanced, then Continue / Proceed");
@@ -208,7 +208,7 @@ function narrate(server, best) {
     served = true;
     console.log("");
     console.log(`  >> Your phone is in. (${req.socket.remoteAddress})`);
-    console.log("     Leave this window open and use Axis on the phone.");
+    console.log("     Leave this window open and use Jarvis on the phone.");
     console.log("");
   });
 
@@ -226,7 +226,7 @@ function narrate(server, best) {
     console.log("");
     if (process.platform === "win32") {
       console.log("  1. WINDOWS FIREWALL. Close this window, right-click");
-      console.log("     START-AXIS-PHONE.bat and choose Run as administrator.");
+      console.log("     START-JARVIS-PHONE.bat and choose Run as administrator.");
       console.log("     It will put the rule in and this stops happening.");
     } else if (process.platform === "darwin") {
       console.log("  1. THE MAC FIREWALL. System Settings > Network >");
@@ -253,7 +253,7 @@ function narrate(server, best) {
     console.log("     guest networks, have 'AP isolation' or 'client isolation'");
     console.log("     switched on, which stops your own devices from seeing");
     console.log("     each other. If you can't turn it off, use");
-    console.log(`     START-AXIS-ANYWHERE${LAUNCHER} instead - that one goes out to`);
+    console.log(`     START-JARVIS-ANYWHERE${LAUNCHER} instead - that one goes out to`);
     console.log("     the internet and back, so the router has no say in it.");
     console.log("");
   }, 45_000).unref();
@@ -283,7 +283,7 @@ async function main() {
 
   console.log("");
   console.log("  ================================================");
-  console.log("   AXIS IS ON YOUR NETWORK");
+  console.log("   JARVIS IS ON YOUR NETWORK");
   console.log("  ================================================");
   console.log("");
   console.log("  1. Point your phone's camera at this square.");
@@ -320,7 +320,7 @@ async function main() {
   console.log("       Android  - the three dots, then Install app");
   console.log("");
   console.log("  Both devices must be on the same Wi-Fi, and this window has to");
-  console.log("  stay open - your phone is a window onto the Axis running here.");
+  console.log("  stay open - your phone is a window onto the Jarvis running here.");
   const prefix = subnetPrefix(best);
   if (prefix) {
     console.log("");

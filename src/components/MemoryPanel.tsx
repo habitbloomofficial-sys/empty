@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { describeClientFetchError, postJson } from "@/lib/clientFetch";
 
-// The readable half of Axis's memory: what happened, and the two files you
+// The readable half of Jarvis's memory: what happened, and the two files you
 // can edit yourself. Facts have their own list above this; sessions are shown
 // but never edited here — a history you can rewrite is not a history.
 
@@ -162,7 +162,7 @@ export function MemoryPanel({ onChanged }: { onChanged: () => void }) {
       )}
 
       <p>
-        A dated record of what you and Axis actually did, written as it happens.
+        A dated record of what you and Jarvis actually did, written as it happens.
         He reads the last of it when you open him, so he can pick up where you
         left off — and he can search all of it when you ask what happened when.
       </p>

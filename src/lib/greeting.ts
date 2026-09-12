@@ -4,7 +4,7 @@ import type { IntegrationStatus } from "./types";
 
 // What he says when you arrive, and it depends on where you are standing.
 //
-// Opening Axis on a phone on a train is not the same event as opening him at
+// Opening Jarvis on a phone on a train is not the same event as opening him at
 // the desk, and greeting both the same way is the tell that nothing is really
 // paying attention. On a phone he says so, and what he offers is shaped by the
 // fact that you are away from the machine: your inbox, a look at what is on the
