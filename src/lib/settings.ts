@@ -67,6 +67,9 @@ export const SETTING_KEYS = [
   "INVOICE_PAYMENT_DETAILS",
   "SHOPIFY_STORE",
   "SHOPIFY_TOKEN",
+  "LISTENING_MODE",
+  "INITIATIVE",
+  "INTERESTS",
 ] as const;
 
 export type SettingKey = (typeof SETTING_KEYS)[number];

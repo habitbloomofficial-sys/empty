@@ -353,6 +353,220 @@ await check("a spoken update is refused when it is too long to hear", async () =
   assert.ok(phone.MAX_SPOKEN_UPDATE <= 1500, "spoken cap is longer than anyone listens");
 });
 
+// --- knowing when he is talking to you --------------------------------------
+
+const addressed = await import("../src/lib/addressed.ts");
+
+await check("he answers a plain instruction without being named", () => {
+  for (const said of [
+    "open my morning tabs",
+    "play the new trailer",
+    "remind me to call the dentist",
+    "can you check my shopify orders",
+    "what's the trending video right now",
+    "åbn min mail",
+    "kan du finde den video",
+  ]) {
+    const verdict = addressed.isAddressedToJarvis(said, {});
+    assert.ok(verdict.addressed, `stayed silent for "${said}" (${verdict.confidence})`);
+  }
+});
+
+await check("a follow-up mid-conversation needs no name", () => {
+  const talking = { conversationOpen: true, sinceLastExchangeMs: 5_000 };
+  for (const said of ["no, the other one", "turn it up a bit", "yeah do that"]) {
+    assert.ok(addressed.isAddressedToJarvis(said, talking).addressed, said);
+  }
+  // …but the same words long afterwards start nothing.
+  const cold = { conversationOpen: true, sinceLastExchangeMs: 20 * 60_000 };
+  assert.equal(addressed.isAddressedToJarvis("no, the other one", cold).addressed, false);
+});
+
+await check("he stays out of speech that is not aimed at him", () => {
+  const cases = [
+    ["he said the trailer drops on friday", {}],
+    ["mum, can you pass me the remote", {}],
+    ["my assistant can do that now", {}],
+    ["yeah", {}],
+    ["haha", { conversationOpen: true, sinceLastExchangeMs: 3_000 }],
+    [
+      "so anyway I was telling him about the thing that happened at work last week and honestly it was the strangest situation I have ever been in with a client",
+      {},
+    ],
+  ];
+  for (const [said, ctx] of cases) {
+    const verdict = addressed.isAddressedToJarvis(said, ctx);
+    assert.equal(verdict.addressed, false, `answered "${said}" (${verdict.confidence})`);
+  }
+});
+
+await check("saying his name is not the same as speaking to him", () => {
+  // The most embarrassing possible failure: butting into a remark about you.
+  const verdict = addressed.isAddressedToJarvis("jarvis is really good at this actually", {});
+  assert.equal(verdict.addressed, false, "answered a remark about himself");
+  assert.ok(verdict.namedHim, "should still notice the name was said");
+  // But a question that happens to start the same way IS for him.
+  assert.ok(addressed.isAddressedToJarvis("jarvis is that the right one", {}).addressed);
+});
+
+await check("name-only mode still works for anyone who wants it", () => {
+  const strict = { mode: "name" };
+  assert.equal(addressed.isAddressedToJarvis("open my email", strict).addressed, false);
+  assert.ok(addressed.isAddressedToJarvis("hey jarvis open my email", strict).addressed);
+  // Standby means the name and nothing else, whatever the mode.
+  assert.equal(
+    addressed.isAddressedToJarvis("open my email", { standby: true }).addressed,
+    false
+  );
+});
+
+// --- studying something -----------------------------------------------------
+
+const researchLib = await import("../src/lib/research.ts");
+
+await check("research asks more than one question", () => {
+  const deep = researchLib.queryVariants("what is the best filament for outdoor parts?", "deep");
+  assert.ok(deep.length >= 3, `only ${deep.length} phrasings`);
+  // One of them must go looking for the downside, or it is an echo chamber.
+  assert.ok(deep.some((query) => /problem|criticism|limitation/i.test(query)));
+  assert.equal(researchLib.queryVariants("anything", "quick").length, 1);
+});
+
+await check("research spreads across sites rather than mining one", () => {
+  const hits = [
+    { title: "a", url: "https://one.com/a" },
+    { title: "b", url: "https://one.com/b" },
+    { title: "c", url: "https://one.com/c" },
+    { title: "d", url: "https://two.com/a" },
+    { title: "e", url: "https://three.com/a" },
+  ];
+  const picked = researchLib.spreadAcrossSites(hits, 3);
+  const sites = new Set(picked.map((hit) => new URL(hit.url).hostname));
+  assert.equal(sites.size, 3, "took more than one page from a single site first");
+});
+
+await check("research reports disagreement instead of picking a side", () => {
+  const conflicts = researchLib.findConflicts([
+    { ref: 1, text: "The engine makes 450 hp according to the manufacturer." },
+    { ref: 2, text: "Independent testing put it at 400 hp on the day." },
+  ]);
+  assert.ok(conflicts.length >= 1, "did not notice two sources giving different figures");
+  assert.match(conflicts[0], /disagree/i);
+});
+
+await check("research keeps only passages that bear on the question", () => {
+  const page = [
+    "Accept cookies to continue browsing this website today.",
+    "The layer bond in a printed part is typically half the strength of the plastic along the layers, which is why print orientation matters more than infill for a bracket carrying a load.",
+    "Sign up to our newsletter.",
+  ].join("\n");
+  const kept = researchLib.relevantPassages(page, "does print orientation affect layer strength", 3);
+  assert.equal(kept.length, 1, `kept ${kept.length} passages`);
+  assert.match(kept[0], /layer bond/);
+});
+
+// --- the engineering ---------------------------------------------------------
+
+const printing = await import("../src/lib/printing.ts");
+const engineer = await import("../src/lib/engineer.ts");
+const { stressTest } = await import("../src/lib/stress.ts");
+const { MATERIALS } = await import("../src/lib/loadCalc.ts");
+const { box } = await import("../src/lib/solids.ts");
+
+await check("print orientation changes the answer by the layer-bond factor", () => {
+  // The single biggest error in any printed-part sum that ignores it, and it
+  // errs the dangerous way: the part looks twice as strong as it is.
+  const base = {
+    triangles: box(120, 20, 6),
+    material: MATERIALS.pla,
+    loadKg: 3,
+    mode: "bend",
+    axis: "x",
+    infillPercent: 40,
+  };
+  const flat = stressTest({ ...base, orientation: "flat" });
+  const edge = stressTest({ ...base, orientation: "on-edge" });
+  const upright = stressTest({ ...base, orientation: "upright" });
+
+  const bond = printing.layerBondFactor(MATERIALS.pla);
+  const ratio = edge.safetyFactor / flat.safetyFactor;
+  assert.ok(
+    Math.abs(ratio - 1 / bond) < 0.02,
+    `on-edge/flat was ${ratio.toFixed(2)}, expected ${(1 / bond).toFixed(2)}`
+  );
+  assert.ok(upright.safetyFactor < flat.safetyFactor, "upright should be the worst");
+  assert.equal(edge.orientation.improvement, 1, "on-edge has nothing to gain");
+  assert.ok(flat.cautions.some((line) => /on edge/i.test(line)), "flat should be told about it");
+});
+
+await check("shear governs a short stubby part, bending a long one", () => {
+  // Bending stress falls as the part gets shorter; shear does not. A
+  // bending-only check therefore calls exactly the stubby parts safe that
+  // aren't.
+  const at = (len) =>
+    stressTest({
+      triangles: box(len, 40, 25),
+      material: MATERIALS.pla,
+      loadKg: 60,
+      mode: "bend",
+      axis: "x",
+      orientation: "on-edge",
+      infillPercent: 40,
+    });
+  assert.ok(at(4).shear.governs, "shear should govern a 4mm stub");
+  assert.ok(!at(20).shear.governs, "bending should govern a 20mm arm");
+  // Shear is a property of the root, so it must not change with length.
+  assert.ok(
+    Math.abs(at(4).shear.stressMPa - at(20).shear.stressMPa) < 0.01,
+    "shear at the root changed with length, which is wrong"
+  );
+});
+
+await check("a design review solves for the fix, and the sums add up", () => {
+  const review = engineer.designReview({
+    triangles: box(120, 20, 6),
+    material: MATERIALS.pla,
+    loadKg: 3,
+    mode: "bend",
+    axis: "x",
+    orientation: "flat",
+    infillPercent: 20,
+  });
+  assert.ok(review.report.safetyFactor < 1, "this arm should fail");
+  assert.equal(review.governing, "bending");
+
+  // Free fixes first — turning it round costs nothing and must be offered.
+  assert.equal(review.fixes[0].cost, "free");
+  assert.ok(review.fixes.some((fix) => fix.sufficient), "no fix was enough on its own");
+  assert.ok(review.recommendation.length > 20);
+
+  // Thickness goes as the square root of the improvement needed. For a
+  // rectangle that is exact, so it is worth asserting rather than trusting.
+  const deeper = engineer.thicknessFor(6, 2, 0.5);
+  assert.ok(Math.abs(deeper - 12) < 0.001, `wanted 12mm, got ${deeper}`);
+});
+
+// --- acting unasked ----------------------------------------------------------
+
+const initiative = await import("../src/lib/initiative.ts");
+const interests = await import("../src/lib/interests.ts");
+
+await check("nothing happens unasked unless it was switched on", async () => {
+  // Off is the default, and it must be a real gate rather than a preference.
+  const decision = await initiative.decideInitiative({ now: Date.now() });
+  assert.equal(decision.status, "off", `initiative was ${decision.status} with no setting`);
+  assert.match(decision.reason, /switched off/);
+});
+
+await check("interests weigh a phrase far above a single word", () => {
+  const topics = interests.topicsIn("open the grand theft auto six trailer");
+  assert.ok(topics.includes("grand theft"), "did not learn the phrase");
+  // Scaffolding words must never become interests.
+  for (const junk of ["open", "the", "trailer", "video"]) {
+    assert.ok(!topics.includes(junk), `"${junk}" should not be an interest`);
+  }
+});
+
 // --- report -----------------------------------------------------------------
 
 for (const passed of done) console.log(`  ok  ${passed}`);

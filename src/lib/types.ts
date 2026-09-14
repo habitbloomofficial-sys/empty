@@ -56,6 +56,10 @@ export interface IntegrationStatus {
   /** The redirect URI that must be registered in the Google OAuth client. */
   gmailRedirectUri: string;
   whatsapp: boolean;
+  /** How hard his name is required before he answers. See addressed.ts. */
+  listening: "name" | "smart" | "open";
+  /** Whether he may act on his own without being asked. */
+  initiative: boolean;
   /** The Shopify store is connected and can be asked about orders. */
   shopify: boolean;
   /** Which store, so he can see at a glance that it is the right one. */

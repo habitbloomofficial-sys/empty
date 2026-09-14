@@ -435,6 +435,13 @@ export default function AxisApp() {
     enabled: wakeEnabled,
     paused: voicePlayer.isSpeaking || speech.isListening || speech.isTranscribing || isThinking,
     lang: status?.speechLang ?? "en-GB",
+    // How hard his name is required. See addressed.ts — "smart" reads the
+    // shape of the sentence instead, so a follow-up needs no name at all.
+    mode: status?.listening ?? "smart",
+    standby,
+    // The end of the last turn. Inside the conversation window this is what
+    // lets "no, the other one" land without saying his name again.
+    lastExchangeAt: lastReplyAt,
     onWake: (command) => {
       const order = detectStandbyOrder(`axis ${command}`);
 
@@ -635,7 +642,13 @@ export default function AxisApp() {
 
       let say: string | null = null;
       try {
-        const res = await fetch("/api/notice", { method: "POST" });
+        // Tell it what only this page knows: whether he asked for quiet, and
+        // whether he is mid-exchange. Both are reasons to stay out of it.
+        const res = await fetch("/api/notice", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ standby, talking: isThinking || voicePlayer.isSpeaking }),
+        });
         if (!res.ok) return;
         say = ((await res.json()) as { say: string | null }).say;
       } catch {
@@ -776,8 +789,8 @@ export default function AxisApp() {
             microphone that has stopped working. */}
         {ignored?.reason === "not-addressed" && (
           <div className="glass mt-3 max-w-md rounded-none px-4 py-2 text-center text-xs text-sand-500">
-            Heard “{ignored.text.slice(0, 60)}” — start with <b>“Hey Jarvis”</b> if that
-            was meant for me.
+            Heard “{ignored.text.slice(0, 60)}” — that didn&apos;t sound like it was
+            for me. Say my name if it was.
           </div>
         )}
 

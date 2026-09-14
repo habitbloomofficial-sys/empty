@@ -177,6 +177,10 @@ code rather than a copy of its logic.
 case fails before trusting it — two of the checks in there were written wrong
 the first time and passed anyway.
 
+**`systemPrompt.ts` is one enormous template literal.** A backtick anywhere in
+added prose ends the string and the file stops parsing. Write tool names in
+"double quotes", never in `backticks`. This has cost time twice.
+
 ---
 
 ## Teaching, plans, and the telephone
@@ -230,6 +234,96 @@ and in the writer. Something has to carry it between them, and nothing type-
 checks that gap — the dispatch built a fresh object literal, so the missing
 fields were simply `undefined`, which is legal. `behaviour.mjs` now runs
 `executeTool` end to end and reads the written file.
+
+---
+
+## Knowing when he is talking to you
+
+`src/lib/addressed.ts`. The complaint was that saying "Hey Jarvis" before every
+sentence is maddening; the failure mode on the other side is an assistant that
+answers the television.
+
+So the name is no longer a gate, it is one signal among several. What counts is
+the **shape** of the sentence — an instruction, or a question aimed at a second
+person — against the shapes that are plainly not for him: talking *about* him,
+talking to someone else in the room, reported speech, a filler word, or a long
+shapeless run of speech with no request in it.
+
+The other half is that **a conversation stays open**. Within
+`CONVERSATION_WINDOW_MS` of the last exchange the bar drops, which is what lets
+"no, the other one" work without his name.
+
+Three modes, in Settings: `name` (the old behaviour), `smart` (default), `open`
+(answers the television sometimes). Standby always means name-only.
+
+**The subtle one:** saying his name is not the same as speaking to him.
+"Jarvis is really good at this" begins with the name and is a remark to someone
+else — answering it is the most embarrassing thing an assistant can do, because
+it proves it was listening and understood nothing. `isAboutHim()` looks at what
+follows the linking verb: a pointing word (that/this/it/there) means a question
+to him, anything else means a remark about him.
+
+## Studying, rather than searching
+
+`src/lib/research.ts`. One search is not research. Four things make the
+difference, and each is a function worth reading:
+
+- `queryVariants` — **several phrasings**, because one phrasing finds one
+  corner of the web. At `deep` one variant deliberately hunts for criticism.
+- `spreadAcrossSites` — **at most one page per domain** on the first pass. Five
+  results from one site is one source wearing five hats, and they will agree
+  with each other whether or not they are right.
+- `relevantPassages` — **reads the pages**. A search snippet is written to be
+  clicked.
+- `findConflicts` — **reports disagreement rather than resolving it**. Picking
+  one figure and stating it confidently is how a research tool launders a guess
+  into a fact.
+
+It does not write the answer. It numbers and quotes, and the model cites `[1]`.
+
+## Engineering: what to change, not just whether it holds
+
+**`src/lib/printing.ts` is the important one.** A printed part is a stack of
+welded layers, and the weld is about **half** the strength of the plastic. The
+same bracket holds roughly twice as much printed on edge as printed flat. Any
+calculation that ignores this is wrong in the *dangerous* direction — the part
+looks like it has a factor of two when it has one.
+
+`stress.ts` now takes an `orientation`, and an unstated one is treated as the
+common weak case rather than the best one. Two failure modes it also checks:
+
+- **Shear at the root.** Bending stress falls as a part gets shorter; shear does
+  not. A bending-only check therefore calls exactly the stubby parts safe that
+  aren't.
+- **An abrupt change of section.** Section analysis averages across each cut, so
+  a shoulder reads as two safe sections with nothing wrong between them. Found
+  geometrically, reported as a multiplier to respect — not applied silently,
+  because the true figure depends on a fillet radius the mesh does not know.
+
+`src/lib/engineer.ts` solves for the fix and ranks it **by what it costs him**:
+free (turn it round in the slicer), cheap (thicker, more infill), costly (buy
+aluminium). Thickness goes as the *square root* of the improvement wanted,
+because the modulus goes as thickness squared.
+
+## Acting unasked
+
+`src/lib/initiative.ts` — **the most dangerous file here**, and not for a
+security reason. A wrong action cannot be ignored: it has already opened the
+tab, already interrupted, already been wrong out loud.
+
+Every gate is set against acting: off by default, only for things matching
+`interests.ts` above a bar a generic viral video cannot reach, only something
+newer than `FRESH_HOURS`, at most once per `COOLDOWN_MS`, never the same thing
+twice, never on standby, never mid-conversation. Opening a page takes a
+markedly higher score than merely mentioning one.
+
+And one rule that is not a gate: **whatever it does, it says**. An action taken
+silently is indistinguishable from a bug.
+
+`interests.ts` learns from what he asks for and opens, weighting two-word
+phrases far above single words — "grand theft" matching is evidence, "trailer"
+matching is not. Recency decays with a three-week half-life, so an old
+enthusiasm fades instead of being brought up forever.
 
 ---
 

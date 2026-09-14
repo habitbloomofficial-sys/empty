@@ -946,11 +946,96 @@ export function SettingsModal({
                 something actually matters.
               </span>
             </div>
+            <div>
+              <span className="mb-1 block text-[11px] font-semibold text-cream">
+                When he answers
+              </span>
+              <div className="flex gap-1.5 rounded-full bg-black/30 p-1">
+                {(
+                  [
+                    ["name", "Name first"],
+                    ["smart", "Reads the room"],
+                    ["open", "Eager"],
+                  ] as const
+                ).map(([value, label]) => {
+                  const active = (draft("LISTENING_MODE") || status?.listening || "smart") === value;
+                  return (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setDraft("LISTENING_MODE", value)}
+                      className={`flex-1 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                        active
+                          ? "bg-amber-500 text-white shadow-sm"
+                          : "text-sand-500 hover:bg-amber-500/10"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+              <span className="mt-1 block text-[10px] text-sand-600">
+                <b>Reads the room</b> is the normal one: he works out whether a sentence
+                was aimed at him from its shape, so you only need his name to start a
+                conversation — not to continue one. <b>Name first</b> is the old
+                behaviour, and better in a noisy room. <b>Eager</b> answers on the
+                slightest sign, and will sometimes answer the television.
+              </span>
+            </div>
+            <div>
+              <span className="mb-1 block text-[11px] font-semibold text-cream">
+                Acting on his own
+              </span>
+              <div className="flex gap-1.5 rounded-full bg-black/30 p-1">
+                {(
+                  [
+                    ["off", "Only when asked"],
+                    ["on", "May speak up"],
+                  ] as const
+                ).map(([value, label]) => {
+                  const current = draft("INITIATIVE") || (status?.initiative ? "on" : "off");
+                  const active = current === value;
+                  return (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setDraft("INITIATIVE", value)}
+                      className={`flex-1 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                        active
+                          ? "bg-amber-500 text-white shadow-sm"
+                          : "text-sand-500 hover:bg-amber-500/10"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+              <span className="mt-1 block text-[10px] text-sand-600">
+                With this on he may mention something that has just gone up in
+                something you follow — and, if it is an unusually strong match, put it
+                on screen without asking. At most once every three hours, never the
+                same thing twice, never while you have asked for quiet. Needs a
+                YouTube key.
+              </span>
+            </div>
+            <Field
+              label="Things you follow (optional)"
+              view={views.INTERESTS}
+              value={draft("INTERESTS")}
+              onChange={(v) => setDraft("INTERESTS", v)}
+              placeholder="grand theft auto, formula 1, 3d printing"
+              hint="Comma separated. He also learns this on his own from what you ask for and open — this is just for getting him started."
+            />
             <SaveButton
               onClick={() =>
                 save("personality", {
                   USER_TITLE: draft("USER_TITLE"),
                   HUMOUR: draft("HUMOUR") || "dry",
+                  LISTENING_MODE: draft("LISTENING_MODE") || "smart",
+                  INITIATIVE: draft("INITIATIVE") || "off",
+                  INTERESTS: draft("INTERESTS"),
                 })
               }
               busy={busySection === "personality"}

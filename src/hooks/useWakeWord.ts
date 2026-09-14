@@ -3,7 +3,7 @@
 import { micBlockedMessage } from "@/lib/micHelp";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { detectWakeWord } from "@/lib/wakeWord";
+import { isAddressedToJarvis, type ListeningMode } from "@/lib/addressed";
 
 // Always-on listening, done cheaply. The browser's own speech recognition runs
 // continuously as a trigger only — it costs nothing and uploads nothing of
@@ -55,6 +55,9 @@ export function useWakeWord({
   enabled,
   paused,
   lang,
+  mode = "smart",
+  standby = false,
+  lastExchangeAt = 0,
   onWake,
 }: {
   enabled: boolean;
@@ -62,6 +65,18 @@ export function useWakeWord({
   paused: boolean;
   /** Language tag to listen in. See speechLang.ts — this is not navigator.language. */
   lang: string;
+  /**
+   * How eagerly to listen. "name" is the old behaviour — his name before every
+   * sentence. "smart" reads the shape of what was said. See addressed.ts.
+   */
+  mode?: ListeningMode;
+  /** On standby he listens for his name and nothing else. */
+  standby?: boolean;
+  /**
+   * When the last exchange with him happened, as a timestamp. A follow-up
+   * inside the conversation window needs no name, which is the whole point.
+   */
+  lastExchangeAt?: number;
   onWake: (command: string) => void;
 }) {
   const [supported, setSupported] = useState(false);
@@ -81,6 +96,9 @@ export function useWakeWord({
   const lastWakeRef = useRef(0);
   const onWakeRef = useRef(onWake);
   const langRef = useRef(lang);
+  const modeRef = useRef(mode);
+  const standbyRef = useRef(standby);
+  const lastExchangeRef = useRef(lastExchangeAt);
   // Read inside long-lived handlers, which would otherwise close over stale props.
   const activeRef = useRef(false);
   // The session restarts itself from its own onend handler, which means the
@@ -91,6 +109,9 @@ export function useWakeWord({
   useEffect(() => {
     onWakeRef.current = onWake;
     langRef.current = lang;
+    modeRef.current = mode;
+    standbyRef.current = standby;
+    lastExchangeRef.current = lastExchangeAt;
   });
 
   useEffect(() => {
@@ -136,12 +157,29 @@ export function useWakeWord({
 
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const transcript = event.results[i][0]?.transcript ?? "";
-        const { woke, command } = detectWakeWord(transcript);
-        if (!woke) {
+
+        // Interim results are half-sentences. Judging "open my" as an
+        // instruction and firing on it would cut him off mid-word, so only a
+        // finished phrase is ever acted on — unless he used the name, which is
+        // unambiguous the moment it is heard.
+        const settled = event.results[i].isFinal;
+
+        const since = lastExchangeRef.current
+          ? Date.now() - lastExchangeRef.current
+          : Number.POSITIVE_INFINITY;
+        const verdict = isAddressedToJarvis(transcript, {
+          mode: modeRef.current,
+          standby: standbyRef.current,
+          conversationOpen: lastExchangeRef.current > 0,
+          sinceLastExchangeMs: since,
+        });
+
+        if (!verdict.addressed || (!settled && !verdict.namedHim)) {
           const heard = transcript.trim();
           if (heard) setLastHeard(heard);
           continue;
         }
+        const command = verdict.command;
         setLastHeard(null);
 
         lastWakeRef.current = Date.now();

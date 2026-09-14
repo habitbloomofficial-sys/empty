@@ -505,3 +505,48 @@ export async function findChannels(query: string, limit = 5): Promise<FoundChann
       return byName !== 0 ? byName : (b.subscribers ?? 0) - (a.subscribers ?? 0);
     });
 }
+
+interface TrendingItemResource {
+  id: string;
+  snippet?: {
+    title?: string;
+    channelTitle?: string;
+    publishedAt?: string;
+    description?: string;
+  };
+  statistics?: { viewCount?: string };
+}
+
+export interface TrendingVideo extends FoundVideo {
+  views: number | null;
+}
+
+/**
+ * What is trending where he lives.
+ *
+ * `chart=mostPopular` rather than a search: a search for "trending" returns
+ * videos ABOUT trending, which is a different and much stupider thing. The
+ * region matters — the most popular video in Denmark is not the most popular
+ * video in the United States, and defaulting to the latter would make every
+ * remark about it slightly foreign.
+ */
+export async function trendingNow(regionCode = "DK", limit = 25): Promise<TrendingVideo[]> {
+  const region = /^[A-Za-z]{2}$/.test(regionCode) ? regionCode.toUpperCase() : "DK";
+
+  const data = await call<{ items?: TrendingItemResource[] }>("videos", {
+    part: "snippet,statistics",
+    chart: "mostPopular",
+    regionCode: region,
+    maxResults: String(Math.min(Math.max(limit, 1), 50)),
+  });
+
+  return (data.items ?? []).map((item) => ({
+    id: item.id,
+    title: item.snippet?.title ?? "(untitled)",
+    channel: item.snippet?.channelTitle ?? "",
+    url: `https://www.youtube.com/watch?v=${item.id}`,
+    publishedAt: item.snippet?.publishedAt ?? null,
+    description: item.snippet?.description?.slice(0, 400),
+    views: item.statistics?.viewCount ? toNumber(item.statistics.viewCount) : null,
+  }));
+}

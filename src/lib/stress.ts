@@ -1,6 +1,12 @@
 import type { Triangle } from "./mesh";
 import { bounds, sectionAt, type Axis, type SectionProperties } from "./section";
 import { printDerating, type Material } from "./loadCalc";
+import {
+  infillFactor,
+  orientationAdvice,
+  type OrientationAdvice,
+  type PrintOrientation,
+} from "./printing";
 
 // Loading a part until it fails, on paper.
 //
@@ -52,6 +58,12 @@ export interface StressRequest {
    * something that gets caught, swung or yanked rather than set down gently.
    */
   shockFactor?: number;
+  /**
+   * How it will sit on the printer bed. This changes the answer by up to a
+   * factor of two — see printing.ts — so it is asked for rather than assumed,
+   * and an unstated orientation is treated as the common weak one.
+   */
+  orientation?: PrintOrientation;
 }
 
 export interface SectionSample {
@@ -101,6 +113,21 @@ export interface StressReport {
 
   /** Slender columns buckle long before they crush. Only set for `press`. */
   buckling: { criticalN: number; criticalKg: number; slender: boolean } | null;
+
+  /** What the print orientation costs, for a printed part. */
+  orientation: OrientationAdvice | null;
+  /**
+   * Shear at the held end. A short, deep part fails by tearing across the root
+   * rather than by bending, and a bending-only check calls that part safe.
+   */
+  shear: { stressMPa: number; allowableMPa: number; governs: boolean } | null;
+  /**
+   * Where the cross-section changes abruptly. A step concentrates stress far
+   * above the average, and section analysis cannot see it — so it is found
+   * geometrically and reported as a multiplier to respect, not applied
+   * silently.
+   */
+  concentration: { atMm: number; ratio: number; factor: number } | null;
 
   holds: boolean;
   headline: string;
@@ -276,7 +303,17 @@ export function stressTest(request: StressRequest): StressReport {
     ? solidMassG * (0.35 + 0.65 * Math.max(0, Math.min(100, infillPercent)) / 100)
     : null;
 
-  const derate = material.printed ? printDerating(infillPercent) : 1;
+  // The layer allowance comes from the ORIENTATION when one is known, and from
+  // printDerating's blanket 0.6 when it is not. Applying both would charge the
+  // penalty twice and report a well-oriented part as weaker than it is.
+  const orientation = material.printed
+    ? orientationAdvice(material, request.orientation ?? "unknown")
+    : null;
+  const derate = material.printed
+    ? request.orientation && request.orientation !== "unknown"
+      ? orientation!.factor * infillFactor(infillPercent)
+      : printDerating(infillPercent)
+    : 1;
   const allowableMPa = material.strength * derate;
 
   const raw = sampleSections(triangles, axis);
@@ -417,13 +454,65 @@ export function stressTest(request: StressRequest): StressReport {
       `The part tapers away to nothing at ${trimmed === 1 ? "one end" : "the ends"}, so I measured the body of it rather than the last sliver — a point cannot carry a point load, and treating it as the weak spot would tell you nothing useful. If something bears directly on that tip, it needs a flat there.`
     );
   }
+  // --- shear across the root ------------------------------------------------
+  //
+  // A short, deep bracket does not fail by bending; it tears across the held
+  // end. Bending stress falls as the part gets shorter while shear does not,
+  // so a bending-only check calls exactly the stubby parts safe that are not.
+  // Shear strength is taken as 0.6 of tensile, the usual approximation.
+  const rootArea = samples[0]?.areaMm2 ?? 0;
+  const shear =
+    mode === "bend" && rootArea > 1e-6
+      ? (() => {
+          // 1.5× the average, which is the peak for a solid section.
+          const stressMPa = (1.5 * forceN) / rootArea;
+          const allowable = allowableMPa * 0.6;
+          return { stressMPa, allowableMPa: allowable, governs: stressMPa / allowable > 1 / safetyFactor };
+        })()
+      : null;
+
+  // --- an abrupt change of section -------------------------------------------
+  //
+  // Section analysis averages across each cut, so a shoulder where the part
+  // steps from thick to thin reads as two safe sections with nothing wrong
+  // between them. In the real part that step is where it breaks. This finds
+  // the sharpest step and reports the multiplier to respect rather than
+  // applying it silently — the true figure depends on the fillet radius, which
+  // the mesh does not reliably tell us.
+  const concentration = (() => {
+    let worst: { atMm: number; ratio: number } | null = null;
+    for (let i = 1; i < samples.length; i++) {
+      const before = samples[i - 1].areaMm2;
+      const after = samples[i].areaMm2;
+      if (before < 1e-6 || after < 1e-6) continue;
+      const ratio = before / after;
+      if (ratio > 1.35 && (!worst || ratio > worst.ratio)) {
+        worst = { atMm: samples[i].at, ratio };
+      }
+    }
+    if (!worst) return null;
+    // Kt for a shouldered bar with a small fillet: roughly 1.5 to 2.5 over the
+    // range that matters. Scaled with the step and capped, because beyond that
+    // the number is guesswork.
+    const factor = Math.min(2.5, 1 + (worst.ratio - 1) * 0.6);
+    return { atMm: worst.atMm, ratio: worst.ratio, factor };
+  })();
+
+  if (shear?.governs) {
+    cautions.push(
+      `Shear governs, not bending: the root carries ${shear.stressMPa.toFixed(1)} MPa across it against ${shear.allowableMPa.toFixed(1)} allowed. Making it longer will not help; making the root thicker or deeper will.`
+    );
+  }
+  if (concentration) {
+    cautions.push(
+      `The section steps by ${concentration.ratio.toFixed(1)}× at ${concentration.atMm.toFixed(0)} mm from the held end. A sharp shoulder there multiplies the local stress by roughly ${concentration.factor.toFixed(1)}, which this figure does not include — put a generous fillet on it.`
+    );
+  }
   cautions.push(
     "Section analysis, not simulation. It finds the weakest cross-section and loads it properly, but it cannot see a stress concentration at a sharp internal corner — round off inside corners and they largely go away."
   );
-  if (material.printed) {
-    cautions.push(
-      "The layers matter more than the shape. Print it so the load runs along the layers rather than trying to peel them apart, and keep the layer lines away from the weak section above."
-    );
+  if (orientation) {
+    cautions.push(orientation.advice);
   }
   if (material.brittle) {
     cautions.push(`${material.name} is brittle — it gives no warning before it goes.`);
@@ -460,6 +549,9 @@ export function stressTest(request: StressRequest): StressReport {
     centreOfMass: centreOfMass(triangles),
     samples,
     weakest,
+    orientation,
+    shear,
+    concentration,
     forceN,
     allowableMPa,
     safetyFactor,

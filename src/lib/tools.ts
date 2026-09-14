@@ -54,6 +54,11 @@ import { callWithUpdate, isPhoneConfigured, placeCall } from "./phone";
 import { createDocument, outputFolder, type DocumentKind, type Section } from "./documents";
 import { isZapierConfigured, runZap } from "./zapier";
 import { isWebSearchConfigured, readPage, searchWeb } from "./web";
+import { research } from "./research";
+import { noteInterest } from "./interests";
+import { isTrendingAvailable, trending } from "./trending";
+import { designReview } from "./engineer";
+import type { PrintOrientation } from "./printing";
 import { learn, unlearn } from "./learned";
 import { askAbout, isHonchoConfigured } from "./honcho";
 import { launchApp, listInstalledApps, rankApps } from "./installedApps";
@@ -66,7 +71,8 @@ import {
 } from "./thumbnail";
 import { askFirst, takeApproval } from "./spend";
 import { designBracket } from "./bracket";
-import { MATERIAL_NAMES, findMaterial } from "./loadCalc";
+import { MATERIAL_NAMES, findMaterial, type Material } from "./loadCalc";
+import type { Triangle } from "./mesh";
 import { writeModel, type ModelSpec, type Piece } from "./part";
 import { PHONES, designCase, type Opening, type Side } from "./phoneCase";
 import {
@@ -1163,6 +1169,86 @@ export const toolDefinitions: OpenAI.Chat.Completions.ChatCompletionTool[] = [
   {
     type: "function",
     function: {
+      name: "research",
+      description:
+        "STUDY something properly, rather than searching once. Searches several phrasings, opens several pages across DIFFERENT sites, pulls out the passages that bear on the question, and reports where the sources disagree. Use this the moment a question is worth more than one page: comparing options, checking whether a claim is true, working out what something costs or how something is done, anything where being wrong matters. Slower than search_web and far better. You MUST write the answer from the passages it returns and cite the source numbers in square brackets — [1], [2] — so he can check you. Say plainly when sources disagree rather than quietly picking one; that disagreement is usually the most useful thing in the report. Never state something as fact that no passage supports.",
+      parameters: {
+        type: "object",
+        properties: {
+          question: {
+            type: "string",
+            description: "The question, in full. Write it as a question, not as keywords.",
+          },
+          depth: {
+            type: "string",
+            enum: ["quick", "normal", "deep"],
+            description:
+              "quick = 1 search, 3 pages. normal = 3 searches, 5 pages, the default. deep = 4 searches including one hunting for criticism, 8 pages — use it when he is about to spend money or make something.",
+          },
+        },
+        required: ["question"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "whats_trending",
+      description:
+        "What is trending on YouTube where he lives, scored against what HE actually follows. Use when he asks what's new, what he's missed, whether anything has dropped, or about a specific thing he follows. Results carry a match score and the topics that matched — lead with the ones that match him and do not read out a list of things he has never mentioned. Never announce something as new without saying how old it is.",
+      parameters: {
+        type: "object",
+        properties: {
+          matching_only: {
+            type: "boolean",
+            description: "Only things that match his interests. True unless he asked what's trending generally.",
+          },
+          limit: { type: "number", description: "How many to consider, up to 50." },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "design_review",
+      description:
+        "Take a part he has already made with make_model and work out WHAT TO CHANGE so it carries a load safely. Runs the full stress analysis and then solves for the fix: how deep the weakest section must be, whether turning it round on the printer is enough on its own, whether a different material is needed. Returns fixes ranked by what they cost him — free first. Use this rather than stress_test whenever it FAILS, or whenever he asks how to make something strong enough, how thick it should be, or which material to use. Give him the recommendation and the number it reaches; do not read out all four fixes unless he asks.",
+      parameters: {
+        type: "object",
+        properties: {
+          model: { type: "string", description: "The model file, as returned by make_model." },
+          load_kg: { type: "number", description: "What it must carry, in kilograms." },
+          material: {
+            type: "string",
+            description: "pla, petg, abs, asa, nylon, tpu, aluminium, steel, plywood or pine.",
+          },
+          mode: {
+            type: "string",
+            enum: ["bend", "press", "pull"],
+            description: "bend = held at one end with weight on the other. press = stood on. pull = hung from.",
+          },
+          orientation: {
+            type: "string",
+            enum: ["flat", "on-edge", "upright", "unknown"],
+            description:
+              "How it will sit on the printer bed. This changes the answer by up to TWICE, so ask him if you do not know rather than guessing: flat = lying down (weak, and what most people do); on-edge = stood on its narrow side (strong); upright = standing on end (weakest).",
+          },
+          infill_percent: { type: "number", description: "Printed infill. 40 if not given." },
+          target: { type: "number", description: "Safety factor to design to. 2 if not given." },
+          shock_factor: {
+            type: "number",
+            description: "2 if the load will be caught, swung or yanked rather than set down.",
+          },
+        },
+        required: ["model", "load_kg", "material"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "youtube_stats",
       description:
         "Look up statistics for a YouTube channel — his own unless he names another. Returns subscribers, total views and video count, and by default the most recent uploads with the views, likes and comments on each. Use this for anything about how the channel or its videos are doing.",
@@ -1644,6 +1730,9 @@ export function availableTools(): OpenAI.Chat.Completions.ChatCompletionTool[] {
     if (name === "call_number" || name === "call_me_with_update") return isPhoneConfigured();
     if (name === "run_zap") return isZapierConfigured();
     if (name === "search_web") return isWebSearchConfigured();
+    // Research is search plus reading; it needs the same key.
+    if (name === "research") return isWebSearchConfigured();
+    if (name === "whats_trending") return isTrendingAvailable();
     if (name === "make_video") return isVideoEnabled();
     // Reading a page needs no key at all — it is a fetch.
     if (name === "read_page" || name === "learn") return true;
@@ -1712,6 +1801,57 @@ function readPages(value: unknown): OpenWebsiteParams[] {
     throw new Error(`That's ${pages.length} pages, sir — I'll open up to ${MAX_TABS} at a time.`);
   }
   return pages;
+}
+
+/**
+ * Find one of his models on disk and read it, ready to be loaded.
+ *
+ * Shared by stress_test and design_review, which want exactly the same thing
+ * and would otherwise each carry their own copy of the path checking — and a
+ * path check that exists twice is a path check that will be fixed once.
+ *
+ * The rule is the projector's rule: a filename is a filename, never a path,
+ * and whatever it resolves to has to still be inside the Models folder.
+ */
+function loadModelForTesting(
+  asked: string | undefined,
+  materialName: string
+): { triangles: Triangle[]; material: Material; modelName: string } {
+  if (!asked) {
+    throw new Error("Which model, sir? I don't have one from this conversation to fall back on.");
+  }
+  const folder = path.join(outputFolder(), "Models");
+
+  // The folder may simply not exist — on a machine where he has never asked
+  // for a model it does not, and resolving it unguarded threw a raw ENOENT at
+  // him, which is not an answer.
+  let root: string;
+  try {
+    root = fs.realpathSync(/*turbopackIgnore: true*/ folder);
+  } catch {
+    throw new Error(
+      "There are no models yet, sir — ask me to design something first and I'll test that."
+    );
+  }
+
+  let target: string;
+  try {
+    target = fs.realpathSync(/*turbopackIgnore: true*/ path.resolve(root, asked));
+  } catch {
+    throw new Error(`There's no model called "${asked}" in ${folder}, sir.`);
+  }
+  if (!(target === root || target.startsWith(root + path.sep)) || !target.toLowerCase().endsWith(".stl")) {
+    throw new Error("That isn't one of my models, sir.");
+  }
+
+  const material = findMaterial(materialName);
+  if (!material) throw new Error(`I don't have figures for "${materialName}", sir.`);
+
+  const file = fs.readFileSync(target);
+  const parsed = parseStl(
+    file.buffer.slice(file.byteOffset, file.byteOffset + file.byteLength) as ArrayBuffer
+  );
+  return { triangles: toTriangles(parsed), material, modelName: path.basename(target) };
 }
 
 /** Read a string argument, treating blank and wrong-typed values as absent. */
@@ -1987,6 +2127,10 @@ export async function executeTool(
         };
       }
       case "open_website": {
+        // What he asks to be shown is evidence about him. Only the search
+        // terms and the site name — never a full URL, which would put query
+        // strings into the interests file.
+        noteInterest([text(args.site), text(args.query)].filter(Boolean).join(" "));
         const result = await openWebsite({
           site: text(args.site),
           url: text(args.url),
@@ -2076,6 +2220,9 @@ export async function executeTool(
       }
       case "open_youtube": {
         const query = required(args.query, "title");
+        // The strongest signal there is about what he follows: not what he
+        // said, but what he chose to watch.
+        noteInterest(query);
         const wantsChannel = text(args.kind)?.toLowerCase() === "channel";
         const shouldOpen = args.open !== false;
 
@@ -2668,49 +2815,99 @@ export async function executeTool(
           },
         };
       }
+      case "research": {
+        const question = text(args.question) ?? "";
+        // What he asks about is what he is interested in. This is the main way
+        // interests.ts learns anything true about him.
+        noteInterest(question);
+        const report = await research({
+          question,
+          depth: text(args.depth) as "quick" | "normal" | "deep" | undefined,
+        });
+        return {
+          result: report,
+          log: { tool: name, summary: report.note, ok: true },
+        };
+      }
+      case "whats_trending": {
+        const items = await trending({
+          matchingOnly: args.matching_only !== false,
+          limit: count(args.limit) ?? 25,
+        });
+        return {
+          result: {
+            trending: items.slice(0, 12).map((item) => ({
+              title: item.title,
+              channel: item.channel,
+              url: item.url,
+              views: item.views,
+              hoursOld: item.ageHours === null ? null : Math.round(item.ageHours),
+              matchesHim: item.match.matched,
+              because: item.match.because,
+            })),
+            note: items.length
+              ? `${items.length} trending, best match first.`
+              : "Nothing trending matches what he follows just now.",
+          },
+          log: { tool: name, summary: `${items.length} trending items`, ok: true },
+        };
+      }
+      case "design_review": {
+        const { triangles, material, modelName } = loadModelForTesting(
+          text(args.model) ?? lastModel ?? undefined,
+          text(args.material) ?? "petg"
+        );
+        const review = designReview({
+          triangles,
+          material,
+          loadKg: count(args.load_kg) ?? 0,
+          mode: text(args.mode) as HoldMode | undefined,
+          orientation: text(args.orientation) as PrintOrientation | undefined,
+          infillPercent: count(args.infill_percent) ?? 40,
+          shockFactor: count(args.shock_factor),
+          target: count(args.target),
+        });
+        return {
+          result: {
+            model: modelName,
+            verdict: review.verdict,
+            governing: review.governing,
+            safetyFactor: Number(review.report.safetyFactor.toFixed(2)),
+            target: review.target,
+            recommendation: review.recommendation,
+            fixes: review.fixes.map((fix) => ({
+              change: fix.change,
+              cost: fix.cost,
+              reaches: Number.isFinite(fix.reaches) ? Number(fix.reaches.toFixed(1)) : null,
+              enoughOnItsOwn: fix.sufficient,
+            })),
+            orientationAdvice: review.report.orientation?.advice ?? null,
+            cautions: review.report.cautions,
+          },
+          log: {
+            tool: name,
+            summary: `${modelName}: ${review.verdict}`,
+            ok: true,
+            opens: "hologram",
+            model: modelName,
+            weakPoint: {
+              axis: review.report.axis,
+              atMm: review.report.weakest.at,
+              safetyFactor: review.report.safetyFactor,
+              holds: review.report.holds,
+            },
+          },
+        };
+      }
       case "stress_test": {
-        const folder = path.join(outputFolder(), "Models");
-        const asked = text(args.filename) ?? lastModel;
-        if (!asked) {
-          throw new Error("Which model, sir? I don't have one from this conversation to fall back on.");
-        }
-
-        // Same rule as the projector: resolve it, and require it to be inside
-        // the Models folder. A filename is a filename, not a path.
-        //
-        // The folder itself may not exist — on a machine where he has never
-        // asked for a model, it does not. Resolving it unguarded threw the raw
-        // ENOENT at him, which is not an answer.
-        let root: string;
-        try {
-          root = fs.realpathSync(/*turbopackIgnore: true*/ folder);
-        } catch {
-          throw new Error(
-            "There are no models yet, sir — ask me to design something first and I'll test that."
-          );
-        }
-        let target: string;
-        try {
-          target = fs.realpathSync(/*turbopackIgnore: true*/ path.resolve(root, asked));
-        } catch {
-          throw new Error(`There's no model called "${asked}" in ${folder}, sir.`);
-        }
-        if (!(target === root || target.startsWith(root + path.sep)) || !target.toLowerCase().endsWith(".stl")) {
-          throw new Error("That isn't one of my models, sir.");
-        }
-
-        const material = findMaterial(text(args.material) ?? "petg");
-        if (!material) {
-          throw new Error(`I don't have figures for "${text(args.material)}", sir.`);
-        }
-
-        const file = fs.readFileSync(target);
-        const parsed = parseStl(
-          file.buffer.slice(file.byteOffset, file.byteOffset + file.byteLength) as ArrayBuffer
+        const { triangles, material, modelName } = loadModelForTesting(
+          text(args.filename) ?? lastModel ?? undefined,
+          text(args.material) ?? "petg"
         );
         const report = stressTest({
-          triangles: toTriangles(parsed),
+          triangles,
           material,
+          orientation: text(args.orientation) as PrintOrientation | undefined,
           loadKg: count(args.load_kg) ?? 0,
           mode: text(args.mode) as HoldMode | undefined,
           infillPercent: count(args.infill_percent) ?? 40,
@@ -2719,7 +2916,7 @@ export async function executeTool(
 
         return {
           result: {
-            model: path.basename(target),
+            model: modelName,
             heldAs: report.mode,
             sizeMm: report.sizeMm.map((v) => Number(v.toFixed(1))),
             headline: report.headline,
@@ -2747,10 +2944,10 @@ export async function executeTool(
           },
           log: {
             tool: name,
-            summary: `Stress tested ${path.basename(target)} at ${count(args.load_kg)}kg — safety factor ${report.safetyFactor.toFixed(1)}`,
+            summary: `Stress tested ${modelName} at ${count(args.load_kg)}kg — safety factor ${report.safetyFactor.toFixed(1)}`,
             ok: true,
             opens: "hologram",
-            model: path.basename(target),
+            model: modelName,
             weakPoint: {
               axis: report.axis,
               atMm: report.weakest.at,
