@@ -24,6 +24,14 @@ import { getSetting } from "./settings";
 const BASE = process.env.HONCHO_TEST_BASE || "https://api.honcho.dev";
 const VERSION = "v3";
 
+// These three still say "axis", and must keep saying it.
+//
+// They are not labels, they are IDENTIFIERS at Honcho: everything he has
+// reasoned about over months is filed under them. Renaming them to match the
+// rename would not move that memory across — it would silently start a second,
+// empty workspace and leave the real one sitting there unread, which looks
+// exactly like an assistant that has forgotten him.
+//
 /** Ids may only be letters, numbers, underscores and hyphens. */
 const WORKSPACE = "axis";
 const SESSION = "axis-main";
@@ -195,15 +203,37 @@ export async function askAbout(question: string): Promise<string> {
   }
 }
 
-/** Whether the key is accepted, for the Settings panel to show. */
-export async function checkHonchoKey(): Promise<{ ok: boolean; error?: string }> {
-  try {
-    await call("POST", "/workspaces", { body: { id: WORKSPACE } });
-    return { ok: true };
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    if (/\b401\b|\b403\b/.test(message)) return { ok: false, error: "Honcho refused that key." };
-    if (/timed out|abort/i.test(message)) return { ok: false, error: "Honcho didn't answer in time." };
-    return { ok: false, error: message };
+/**
+ * Try a key against the real service, and say plainly what happened.
+ *
+ * Takes the key as an argument rather than reading the setting, because it is
+ * called the moment he PASTES one — before it has been saved. Creating the
+ * workspace is the probe: it needs a valid key, it is idempotent, and it is
+ * the same call the first real use would make, so a key that passes here
+ * cannot fail differently a minute later.
+ *
+ * This used to exist and be wired to nothing at all, which meant a wrong
+ * Honcho key looked exactly like a working one until the day someone noticed
+ * he had no long memory.
+ */
+export async function checkHonchoKey(key: string): Promise<string> {
+  const url = new URL(`/${VERSION}/workspaces`, BASE);
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
+    body: JSON.stringify({ id: WORKSPACE }),
+    signal: AbortSignal.timeout(TIMEOUT_MS),
+  });
+
+  if (res.status === 401 || res.status === 403) {
+    throw new Error(
+      "Honcho refused that key. They are made at app.honcho.dev under API keys — " +
+        "check the whole thing was copied, with no space on the end."
+    );
   }
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`Honcho returned ${res.status}.${body ? ` It said: ${body.slice(0, 160)}` : ""}`);
+  }
+  return `Working — his long memory is on, in workspace "${WORKSPACE}".`;
 }

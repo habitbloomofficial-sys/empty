@@ -706,6 +706,165 @@ await check("resolving a browser is cached rather than repeated every open", asy
   }
 });
 
+// --- the Claude API path, which has to keep working with nobody here --------
+
+await check("the Claude request uses the current API, not a removed one", () => {
+  // budget_tokens was REMOVED on Opus 5 and returns a 400 — not a deprecation
+  // warning, a hard failure on every single turn. Same for assistant prefill
+  // and for sampling parameters. Nothing here may creep back in.
+  const brain = fs.readFileSync(path.join("src", "lib", "anthropicBrain.ts"), "utf-8");
+  for (const removed of ["budget_tokens", "temperature", "top_p", "top_k"]) {
+    assert.ok(!brain.includes(removed), `anthropicBrain.ts sends ${removed}, which 400s on Opus 5`);
+  }
+  // effort lives inside output_config, not at the top level.
+  assert.ok(/output_config:\s*\{\s*effort/.test(brain), "effort is not inside output_config");
+  // A safety decline arrives as a normal 200 and must not be read as an answer.
+  assert.ok(brain.includes('stop_reason === "refusal"'), "a refusal is not handled");
+});
+
+await check("the Claude model id is one the API actually serves", async () => {
+  const ai = await import("../src/lib/ai.ts");
+  const model = ai.anthropicModel();
+  // Dated suffixes are a training-data habit and are not valid ids.
+  assert.ok(
+    !/-\d{8}$/.test(model),
+    `model "${model}" carries a date suffix, which is not a real id`
+  );
+  const known = [
+    "claude-opus-5", "claude-opus-4-8", "claude-opus-4-7", "claude-opus-4-6",
+    "claude-sonnet-5", "claude-sonnet-4-6", "claude-haiku-4-5",
+    "claude-fable-5", "claude-fable-5-1",
+  ];
+  assert.ok(known.includes(model), `model "${model}" is not one of the current ids`);
+  assert.ok(["low", "medium", "high", "xhigh", "max"].includes(ai.anthropicEffort()));
+});
+
+await check("every key Jarvis asks for can be checked when it is pasted", async () => {
+  // A wrong key that is silently accepted looks exactly like a working one
+  // until the day someone notices a whole feature has never run. Honcho's
+  // checker existed and was wired to nothing at all.
+  const verify = await import("../src/lib/verify.ts");
+  for (const key of ["ANTHROPIC_API_KEY", "HONCHO_API_KEY", "ELEVENLABS_API_KEY"]) {
+    assert.ok(verify.isVerifiableKey(key), `${key} is saved without ever being checked`);
+  }
+});
+
+// --- who he is ---------------------------------------------------------------
+
+const profileLib = await import("../src/lib/profile.ts");
+
+await check("his age is worked out from his birthday, never stored", () => {
+  // Storing "13" is storing something that is wrong within a year, and wrong
+  // silently. The file must hold a date and nothing else.
+  const source = fs.readFileSync(path.join("src", "lib", "profile.ts"), "utf-8");
+  assert.ok(!/\bage:\s*\d/.test(source), "an age looks to be stored as a number");
+  assert.ok(source.includes("birthday"), "no birth date is kept");
+
+  // Born 2013-02-12: still 12 the day before the birthday, 13 on the day.
+  const dayBefore = profileLib.age(new Date("2026-02-11T12:00:00"));
+  const onTheDay = profileLib.age(new Date("2026-02-12T12:00:00"));
+  const laterThatYear = profileLib.age(new Date("2026-09-16T12:00:00"));
+  assert.equal(dayBefore, 12, "a year too old before the birthday");
+  assert.equal(onTheDay, 13);
+  assert.equal(laterThatYear, 13);
+  // And it keeps counting, rather than being frozen at whatever it is today.
+  assert.equal(profileLib.age(new Date("2031-06-01T12:00:00")), 18);
+});
+
+await check("the birthday is noticed on the day and not otherwise", () => {
+  assert.equal(profileLib.isBirthday(new Date("2026-02-12T09:00:00")), true);
+  assert.equal(profileLib.isBirthday(new Date("2026-02-13T09:00:00")), false);
+  assert.equal(profileLib.daysToBirthday(new Date("2026-02-12T09:00:00")), 0);
+  assert.equal(profileLib.daysToBirthday(new Date("2026-02-10T09:00:00")), 2);
+});
+
+await check("what he told Jarvis about himself survives a fresh machine", () => {
+  // data/ is gitignored, so a profile that only exists there does not exist on
+  // the next computer. The seed is what makes these facts portable.
+  const summary = profileLib.profileSummary(new Date("2026-09-16T12:00:00"));
+  assert.match(summary, /13/, "his age is not in the prompt");
+  assert.match(summary, /Christian/i);
+  assert.match(summary, /Shopify/i);
+});
+
+// --- knowing a job -----------------------------------------------------------
+
+const skills = await import("../src/lib/skills.ts");
+
+await check("a field is found however he names it", () => {
+  assert.equal(skills.resolveNiche("shopify"), "dropshipping");
+  assert.equal(skills.resolveNiche("my shopify store"), "dropshipping");
+  assert.equal(skills.resolveNiche("ads"), "marketing");
+  assert.equal(skills.resolveNiche("beats"), "music production");
+  assert.equal(skills.resolveNiche("3d printing"), "engineering");
+  // Something it has never heard of becomes its own field rather than an error.
+  assert.equal(skills.resolveNiche("fishkeeping"), "fishkeeping");
+});
+
+await check("each field knows things a general answer would miss", () => {
+  for (const brief of skills.BRIEFS) {
+    assert.ok(brief.knows.length >= 3, `${brief.niche} has almost nothing in it`);
+    for (const line of brief.knows) {
+      // Filler reads as knowledge and is not. Anything this short is a slogan.
+      assert.ok(line.length > 60, `${brief.niche}: "${line}" is too thin to be useful`);
+    }
+  }
+  const shop = skills.briefFor("dropshipping");
+  // The one fact about his store that actually stops it being shut down.
+  assert.ok(
+    shop.knows.some((line) => /legal adult|18/i.test(line)),
+    "the dropshipping brief never mentions the age requirement on the account"
+  );
+});
+
+await check("his own notes are filed by field and outrank the general brief", () => {
+  const STORE = path.join("data", "skills.json");
+  const had = fs.existsSync(STORE) ? fs.readFileSync(STORE, "utf-8") : null;
+  try {
+    fs.rmSync(STORE, { force: true });
+    skills.rememberForNiche("shopify", "His supplier ships from Poland in 6 days.");
+    skills.rememberForNiche("beats", "Calls the loud kick 'the door knock'.", "joke");
+
+    const shopContext = skills.skillContext("shopify");
+    assert.match(shopContext, /Poland/, "his own note is missing");
+    // His note must come after the general knowledge, so it reads as the
+    // override rather than as one more general fact.
+    assert.ok(
+      shopContext.indexOf("Poland") > shopContext.indexOf("One product carries the store"),
+      "his own note is not placed last"
+    );
+    // And a question about music must not drag up his shipping times.
+    assert.ok(!skills.skillContext("beats").includes("Poland"), "fields are leaking into each other");
+    assert.match(skills.skillContext("beats"), /door knock/);
+  } finally {
+    fs.rmSync(STORE, { force: true });
+    if (had !== null) fs.writeFileSync(STORE, had);
+  }
+});
+
+// --- the camera --------------------------------------------------------------
+
+await check("the camera takes one still and keeps nothing", () => {
+  const vision = fs.readFileSync(path.join("src", "lib", "vision.ts"), "utf-8");
+  // Nothing may write the frame anywhere.
+  for (const written of ["writeFile", "createWriteStream", "mkdir"]) {
+    assert.ok(!vision.includes(written), `vision.ts calls ${written} — the picture is being kept`);
+  }
+  const panel = fs.readFileSync(path.join("src", "components", "CameraPanel.tsx"), "utf-8");
+  // The light has to go off. A stream left running is the whole problem.
+  assert.ok(panel.includes("track.stop()"), "the camera stream is never stopped");
+  assert.ok(panel.includes("pagehide"), "closing the window would leave the camera on");
+});
+
+await check("the phone can show him things too", () => {
+  const phone = fs.readFileSync("JARVIS-PHONE.html", "utf-8");
+  assert.ok(phone.includes("/api/see"), "the phone cannot ask about a photo");
+  // capture="environment" opens the phone's own camera app rather than a
+  // half-working custom preview.
+  assert.ok(/capture="environment"/.test(phone), "the phone does not use the native camera");
+  assert.ok(phone.includes("signInHome"), "the phone would not recover from an expired token");
+});
+
 // --- report -----------------------------------------------------------------
 
 for (const passed of done) console.log(`  ok  ${passed}`);

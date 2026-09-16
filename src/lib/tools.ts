@@ -56,6 +56,17 @@ import { isZapierConfigured, runZap } from "./zapier";
 import { isWebSearchConfigured, readPage, searchWeb } from "./web";
 import { research } from "./research";
 import { noteInterest } from "./interests";
+import { noteAboutHim } from "./profile";
+import {
+  BRIEFS,
+  briefFor,
+  listNiches,
+  notesFor,
+  rememberForNiche,
+  resolveNiche,
+  skillContext,
+} from "./skills";
+import { canSee } from "./vision";
 import { isTrendingAvailable, trending } from "./trending";
 import { designReview } from "./engineer";
 import type { PrintOrientation } from "./printing";
@@ -1249,6 +1260,89 @@ export const toolDefinitions: OpenAI.Chat.Completions.ChatCompletionTool[] = [
   {
     type: "function",
     function: {
+      name: "look_through_camera",
+      description:
+        "Look through his webcam at whatever is in front of it, and answer a question about it. Use when he asks what you can see, wants something in his room identified, holds something up, or asks for advice on a physical thing in front of him — a part he has printed, a cable he cannot name, a setup he wants an opinion on. This OPENS THE CAMERA on his screen: one still is taken and described, nothing is recorded and nothing is kept. Never call it to check on him, to see whether he is there, or for any reason he has not just asked for — a camera used unasked is the fastest way to lose the right to have one.",
+      parameters: {
+        type: "object",
+        properties: {
+          question: {
+            type: "string",
+            description:
+              "What to look for, in his words — \"what is this connector\", \"is this printed part warped\". Leave out to simply describe what is there.",
+          },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "recall_skill",
+      description:
+        "Load what you know about a FIELD OF WORK before advising on it — dropshipping, marketing, music production, engineering, school, faith, or anything else he works in. Returns both the general craft knowledge for that field AND whatever he has told you about his own work in it, including running jokes. Call this FIRST whenever he asks for advice, an opinion, or a plan in a field, rather than answering from general knowledge: what he has told you about his own supplier, his own margins or his own setup overrides anything general, and you cannot know it without asking.",
+      parameters: {
+        type: "object",
+        properties: {
+          niche: {
+            type: "string",
+            description:
+              "The field, in his words — \"shopify\", \"ads\", \"beats\", \"engineering\". An unfamiliar one is fine; it simply has no built-in knowledge yet.",
+          },
+        },
+        required: ["niche"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "remember_for_skill",
+      description:
+        "File something under a FIELD OF WORK so it comes back whenever that field does. Use for anything specific to how HE works: his supplier, his margins, his DAW, a decision he made and why, what went wrong last time — and for running jokes and references, with kind set to \"joke\". Filing by field rather than as a general memory is what stops his shipping times surfacing in the middle of a question about mixing. Use remember (the general one) only for things that are not about a particular kind of work.",
+      parameters: {
+        type: "object",
+        properties: {
+          niche: { type: "string", description: "The field it belongs to." },
+          text: { type: "string", description: "The fact or the joke, in one line." },
+          kind: {
+            type: "string",
+            enum: ["note", "joke"],
+            description: "\"joke\" for a running gag or reference; \"note\" for anything else.",
+          },
+        },
+        required: ["niche", "text"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "list_skills",
+      description:
+        "The fields of work you know about and how much he has told you about each. Use when he asks what you know, what you remember about his work, or which areas you can help with.",
+      parameters: { type: "object", properties: {}, required: [] },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "remember_about_him",
+      description:
+        "Remember something durable about HIM as a person — not about a field of work, and not a passing fact. What he is building, what he believes, how old he is, what he is trying to become. These shape every answer rather than any one answer, so the bar is high: a preference about tonight's dinner is not one of these. Use remember_for_skill for anything tied to a kind of work.",
+      parameters: {
+        type: "object",
+        properties: {
+          fact: { type: "string", description: "The fact, in one line, written about him." },
+        },
+        required: ["fact"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "youtube_stats",
       description:
         "Look up statistics for a YouTube channel — his own unless he names another. Returns subscribers, total views and video count, and by default the most recent uploads with the views, likes and comments on each. Use this for anything about how the channel or its videos are doing.",
@@ -1729,6 +1823,7 @@ export function availableTools(): OpenAI.Chat.Completions.ChatCompletionTool[] {
     if (name === "open_youtube") return isDesktopControlEnabled();
     if (name === "call_number" || name === "call_me_with_update") return isPhoneConfigured();
     if (name === "run_zap") return isZapierConfigured();
+    if (name === "look_through_camera") return canSee();
     if (name === "search_web") return isWebSearchConfigured();
     // Research is search plus reading; it needs the same key.
     if (name === "research") return isWebSearchConfigured();
@@ -2124,6 +2219,78 @@ export async function executeTool(
         return {
           result: { products, count: products.length },
           log: { tool: name, summary: `${products.length} products`, ok: true },
+        };
+      }
+      case "look_through_camera": {
+        const asked = text(args.question);
+        // The server has no camera — only the browser does. This hands the
+        // request to the interface, which captures a frame and answers there.
+        return {
+          result: {
+            opening: true,
+            note: "Opening the camera now, sir — one still, and I'll tell you what I see.",
+          },
+          log: {
+            tool: name,
+            summary: asked ? `Looking: ${asked}` : "Looking through the camera",
+            ok: true,
+            opens: "camera",
+            question: asked,
+          },
+        };
+      }
+      case "recall_skill": {
+        const spoken = text(args.niche) ?? "";
+        const niche = resolveNiche(spoken);
+        const context = skillContext(spoken);
+        const mine = notesFor(niche);
+        return {
+          result: {
+            niche,
+            known: Boolean(briefFor(niche)),
+            context: context ?? `Nothing filed under "${niche}" yet.`,
+            yourNotes: mine.notes.length,
+            jokes: mine.jokes.length,
+          },
+          log: {
+            tool: name,
+            summary: `Recalled ${niche} (${mine.notes.length} of his own notes)`,
+            ok: true,
+          },
+        };
+      }
+      case "remember_for_skill": {
+        const kind = text(args.kind) === "joke" ? "joke" : "note";
+        const entry = rememberForNiche(text(args.niche) ?? "", text(args.text) ?? "", kind);
+        return {
+          result: {
+            niche: entry.niche,
+            kind,
+            note: `Filed under ${entry.niche}, sir.`,
+            notes: entry.notes.length,
+            jokes: entry.jokes.length,
+          },
+          log: { tool: name, summary: `Filed a ${kind} under ${entry.niche}`, ok: true },
+        };
+      }
+      case "list_skills": {
+        const all = listNiches();
+        return {
+          result: {
+            fields: all,
+            builtIn: BRIEFS.map((brief) => ({ niche: brief.niche, scope: brief.scope })),
+          },
+          log: { tool: name, summary: `${all.length} fields`, ok: true },
+        };
+      }
+      case "remember_about_him": {
+        const updated = noteAboutHim(text(args.fact) ?? "");
+        return {
+          result: {
+            about: updated.about,
+            note: "Noted, sir — that one stays.",
+          },
+          log: { tool: name, summary: `Remembered: ${text(args.fact)?.slice(0, 60)}`, ok: true },
         };
       }
       case "open_website": {

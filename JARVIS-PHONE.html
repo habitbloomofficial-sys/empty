@@ -408,6 +408,11 @@
 
   <form id="form">
     <button type="button" class="icon mic" id="micBtn" title="Speak" aria-label="Speak" hidden>●</button>
+    <button type="button" class="icon" id="camBtn" title="Show him something" aria-label="Show him something">▣</button>
+    <!-- The native camera, not a custom preview. capture="environment" opens
+         the phone's own camera app on both iOS and Android, which is better
+         quality, familiar, and cannot leave a stream running by accident. -->
+    <input type="file" id="camFile" accept="image/*" capture="environment" hidden>
     <textarea id="input" rows="1" placeholder="Say something to Jarvis…"
               aria-label="Message" autocapitalize="sentences"></textarea>
     <button type="submit" class="send" aria-label="Send">↑</button>
@@ -931,6 +936,113 @@ async function askHome(onDelta, onAction) {
 /* ------------------------------------------------------------ asking */
 
 let busy = false;
+
+/* ---------------------------------------------------------------- camera --
+ *
+ * Showing him something. The phone's camera is far better than the webcam on
+ * the computer, and it is already in his hand — so this is the one that
+ * matters.
+ *
+ * One photo, taken deliberately in the phone's own camera app, scaled down,
+ * described, and gone. Nothing is stored on the phone and nothing is uploaded
+ * twice. The answer is pushed into the conversation so he can ask a follow-up
+ * without holding the thing up again.
+ */
+const camBtn = document.getElementById("camBtn");
+const camFile = document.getElementById("camFile");
+
+camBtn.addEventListener("click", () => {
+  if (busy) return;
+  if (!home.connected) {
+    bubble("axis", "Looking at things needs the computer, sir — connect to it in the panel first.");
+    return;
+  }
+  camFile.value = "";        // so the same photo twice still fires a change
+  camFile.click();
+});
+
+/** Shrink to something worth sending: a 12MP photo is slow and no more useful. */
+function shrinkForSending(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Couldn't read that photo."));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error("That didn't come through as a picture."));
+      img.onload = () => {
+        const maxSide = 1280;
+        const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        const ctx = canvas.getContext("2d");
+        if (!ctx) { reject(new Error("Couldn't prepare that photo.")); return; }
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", 0.82));
+      };
+      img.src = String(reader.result);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+camFile.addEventListener("change", async () => {
+  const file = camFile.files && camFile.files[0];
+  if (!file || busy) return;
+
+  busy = true;
+  // The composer is reached through $() everywhere else in this file; there is
+  // no `input` variable to borrow.
+  const box = $("input");
+  const asked = box.value.trim();
+  box.value = "";
+  bubble("me", asked ? ("[photo] " + asked) : "[photo]");
+
+  const waiting = document.createElement("div");
+  waiting.className = "thinking";
+  waiting.innerHTML = "<i></i><i></i><i></i>";
+  logEl.appendChild(waiting);
+  logEl.scrollTop = logEl.scrollHeight;
+
+  try {
+    const dataUrl = await shrinkForSending(file);
+    let res = await fetch(homeBase() + "/api/see", {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: "Bearer " + settings.token },
+      body: JSON.stringify({ image: dataUrl, mediaType: "image/jpeg", question: asked || undefined })
+    });
+    // Same one-retry rule as the chat call: a token that ran out is not
+    // something he should have to diagnose.
+    if (res.status === 401) {
+      await signInHome();
+      res = await fetch(homeBase() + "/api/see", {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: "Bearer " + settings.token },
+        body: JSON.stringify({ image: dataUrl, mediaType: "image/jpeg", question: asked || undefined })
+      });
+    }
+
+    const data = await res.json().catch(() => ({}));
+    waiting.remove();
+
+    if (!res.ok || data.error) {
+      bubble("axis", data.error || ("The computer said no (HTTP " + res.status + ")."));
+    } else {
+      bubble("axis", data.answer);
+      // Into the history, so the next question can be about the photo.
+      history.push({ role: "user", text: asked ? ("[showed him a photo] " + asked) : "[showed him a photo]" });
+      history.push({ role: "model", text: data.answer });
+      saveHistory();
+      if (settings.speak) speak(data.answer);
+    }
+  } catch (err) {
+    waiting.remove();
+    bubble("axis", (err && err.message) || "That photo didn't work out, sir.");
+  } finally {
+    busy = false;
+    camFile.value = "";
+  }
+});
 
 async function ask(said) {
   if (busy) return;

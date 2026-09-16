@@ -358,6 +358,91 @@ something longer; a real short site name being *found inside* a longer sentence
 
 ---
 
+## Who he is, and the jobs he does
+
+**`src/lib/profile.ts` stores his BIRTH DATE and derives the age.** Writing
+down "13" is writing down something that is wrong within a year and wrong
+*silently* — he would be sixteen and be spoken to as a thirteen-year-old with
+nothing anywhere to explain it. `age()` also refuses to count the birthday
+before it happens, which is the one day a year it would be most embarrassing
+to get wrong.
+
+The facts he gave (born 2013-02-12, Christian, building a Shopify dropshipping
+store, loves a side hustle, wants to learn engineering) are a **`SEED` in the
+code**, not just a file in `data/`. `data/` is gitignored — correctly, it holds
+his keys — so anything that only lives there does not survive a new machine or
+a `git clean`. The seed is consulted only when no profile file exists, so
+anything he corrects stays corrected.
+
+**`src/lib/skills.ts` holds two different things on purpose:**
+
+- **Briefs** — what a competent practitioner in a field already knows, shipped
+  in code. Opinionated by design: *"the hook is the first two seconds and
+  nearly all of your result is decided there"* is knowledge; *"test different
+  creatives"* is filler. A `behaviour.mjs` check enforces a minimum length on
+  every line precisely to keep slogans out.
+- **Notes** — what *he* has said about *his* work in that field, plus running
+  jokes, in `data/skills.json`, **filed by field**. One pile of remembered
+  facts gets less useful as it grows; a pile per field gets more useful. His
+  notes are appended *last* in `skillContext()` so they read as the override —
+  he knows his supplier's shipping times and the brief does not.
+
+The dropshipping brief carries one fact deliberately: Shopify and every payment
+processor require the account holder to be a **legal adult**. That is what gets
+stores closed and payouts frozen, and it is checked by a test so it cannot be
+edited away by accident.
+
+## The camera
+
+`src/lib/vision.ts`, `/api/see`, `CameraPanel.tsx`, and the phone.
+
+Three rules, and they are about whose camera it is rather than about code:
+
+- **One frame, asked for.** Nothing opens a stream, watches, or runs on a
+  timer. An assistant that can see continuously is a different and much larger
+  thing than one that can be *shown* something.
+- **Nothing is kept.** The frame goes to the model and is gone — never written
+  to disk, never added to history. There is no folder of pictures of his room
+  to leak, because there is no folder. Tested by asserting `vision.ts` contains
+  no write call at all.
+- **The stream is stopped on every exit path**, including `pagehide`. A
+  `getUserMedia` stream left running keeps the camera light on after the window
+  has gone, which is the thing that makes people tape over the lens.
+
+The prompt forbids opening it for any reason he has not just asked for. The
+**phone** uses `capture="environment"` — the native camera app — rather than a
+custom preview: better quality, familiar, and it cannot leave a stream running.
+`/api/see` needs no auth code of its own because `proxy.ts` already gates every
+`/api/*` route when the request comes from the internet.
+
+## Keys, and checking them
+
+`verify.ts` checks a key against the real provider the moment it is pasted, and
+`isVerifiableKey` decides which ones. **`checkHonchoKey()` existed and was wired
+to nothing** — so a wrong Honcho key looked exactly like a working one until
+someone noticed he had no long memory. It is now registered like every other
+key and its result is shown on the Settings button.
+
+The Honcho workspace ids still say `"axis"`. **They must keep saying it** —
+they are identifiers, not labels, and everything Honcho has reasoned about over
+months is filed under them. Renaming would silently start a second, empty
+workspace and leave the real one unread, which looks exactly like an assistant
+that has forgotten him.
+
+## The Claude API, guarded
+
+He runs on his own Claude API key, so `behaviour.mjs` now guards the request
+shape directly. `budget_tokens` was **removed** on Opus 5 — it is a hard 400 on
+every turn, not a deprecation warning — as are `temperature`, `top_p` and
+`top_k`, and assistant prefill. The checks assert none of them appear in
+`anthropicBrain.ts`, that `effort` sits inside `output_config`, that a
+`refusal` stop reason is handled (it arrives as a normal 200 with nothing
+useful in it), and that the model id is a real current one with no date suffix
+— a dated id like `claude-opus-5-20260401` is a training-data habit and is not
+a valid model.
+
+---
+
 ## Screen guide
 
 `screen-guide/guide.py` has two jobs:

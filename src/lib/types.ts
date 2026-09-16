@@ -17,9 +17,11 @@ export interface ActionLogEntry {
    * A panel the browser should open in response to this action. Tools run on
    * the server, so this is how one asks the interface to do something.
    */
-  opens?: "hologram";
+  opens?: "hologram" | "camera";
   /** A model file the projector should open onto, rather than an empty stage. */
   model?: string;
+  /** What to look for, when the action asked the interface to open the camera. */
+  question?: string;
   /**
    * Where a stress test found the weak point, so the projector can mark it.
    * A number in a sentence is a claim; a band on the part is something he can

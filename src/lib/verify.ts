@@ -1,5 +1,6 @@
 import { interpretElevenLabsError } from "./elevenlabsErrors";
 import { anthropicModel } from "./ai";
+import { checkHonchoKey } from "./honcho";
 import { getSetting, type SettingKey } from "./settings";
 import { normalizeVoiceId } from "./voiceId";
 
@@ -43,6 +44,7 @@ const VERIFIABLE: Partial<Record<SettingKey, Verifier>> = {
   ANTHROPIC_API_KEY: verifyAnthropic,
   YOUTUBE_API_KEY: verifyYouTubeKey,
   YOUTUBE_CHANNEL: verifyYouTubeChannel,
+  HONCHO_API_KEY: checkHonchoKey,
 };
 
 export function isVerifiableKey(key: SettingKey): boolean {

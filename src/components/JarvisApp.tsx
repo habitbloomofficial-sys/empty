@@ -13,6 +13,7 @@ import { ChatIcon, CloseIcon } from "./Icons";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
 import { useVoicePlayer } from "@/hooks/useVoicePlayer";
 import { useWakeWord } from "@/hooks/useWakeWord";
+import { CameraPanel } from "./CameraPanel";
 import { detectStandbyOrder } from "@/lib/wakeWord";
 import { describeClientFetchError, fetchWithRetry, postJson } from "@/lib/clientFetch";
 import { catchphraseFor } from "@/lib/catchphrases";
@@ -54,6 +55,9 @@ export default function AxisApp() {
   // volunteering, no follow-ups without being addressed, no reacting to a
   // noise that half-sounded like a sentence.
   const [standby, setStandby] = useState(false);
+  // The camera is opened by an action, and keyed by when — a fresh key
+  // remounts the panel so the question arrives as its initial state.
+  const [camera, setCamera] = useState<{ at: number; question?: string } | null>(null);
   const [greetingPending, setGreetingPending] = useState(false);
   // What he remembers of where things stood. undefined until the session has
   // been opened; "" once opened with nothing worth saying.
@@ -261,6 +265,9 @@ export default function AxisApp() {
               setHologramModel(event.log.model);
               setHologramWeakPoint(event.log.weakPoint);
               setHologramOpen(true);
+            }
+            if (event.log?.opens === "camera") {
+              setCamera({ at: Date.now(), question: event.log.question });
             }
             // Shown the moment it happens — the action is already done.
             setMessages((prev) =>
@@ -908,6 +915,31 @@ export default function AxisApp() {
           />
         )}
       </AnimatePresence>
+
+      {camera && (
+        <CameraPanel
+          key={camera.at}
+          open
+          question={camera.question}
+          onClose={() => setCamera(null)}
+          onSaw={(asked, answer) => {
+            // What the camera saw goes INTO the conversation, so he can ask a
+            // follow-up about it without holding the thing up a second time.
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: crypto.randomUUID(),
+                role: "assistant" as const,
+                content: answer,
+                createdAt: Date.now(),
+                actions: [
+                  { tool: "look_through_camera", summary: `Looked: ${asked}`, ok: true },
+                ],
+              },
+            ]);
+          }}
+        />
+      )}
 
       <AnimatePresence>
         {settingsOpen && (

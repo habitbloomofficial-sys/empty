@@ -2223,6 +2223,7 @@ export function SettingsModal({
               onClick={() => save("honcho", { HONCHO_API_KEY: draft("HONCHO_API_KEY") })}
               busy={busySection === "honcho"}
               saved={savedSection === "honcho"}
+              checks={checks.honcho}
             />
             <p className="text-[10px] text-sand-600">
               With a key in, every exchange is written to Honcho, which reasons
