@@ -389,32 +389,139 @@ export function tabArguments(browser: BrowserChoice, urls: string[]): string[] {
   return [urls[0], ...urls.slice(1).flatMap((url) => ["-new-tab", url])];
 }
 
-function browserCommands(): { file: string; args: (urls: string[]) => string[] }[] {
+/** Every candidate browser, in the order they should be tried. */
+function browserOrder(): BrowserChoice[] {
   const chosen = preferredBrowser();
-  const order: BrowserChoice[] = chosen
-    ? [chosen, ...BROWSER_CHOICES.filter((name) => name !== chosen)]
-    : [...BROWSER_CHOICES];
+  return chosen ? [chosen, ...BROWSER_CHOICES.filter((name) => name !== chosen)] : [...BROWSER_CHOICES];
+}
 
-  const commands: { file: string; args: (urls: string[]) => string[] }[] = [];
-  for (const browser of order) {
-    const spread = (urls: string[]): string[] => tabArguments(browser, urls);
-
-    for (const file of pathsFor(browser)) {
-      commands.push(
-        process.platform === "darwin"
-          ? {
-              // On macOS the paths are .app bundles, which are opened rather
-              // than executed.
-              file: "open",
-              args: (urls: string[]) => ["-na", file, "--args", "--new-window", ...spread(urls)],
-            }
-          : // Chrome, Edge, Opera and Brave are all Chromium underneath, and
-            // Firefox understands --new-window too.
-            { file, args: (urls: string[]) => ["--new-window", ...spread(urls)] }
-      );
-    }
+/**
+ * Every real executable path worth trying, preferred browser first.
+ *
+ * Pure and cheap to call, but not free: it walks every path for every
+ * browser, which is most of the cost this file used to pay on EVERY single
+ * page opened. See resolvedBrowser() below, which is what actually avoids
+ * paying it more than once.
+ */
+function browserCandidates(): { browser: BrowserChoice; file: string }[] {
+  const candidates: { browser: BrowserChoice; file: string }[] = [];
+  for (const browser of browserOrder()) {
+    for (const file of pathsFor(browser)) candidates.push({ browser, file });
   }
-  return commands;
+  return candidates;
+}
+
+/** Turn a resolved browser + its file into something execFile can run. */
+function commandFor(browser: BrowserChoice, file: string, urls: string[]): { file: string; args: string[] } {
+  const spread = tabArguments(browser, urls);
+  if (process.platform === "darwin") {
+    // On macOS the paths are .app bundles, which are opened rather than
+    // executed.
+    return { file: "open", args: ["-na", file, "--args", "--new-window", ...spread] };
+  }
+  // Chrome, Edge, Opera and Brave are all Chromium underneath, and Firefox
+  // understands --new-window too.
+  return { file, args: ["--new-window", ...spread] };
+}
+
+const BROWSER_CACHE_PATH = path.join(process.cwd(), "data", ".browser-path.json");
+
+interface CachedBrowser {
+  /** The BROWSER setting this was resolved for — a changed setting invalidates it. */
+  forSetting: string;
+  browser: BrowserChoice;
+  file: string;
+}
+
+// Kept in memory for the life of the server, which is where nearly all of the
+// saving is: once resolved, opening the fiftieth page pays the same one
+// existsSync as the second. Also written to data/.browser-path.json so a
+// restart (which START-JARVIS.bat does on every update) doesn't start cold
+// either.
+let memoryCache: CachedBrowser | null = null;
+
+function settingKey(): string {
+  return preferredBrowser() ?? "auto";
+}
+
+function readDiskCache(): CachedBrowser | null {
+  try {
+    const parsed = JSON.parse(fs.readFileSync(BROWSER_CACHE_PATH, "utf-8")) as Partial<CachedBrowser>;
+    if (
+      typeof parsed.forSetting === "string" &&
+      typeof parsed.browser === "string" &&
+      typeof parsed.file === "string" &&
+      (BROWSER_CHOICES as readonly string[]).includes(parsed.browser)
+    ) {
+      return parsed as CachedBrowser;
+    }
+  } catch {
+    // No cache yet, or not readable — the full scan below covers it.
+  }
+  return null;
+}
+
+function writeDiskCache(entry: CachedBrowser): void {
+  try {
+    fs.mkdirSync(path.dirname(BROWSER_CACHE_PATH), { recursive: true });
+    fs.writeFileSync(BROWSER_CACHE_PATH, JSON.stringify(entry));
+  } catch {
+    // Purely an optimisation. Losing it costs one extra scan next launch,
+    // never correctness — so a locked or read-only data folder is not an error
+    // worth surfacing.
+  }
+}
+
+/**
+ * Which browser to use, resolved once and reused rather than re-discovered on
+ * every single page opened.
+ *
+ * Before this, opening ANY page — one site, one tab of a batch, one saved
+ * workspace — rebuilt the full candidate list for every browser Jarvis knows
+ * about and re-checked the filesystem for each one, every single time, even
+ * though the answer is nearly always identical to the answer a moment ago.
+ * Over a session that is opened dozens of times, that is dozens of redundant
+ * scans for one truth that doesn't change until he installs a browser or
+ * changes the setting.
+ *
+ * Self-healing in both directions: a cache whose file has been moved or
+ * uninstalled is caught by the one existsSync check below and a fresh scan
+ * runs immediately, and a changed BROWSER setting is caught by `forSetting`
+ * before the stale answer is ever used.
+ */
+function resolvedBrowser(): { browser: BrowserChoice; file: string } | null {
+  const wanted = settingKey();
+
+  const fromMemory = memoryCache?.forSetting === wanted ? memoryCache : null;
+  const cached = fromMemory ?? (() => {
+    const fromDisk = readDiskCache();
+    return fromDisk?.forSetting === wanted ? fromDisk : null;
+  })();
+
+  if (cached && fs.existsSync(cached.file)) {
+    memoryCache = cached;
+    return cached;
+  }
+
+  // No usable cache: the one path this still has to scan for.
+  for (const candidate of browserCandidates()) {
+    if (!fs.existsSync(candidate.file)) continue;
+    const found: CachedBrowser = { forSetting: wanted, ...candidate };
+    memoryCache = found;
+    writeDiskCache(found);
+    return found;
+  }
+  return null;
+}
+
+/** Forget the resolved browser — a spawn that failed means the cache lied. */
+function forgetResolvedBrowser(): void {
+  memoryCache = null;
+  try {
+    fs.rmSync(BROWSER_CACHE_PATH, { force: true });
+  } catch {
+    /* best effort */
+  }
 }
 
 /**
@@ -429,13 +536,32 @@ function browserCommands(): { file: string; args: (urls: string[]) => string[] }
  */
 async function openInNewWindow(urls: string[]): Promise<boolean> {
   if (urls.length === 0) return false;
-  for (const { file, args } of browserCommands()) {
-    // On Windows and Linux these are real paths or commands; skip missing ones
-    // rather than paying for a failed spawn each time.
-    if (path.isAbsolute(file) && !fs.existsSync(file)) continue;
+
+  const fast = resolvedBrowser();
+  if (fast) {
+    const { file, args } = commandFor(fast.browser, fast.file, urls);
     try {
-      const child = execFile(file, args(urls), { windowsHide: false });
+      const child = execFile(file, args, { windowsHide: false });
       child.unref();
+      return true;
+    } catch {
+      // The cached browser vanished between the existsSync check and the
+      // spawn — rare, but the fix is the same either way: forget it and fall
+      // through to the full scan below rather than reporting failure for
+      // something a rescan would have found.
+      forgetResolvedBrowser();
+    }
+  }
+
+  for (const { browser, file } of browserCandidates()) {
+    if (fast && browser === fast.browser && file === fast.file) continue; // already tried
+    if (!fs.existsSync(file)) continue;
+    try {
+      const { file: cmd, args } = commandFor(browser, file, urls);
+      const child = execFile(cmd, args, { windowsHide: false });
+      child.unref();
+      memoryCache = { forSetting: settingKey(), browser, file };
+      writeDiskCache(memoryCache);
       return true;
     } catch {
       // Try the next browser.
@@ -492,7 +618,7 @@ export function resolveWebsiteTarget(params: OpenWebsiteParams): WebsiteTarget {
   } else if (params.url?.trim()) {
     const url = params.url.trim();
     // A URL might still name something known — "open docs.google.com".
-    const recognised = findWebsite(url);
+    const recognised = findWebsite(url, { fuzzy: false });
     target = url;
     label = recognised?.name;
   } else if (spoken) {

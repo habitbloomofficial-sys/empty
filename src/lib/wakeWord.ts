@@ -1,3 +1,5 @@
+import { editDistance } from "./stringMatch";
+
 // "Hey Jarvis" is never what the recogniser actually hears. Across a room, on
 // a laptop microphone, it comes back as "hey Travis", "hi Jarvis", "a service",
 // "jarvis." with a full stop. Matching the literal string would mean the wake
@@ -61,25 +63,6 @@ const RESUME_PHRASES = [
   "wake up", "wake", "resume", "come back", "are you there", "you there",
   "i'm back", "im back", "carry on", "back on", "stop standby", "end standby",
 ];
-
-function editDistance(a: string, b: string): number {
-  // Ordinary Levenshtein, one row at a time — the strings here are one word.
-  let previous = Array.from({ length: b.length + 1 }, (_, i) => i);
-
-  for (let i = 1; i <= a.length; i++) {
-    const current = [i];
-    for (let j = 1; j <= b.length; j++) {
-      current[j] = Math.min(
-        previous[j] + 1,
-        current[j - 1] + 1,
-        previous[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)
-      );
-    }
-    previous = current;
-  }
-
-  return previous[b.length];
-}
 
 function words(text: string): string[] {
   return text

@@ -11,6 +11,7 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import os from "node:os";
 import { fileURLToPath } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -564,6 +565,144 @@ await check("interests weigh a phrase far above a single word", () => {
   // Scaffolding words must never become interests.
   for (const junk of ["open", "the", "trailer", "video"]) {
     assert.ok(!topics.includes(junk), `"${junk}" should not be an interest`);
+  }
+});
+
+// --- typo tolerance for a site name ------------------------------------------
+
+const websites = await import("../src/lib/websites.ts");
+
+await check("a typo of a site name still finds the site", () => {
+  const cases = [
+    ["youtub", "YouTube"], ["netlfix", "Netflix"], ["gmial", "Gmail"],
+    ["instgram", "Instagram"], ["wikipeda", "Wikipedia"], ["chatgtp", "ChatGPT"],
+    ["facbook", "Facebook"], ["spotfy", "Spotify"],
+  ];
+  for (const [typo, wanted] of cases) {
+    const site = websites.findWebsite(typo);
+    assert.equal(site?.name, wanted, `"${typo}" -> ${site?.name ?? "nothing"}`);
+  }
+});
+
+await check("a transposed pair of letters is one edit, not two", () => {
+  // "gmial" for "gmail" is the single most common typo of that word, and a
+  // plain Levenshtein distance charges it 2 — which a budget tight enough to
+  // keep short names safe correctly rejects. Adjacent transposition has to
+  // count as 1 for the typo everyone actually makes to be forgiven.
+  assert.equal(websites.findWebsite("gmial")?.name, "Gmail");
+});
+
+await check("a short generic word is never swallowed by a longer name", () => {
+  // "the" is a literal substring of the squashed alias "discordinthebrowser" —
+  // found this by testing the fuzzy stage and it turned out to predate it.
+  for (const word of ["the", "app", "web", "for", "and"]) {
+    assert.equal(websites.findWebsite(word), null, `"${word}" matched something`);
+  }
+});
+
+await check("fuzzy matching never fires on an ordinary sentence", () => {
+  for (const sentence of [
+    "how do i bake bread without an oven",
+    "what is the capital of france",
+    "please can you tell me a joke about a cat",
+  ]) {
+    assert.equal(websites.findWebsite(sentence), null, sentence);
+  }
+});
+
+await check("a URL is never relabelled by a fuzzy guess", () => {
+  // Correcting the LABEL on an address he actually typed would show him the
+  // wrong site's name for a page that still opens exactly as typed.
+  assert.equal(websites.findWebsite("gmial.com", { fuzzy: false }), null);
+});
+
+// --- opening a browser without re-scanning the disk every time --------------
+//
+// Windows-only behaviour, exercised here by pointing the same code at a fake
+// Windows layout under a scratch ProgramFiles. process.platform is writable in
+// Node and is restored in the finally block either way — nothing here is
+// allowed to leak into the checks that run after it.
+
+await check("resolving a browser is cached rather than repeated every open", async () => {
+  const realPlatform = Object.getOwnPropertyDescriptor(process, "platform");
+  const realProgramFiles = process.env.ProgramFiles;
+  const realProgramFilesX86 = process.env["ProgramFiles(x86)"];
+  const realLocalAppData = process.env.LOCALAPPDATA;
+  const realExistsSync = fs.existsSync;
+
+  const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "jarvis-browser-test-"));
+  const SETTINGS = path.join("data", "settings.json");
+  const CACHE = path.join("data", ".browser-path.json");
+  const hadSettings = fs.existsSync(SETTINGS) ? fs.readFileSync(SETTINGS, "utf-8") : null;
+  const hadCache = fs.existsSync(CACHE) ? fs.readFileSync(CACHE, "utf-8") : null;
+
+  try {
+    Object.defineProperty(process, "platform", { value: "win32", configurable: true });
+    process.env.ProgramFiles = scratch;
+    process.env["ProgramFiles(x86)"] = path.join(scratch, "does-not-exist-x86");
+    process.env.LOCALAPPDATA = path.join(scratch, "does-not-exist-local");
+
+    const layout = {
+      chrome: [scratch, "Google", "Chrome", "Application", "chrome.exe"],
+      firefox: [scratch, "Mozilla Firefox", "firefox.exe"],
+      edge: [scratch, "Microsoft", "Edge", "Application", "msedge.exe"],
+    };
+    for (const parts of Object.values(layout)) {
+      const target = path.join(...parts);
+      fs.mkdirSync(path.dirname(target), { recursive: true });
+      fs.writeFileSync(target, "#!/bin/sh\nexit 0\n", { mode: 0o755 });
+    }
+    const chromePath = path.join(...layout.chrome);
+
+    let existsSyncCalls = 0;
+    fs.existsSync = (p) => { existsSyncCalls++; return realExistsSync(p); };
+
+    fs.rmSync(CACHE, { force: true });
+    fs.mkdirSync("data", { recursive: true });
+    fs.writeFileSync(SETTINGS, JSON.stringify({ BROWSER: "firefox" }));
+
+    const desktop = await import(`../src/lib/desktop.ts?browsertest=${Date.now()}`);
+
+    existsSyncCalls = 0;
+    assert.ok(await desktop.openWebsite({ url: "example.com" }).then(() => true).catch(() => false));
+    assert.ok(fs.existsSync(CACHE), "cache was not written after the first open");
+    const coldCalls = existsSyncCalls;
+
+    existsSyncCalls = 0;
+    assert.ok(await desktop.openWebsite({ url: "example.com" }).then(() => true).catch(() => false));
+    assert.ok(
+      existsSyncCalls < coldCalls,
+      `warm open should need fewer filesystem checks than the cold scan (${existsSyncCalls} vs ${coldCalls})`
+    );
+
+    // A changed setting must not keep using the stale answer.
+    fs.writeFileSync(SETTINGS, JSON.stringify({ BROWSER: "chrome" }));
+    assert.ok(await desktop.openWebsite({ url: "example.com" }).then(() => true).catch(() => false));
+    assert.equal(JSON.parse(fs.readFileSync(CACHE, "utf-8")).browser, "chrome");
+
+    // The cached browser disappearing (uninstalled, moved) must self-heal
+    // rather than fail the open.
+    fs.rmSync(chromePath, { force: true });
+    assert.ok(await desktop.openWebsite({ url: "example.com" }).then(() => true).catch(() => false));
+    assert.notEqual(JSON.parse(fs.readFileSync(CACHE, "utf-8")).browser, "chrome");
+
+    // A corrupted cache file must not crash the next open.
+    fs.writeFileSync(CACHE, "{ not json");
+    assert.ok(await desktop.openWebsite({ url: "example.com" }).then(() => true).catch(() => false));
+  } finally {
+    fs.existsSync = realExistsSync;
+    if (realPlatform) Object.defineProperty(process, "platform", realPlatform);
+    if (realProgramFiles === undefined) delete process.env.ProgramFiles;
+    else process.env.ProgramFiles = realProgramFiles;
+    if (realProgramFilesX86 === undefined) delete process.env["ProgramFiles(x86)"];
+    else process.env["ProgramFiles(x86)"] = realProgramFilesX86;
+    if (realLocalAppData === undefined) delete process.env.LOCALAPPDATA;
+    else process.env.LOCALAPPDATA = realLocalAppData;
+    fs.rmSync(path.join("data", ".browser-path.json"), { force: true });
+    if (hadCache !== null) fs.writeFileSync(CACHE, hadCache);
+    if (hadSettings !== null) fs.writeFileSync(SETTINGS, hadSettings);
+    else fs.rmSync(SETTINGS, { force: true });
+    fs.rmSync(scratch, { recursive: true, force: true });
   }
 });
 

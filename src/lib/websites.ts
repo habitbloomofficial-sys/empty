@@ -1,3 +1,5 @@
+import { editDistance } from "./stringMatch";
+
 // Knowing a website when you hear one.
 //
 // "Open OneDrive", "pull up Google Docs", "go to chat GPT" — said out loud,
@@ -196,7 +198,7 @@ function sortedHandles(site: Website): string[] {
  * Longer names win ties, because they are the more specific answer: "google
  * docs" must not be answered by Google.
  */
-export function findWebsite(query: string): Website | null {
+export function findWebsite(query: string, options: { fuzzy?: boolean } = {}): Website | null {
   const asked = squash(query);
   const trimmed = squash(meaningful(query));
   if (!asked && !trimmed) return null;
@@ -222,10 +224,23 @@ export function findWebsite(query: string): Website | null {
 
   // Then a handle contained in what he said, or the other way round. Longest
   // handle first, so "google docs" is never answered by "google".
+  //
+  // The two directions need different floors. A short REAL site name inside a
+  // longer sentence — "hbo" inside "put hbo on" — is a fine, deliberate match:
+  // "hbo" is a known handle in its own right. The other way round is not the
+  // same claim: a short, generic WORD found inside some long alias is very
+  // often a coincidence rather than a name — "the" is a substring of
+  // "discord in the browser" and means nothing about Discord. So a candidate
+  // has to be at least four letters before it is allowed to match by being
+  // swallowed inside something longer.
   for (const wanted of candidates) {
     const partial = WEBSITES.map((site) => {
       const best = handles(site)
-        .filter((handle) => handle.length >= 3 && (wanted.includes(handle) || handle.includes(wanted)))
+        .filter(
+          (handle) =>
+            handle.length >= 3 &&
+            (wanted.includes(handle) || (wanted.length >= 4 && handle.includes(wanted)))
+        )
         .sort((a, b) => b.length - a.length)[0];
       return best ? { site, handle: best } : null;
     }).filter((match): match is { site: Website; handle: string } => match !== null);
@@ -235,7 +250,54 @@ export function findWebsite(query: string): Website | null {
     }
   }
 
-  return null;
+  // A near miss — "youtub", "netlfix", "gmial", whatever a fast thumb or a
+  // transcriber that has never heard of ChatGPT produces. Last resort, and
+  // deliberately: everything above this is either exact or a clear containment,
+  // and a typo guess should never outrank an actual match.
+  //
+  // Off for a URL passed in as `url` — see resolveWebsiteTarget. A URL is
+  // exact by definition; "correcting" the label on one he actually typed is a
+  // way of quietly showing him the wrong site's name.
+  if (options.fuzzy === false) return null;
+  return fuzzyWebsite(candidates);
+}
+
+/** How many letters may be wrong before a name is too different to be a typo of it. */
+function typoBudget(handleLength: number): number {
+  if (handleLength <= 5) return 1;
+  if (handleLength <= 9) return 2;
+  return 3;
+}
+
+const MIN_FUZZY_HANDLE_LENGTH = 4;
+
+function fuzzyWebsite(candidates: string[]): Website | null {
+  let best: { site: Website; distance: number; handleLength: number } | null = null;
+
+  for (const wanted of candidates) {
+    if (!wanted) continue;
+    for (const site of WEBSITES) {
+      for (const handle of handles(site)) {
+        if (handle.length < MIN_FUZZY_HANDLE_LENGTH) continue;
+        const budget = typoBudget(handle.length);
+        // Cheap rejection before the real comparison: two strings whose
+        // lengths already differ by more than the budget cannot be within it.
+        if (Math.abs(handle.length - wanted.length) > budget) continue;
+
+        const distance = editDistance(wanted, handle);
+        if (distance > budget) continue;
+        if (
+          !best ||
+          distance < best.distance ||
+          (distance === best.distance && handle.length > best.handleLength)
+        ) {
+          best = { site, distance, handleLength: handle.length };
+        }
+      }
+    }
+  }
+
+  return best?.site ?? null;
 }
 
 /** Does this look like an address rather than a name? */

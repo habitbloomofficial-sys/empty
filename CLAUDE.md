@@ -327,6 +327,37 @@ enthusiasm fades instead of being brought up forever.
 
 ---
 
+## Fast browser opening, and a typo tolerance
+
+`src/lib/desktop.ts` used to rebuild the FULL candidate list — every path for
+every browser it knows about — and re-scan the filesystem for each one, on
+**every single page opened**: one site, one tab of a batch, one saved
+workspace. `resolvedBrowser()` now resolves it once, keeps it in memory for the
+life of the server, and backs it with `data/.browser-path.json` so a restart
+isn't cold either. Self-healing both ways: a changed `BROWSER` setting is
+caught by `forSetting` before the stale answer is used, and a cached browser
+that got uninstalled or moved is caught by one `existsSync` and triggers an
+immediate rescan. Proven in `behaviour.mjs` by mocking a Windows layout and
+literally counting `fs.existsSync` calls — warm has to do fewer than cold.
+
+`src/lib/stringMatch.ts` holds a shared edit-distance function, now upgraded to
+treat **swapping two adjacent letters as one edit rather than two** — the
+single most common way anyone actually mistypes a word ("gmial", "form" for
+"from"). `findWebsite` in `websites.ts` uses it as a last-resort stage: "youtub",
+"netlfix", "gmial" all land on the real site. Off by default for a URL passed
+in as `url` — correcting the label on an address he actually typed would show
+him the wrong site's name for a page that still opens exactly as given.
+
+While testing that stage, found and fixed a small pre-existing bug in the
+containment match above it: a short generic word ("the", "app") could be
+swallowed as a substring of some long unrelated alias — "the" is literally
+inside the squashed "discord in the browser". Fixed by requiring the candidate
+be at least 4 letters before it's allowed to match by being *contained in*
+something longer; a real short site name being *found inside* a longer sentence
+("hbo" in "put hbo on") is a different, safe direction and was left alone.
+
+---
+
 ## Screen guide
 
 `screen-guide/guide.py` has two jobs:
